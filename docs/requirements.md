@@ -498,7 +498,7 @@ Schnittstellen werden nach fachlichem Bedarf eingeführt. Ein Interface ohne alt
 
 - Der Queue-Dienst besitzt die alleinige Scheduling-Verantwortung.
 - UI- und CLI-Schichten dürfen keine eigene Parallelverarbeitung aufbauen.
-- Statusänderungen sind geordnet und thread-sicher.
+- Statusänderungen sind geordnet und thread-sicher. Ein Warteschlangeneintrag setzt die Invariante aus Abschnitt 6.2 selbst durch: Prüfung und Schreiben des Status laufen unter einer Sperre, damit ein asynchron zugestellter Fortschrittsbericht einen terminalen Zustand nicht überschreiben kann. Die Korrektheit darf nicht davon abhängen, dass ein UI-Dispatcher die Aufrufe ohnehin serialisiert.
 - Persistenzfehler dürfen ein korrekt erzeugtes Bild nicht nachträglich als Kompressionsfehler deklarieren; sie werden als separate Warnung ausgewiesen.
 
 ## 15. Distribution und Supply Chain
@@ -586,7 +586,7 @@ Eine Anforderung ist erst umgesetzt, wenn:
 | Bereich | Status | Verifiziert |
 |---|---|---|
 | Anforderungen | Baseline erstellt | 2026-07-19 |
-| Solution und Projekte | Teilweise verifiziert | Windows x64: .NET SDK 10.0.302; normaler Solution-Build erzeugt den MSVC-`RelWithDebInfo`-Wrapper inkrementell, führt dessen ABI- und EXIF-Tests aus und kopiert DLL/PDB transitiv zu Desktop, CLI und Testhost; vollständige Solution mit 173 Tests am 2026-07-20 verifiziert |
+| Solution und Projekte | Teilweise verifiziert | Windows x64: .NET SDK 10.0.302; normaler Solution-Build erzeugt den MSVC-`RelWithDebInfo`-Wrapper inkrementell, führt dessen ABI- und EXIF-Tests aus und kopiert DLL/PDB transitiv zu Desktop, CLI und Testhost; vollständige Solution mit 176 Tests am 2026-07-20 verifiziert |
 | Domain-Modell | In Arbeit | Windows x64: Job-Invarianten und Statusübergänge |
 | Native Wrapper/Interop | In Arbeit | Windows x64: C-ABI v3, Capability-Metadaten, Status-/Fehlerübersetzung und kooperatives Abbruch-Handle; ABI-Smoke-Test und eigener EXIF-Modultest (`piccompressor_exif_tests`); gepinntes Jpegli 0.12.0 mit skcms, libpng und zlib statisch eingebunden; UCRT64- und MSVC-`RelWithDebInfo`-Build am 2026-07-20 verifiziert. Reines MSVC `Debug` blockiert beim Encoding und ist ausgeschlossen; Guetzli ist noch nicht eingebunden |
 | Jpegli-Adapter | In Arbeit | Windows x64: reale PNG-/JPEG-Dekodierung und JPEG-Erzeugung über P/Invoke sowie vollständiger CLI-Einzeldateipfad verifiziert; Qualität, Chroma, Progressive-Level und Alpha-Hintergrund werden übertragen. Alle Metadatenrichtlinien aus 8.3 sind umgesetzt: EXIF-Orientierung wird auf die Pixel angewendet (Orientierungen 1–8 gegen den echten Wrapper getestet), `Keep`/`Private`/`Remove` sowie `Preserve`/`Srgb`/`Remove` werden über die ABI übertragen. Die Ablehnung von `Farbprofil entfernen` bei Nicht-sRGB-Eingaben ist implementiert, aber mangels Testbild mit fremdem ICC-Profil noch nicht automatisiert verifiziert |

@@ -157,7 +157,12 @@ public sealed class DashboardViewModel : ObservableObject
         return true;
     }
 
-    private async Task CompressAllAsync()
+    /// <summary>
+    /// Arbeitet die Warteschlange ab. <c>internal</c> statt <c>private</c>, damit Tests
+    /// den Abschluss abwarten können: <see cref="AsyncRelayCommand.Execute"/> ist
+    /// <c>async void</c> und gibt keine abwartbare Aufgabe zurück.
+    /// </summary>
+    internal async Task CompressAllAsync()
     {
         var pending = Queue.Where(item => !item.IsTerminal).ToList();
         if (pending.Count == 0)

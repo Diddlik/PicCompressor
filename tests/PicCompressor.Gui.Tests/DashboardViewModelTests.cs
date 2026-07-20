@@ -292,13 +292,9 @@ public sealed class DashboardViewModelTests : IDisposable
 
     private static async Task RunAsync(DashboardViewModel dashboard)
     {
-        dashboard.CompressAllCommand.Execute(null);
-
-        // Der Befehl ist asynchron; warten, bis kein Job mehr offen ist.
-        for (var attempt = 0; attempt < 200 && dashboard.Queue.Any(item => !item.IsTerminal); attempt++)
-        {
-            await Task.Delay(10);
-        }
+        // Direkt die Aufgabe abwarten statt den async-void-Befehl abzupollen: ein
+        // Zeitbudget macht den Test unter paralleler Last flaky.
+        await dashboard.CompressAllAsync();
 
         Assert.All(dashboard.Queue, item => Assert.True(item.IsTerminal));
     }

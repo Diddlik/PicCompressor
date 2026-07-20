@@ -209,6 +209,40 @@ public sealed class QueueItemViewModelTests
         }
     }
 
+    /// <summary>
+    /// Fortschrittsberichte werden über <see cref="IProgress{T}"/> asynchron zugestellt
+    /// und können dem Endergebnis nachlaufen. Ein terminaler Zustand darf dadurch nicht
+    /// wieder verlassen werden (Abschnitt 6.2).
+    /// </summary>
+    [Fact]
+    public void A_late_progress_report_does_not_revive_a_terminal_job()
+    {
+        var item = new QueueItemViewModel("a.jpg", EngineIds.Jpegli, 10);
+        item.ApplyOutcome(
+            new CompressionOutcome(
+                JobStatus.Succeeded, "a.jpg", "a.out.jpg", 10, 5, true, null, null, null));
+
+        item.ApplyProgress(new CompressionProgress(JobStatus.Encoding, 0.5));
+
+        Assert.Equal(JobStatus.Succeeded, item.Status);
+        Assert.True(item.IsTerminal);
+    }
+
+    [Fact]
+    public void Resetting_for_a_new_run_is_the_only_way_out_of_a_terminal_state()
+    {
+        var item = new QueueItemViewModel("a.jpg", EngineIds.Jpegli, 10);
+        item.ApplyOutcome(
+            CompressionOutcome.Failed("a.jpg", 10, CompressionErrorCategory.EngineFailed, "x"));
+
+        item.Status = JobStatus.Encoding;
+        Assert.Equal(JobStatus.Failed, item.Status);
+
+        item.ResetForRun();
+        Assert.Equal(JobStatus.Queued, item.Status);
+        Assert.False(item.IsTerminal);
+    }
+
     [Fact]
     public void Accessible_summary_conveys_state_without_colour()
     {

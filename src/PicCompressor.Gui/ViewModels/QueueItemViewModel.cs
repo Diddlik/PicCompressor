@@ -6,6 +6,7 @@ namespace PicCompressor.Gui.ViewModels;
 
 public sealed class QueueItemViewModel : ObservableObject
 {
+    private readonly Lock statusGate = new();
     private JobStatus status = JobStatus.Queued;
     private double? progressPercent;
     private string? warning;
@@ -45,17 +46,36 @@ public sealed class QueueItemViewModel : ObservableObject
     public JobStatus Status
     {
         get => status;
-        set
+        set => SetStatus(value, leaveTerminal: false);
+    }
+
+    /// <summary>
+    /// Setzt den Status unter Wahrung der Invariante aus Abschnitt 6.2: ein terminaler
+    /// Zustand wird nur über <see cref="ResetForRun"/> verlassen. Der Vergleich und das
+    /// Schreiben laufen unter einer Sperre, weil Fortschrittsberichte über
+    /// <see cref="IProgress{T}"/> asynchron zugestellt werden und dem Endergebnis
+    /// nachlaufen können (Abschnitt 14.4).
+    /// </summary>
+    private void SetStatus(JobStatus value, bool leaveTerminal)
+    {
+        lock (statusGate)
         {
-            if (SetProperty(ref status, value))
+            if (!leaveTerminal && IsTerminal)
             {
-                Raise(nameof(StatusLabel));
-                Raise(nameof(IsIndeterminate));
-                Raise(nameof(IsTerminal));
-                Raise(nameof(IsRunning));
-                Raise(nameof(AccessibleSummary));
+                return;
+            }
+
+            if (!SetProperty(ref status, value))
+            {
+                return;
             }
         }
+
+        Raise(nameof(StatusLabel));
+        Raise(nameof(IsIndeterminate));
+        Raise(nameof(IsTerminal));
+        Raise(nameof(IsRunning));
+        Raise(nameof(AccessibleSummary));
     }
 
     /// <summary>
@@ -206,7 +226,8 @@ public sealed class QueueItemViewModel : ObservableObject
 
     public void ResetForRun()
     {
-        Status = JobStatus.Queued;
+        // Der einzige zulässige Weg aus einem terminalen Zustand.
+        SetStatus(JobStatus.Queued, leaveTerminal: true);
         ProgressPercent = null;
         Warning = null;
         ErrorCategory = null;
