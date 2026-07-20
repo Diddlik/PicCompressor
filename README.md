@@ -63,9 +63,3 @@ Show all options:
 ```powershell
 piccompressor --help
 ```
-
-## Documentation
-
-- [Development guide](docs/development.md)
-- [Release guide](docs/releasing.md)
-- [Requirements and architecture](docs/requirements.md)

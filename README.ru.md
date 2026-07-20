@@ -63,9 +63,3 @@ piccompressor "C:\Images" --recursive --quality 80 --output-dir "C:\Images\compr
 ```powershell
 piccompressor --help
 ```
-
-## Документация
-
-- [Руководство разработчика](docs/development.md)
-- [Руководство по выпуску](docs/releasing.md)
-- [Требования и архитектура](docs/requirements.md)

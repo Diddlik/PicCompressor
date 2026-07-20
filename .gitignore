@@ -6,3 +6,4 @@ TestResults/
 artifacts/
 native/build*/
 native/*.o
+docs
