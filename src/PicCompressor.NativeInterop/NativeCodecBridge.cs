@@ -120,6 +120,118 @@ public sealed class NativeCodecBridge(TimeProvider timeProvider)
             CancellationToken.None);
     }
 
+    public Task<EncodedPreviewResult> RenderEncodedPreviewAsync(
+        string inputPath,
+        int maxEdge,
+        JpegliSettings settings,
+        RgbColor alphaBackground,
+        ExifPolicy exifPolicy,
+        ColorProfilePolicy colorProfilePolicy,
+        CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(inputPath);
+        ArgumentOutOfRangeException.ThrowIfLessThan(maxEdge, 1);
+        ArgumentNullException.ThrowIfNull(settings);
+
+        if (cancellationToken.IsCancellationRequested)
+        {
+            return Task.FromResult(
+                EncodedPreviewResult.Failed("Preview rendering was canceled."));
+        }
+
+        return Task.Run(
+            () => RenderEncodedPreview(
+                inputPath,
+                maxEdge,
+                settings,
+                alphaBackground,
+                exifPolicy,
+                colorProfilePolicy,
+                cancellationToken),
+            CancellationToken.None);
+    }
+
+    private unsafe EncodedPreviewResult RenderEncodedPreview(
+        string inputPath,
+        int maxEdge,
+        JpegliSettings settings,
+        RgbColor alphaBackground,
+        ExifPolicy exifPolicy,
+        ColorProfilePolicy colorProfilePolicy,
+        CancellationToken cancellationToken)
+    {
+        var preview = new NativePreview { StructSize = (uint)sizeof(NativePreview) };
+        PreviewImage? image = null;
+        long encodedSize = 0;
+
+        var result = Encode(
+            (cancelHandle, error, errorCapacity) =>
+            {
+                var options = new NativeJpegliOptions
+                {
+                    StructSize = (uint)sizeof(NativeJpegliOptions),
+                    Quality = settings.Quality,
+                    ChromaSubsampling = (int)settings.ChromaSubsampling,
+                    ProgressiveLevel = settings.ProgressiveLevel,
+                    AlphaRed = alphaBackground.Red,
+                    AlphaGreen = alphaBackground.Green,
+                    AlphaBlue = alphaBackground.Blue,
+                    ExifPolicy = ToNativeExifPolicy(exifPolicy),
+                    ColorProfilePolicy = ToNativeColorProfilePolicy(colorProfilePolicy)
+                };
+                var previewOptions = new NativePreviewOptions
+                {
+                    StructSize = (uint)sizeof(NativePreviewOptions),
+                    MaxEdge = maxEdge,
+                    AlphaRed = alphaBackground.Red,
+                    AlphaGreen = alphaBackground.Green,
+                    AlphaBlue = alphaBackground.Blue
+                };
+
+                var status = NativeMethods.RenderEncodedPreview(
+                    inputPath,
+                    in options,
+                    in previewOptions,
+                    ref preview,
+                    out encodedSize,
+                    cancelHandle,
+                    error,
+                    errorCapacity);
+                if (status is not NativeStatus.Ok)
+                {
+                    return status;
+                }
+
+                try
+                {
+                    image = ReadPreview(in preview);
+                }
+                finally
+                {
+                    NativeMethods.ReleasePreview(ref preview);
+                }
+
+                return status;
+            },
+            cancellationToken);
+
+        return image is null
+            ? EncodedPreviewResult.Failed(result.ErrorText ?? "Preview rendering failed.")
+            : new EncodedPreviewResult(image, encodedSize, null);
+    }
+
+    private static PreviewImage ReadPreview(in NativePreview preview)
+    {
+        var rgb = new byte[preview.RgbSize];
+        Marshal.Copy(preview.Rgb, rgb, 0, rgb.Length);
+        return new PreviewImage(
+            preview.Width,
+            preview.Height,
+            rgb,
+            preview.SourceWidth,
+            preview.SourceHeight);
+    }
+
     /// <summary>
     /// Kopiert die nativen Pixel sofort in verwalteten Speicher und gibt den nativen Puffer
     /// wieder frei; der Aufrufer hält nie einen nativen Zeiger.
@@ -159,9 +271,7 @@ public sealed class NativeCodecBridge(TimeProvider timeProvider)
 
                 try
                 {
-                    var rgb = new byte[preview.RgbSize];
-                    Marshal.Copy(preview.Rgb, rgb, 0, rgb.Length);
-                    image = new PreviewImage(preview.Width, preview.Height, rgb);
+                    image = ReadPreview(in preview);
                 }
                 finally
                 {

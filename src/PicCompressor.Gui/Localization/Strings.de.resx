@@ -434,13 +434,25 @@
     <value>Zoom</value>
   </data>
   <data name="Cmp_ZoomValue" xml:space="preserve">
-    <value>{0:0.0}×</value>
+    <value>{0:P0}</value>
   </data>
   <data name="Cmp_ZoomIn" xml:space="preserve">
     <value>Vergrößern</value>
   </data>
   <data name="Cmp_ZoomOut" xml:space="preserve">
     <value>Verkleinern</value>
+  </data>
+  <data name="Cmp_ActualSize" xml:space="preserve">
+    <value>Originalgröße</value>
+  </data>
+  <data name="Cmp_PreviewDownscaled" xml:space="preserve">
+    <value>Vorschau verkleinert; gezeigte Bildpunkte sind hochgerechnet.</value>
+  </data>
+  <data name="Cmp_EstimatedSize" xml:space="preserve">
+    <value>{0} → {1} ({2}, geschätzt)</value>
+  </data>
+  <data name="Cmp_PreviewUnsupportedEngine" xml:space="preserve">
+    <value>Die gewählte Engine kann noch keine Vorschau erzeugen.</value>
   </data>
   <data name="Cmp_ResetView" xml:space="preserve">
     <value>Ansicht zurücksetzen</value>

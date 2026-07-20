@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.Runtime.InteropServices;
 using Avalonia;
 using Avalonia.Controls;
@@ -31,11 +32,11 @@ public sealed class CompareWipeTests(AvaloniaSession session)
         session.RunAsync(async () =>
         {
             // Ganz links: nur das Ergebnis. Ganz rechts: nur das Original.
-            var onlyCompressed = await RenderRowAsync(0.0);
-            var onlyOriginal = await RenderRowAsync(1.0);
+            var (onlyCompressed, surface) = await RenderAsync(0.0);
+            var (onlyOriginal, _) = await RenderAsync(1.0);
 
-            var compressedSpan = ContentSpan(onlyCompressed);
-            var originalSpan = ContentSpan(onlyOriginal);
+            var compressedSpan = ContentSpan(onlyCompressed, surface);
+            var originalSpan = ContentSpan(onlyOriginal, surface);
 
             Assert.NotEqual(0, compressedSpan.Length);
             // Gleiche Ausdehnung heißt: gleiche Skalierung und gleiche Lage — eine Schicht über
@@ -47,14 +48,14 @@ public sealed class CompareWipeTests(AvaloniaSession session)
     public Task The_divider_splits_the_same_image_into_two_layers() =>
         session.RunAsync(async () =>
         {
-            var row = await RenderRowAsync(0.5);
-            var span = ContentSpan(row);
-            var divider = WindowWidth / 2;
+            var (row, surface) = await RenderAsync(0.5);
+            var span = ContentSpan(row, surface);
+            var divider = (int)(surface.X + (surface.Width / 2));
 
             // Links vom Regler das Original, rechts davon das Ergebnis — an derselben Stelle.
+            Assert.True(span.Start < divider && span.End > divider, "the content crosses the divider");
             Assert.True(IsBright(row, (span.Start + divider) / 2), "left of the divider is the original");
             Assert.False(IsBright(row, (divider + span.End) / 2), "right of the divider is the result");
-            Assert.True(span.Start < divider && span.End > divider, "the content crosses the divider");
         });
 
     [Fact]
@@ -64,19 +65,21 @@ public sealed class CompareWipeTests(AvaloniaSession session)
             var (row, surface) = await RenderAsync(0.5);
             var divider = (int)(surface.X + (surface.Width / 2));
 
-            // Direkt rechts der Kante liegt das schwarze Ergebnis — dort ist nur die Linie hell.
             // Direkt auf der Kante liegt die Linie, kurz daneben schon das schwarze Ergebnis.
             Assert.True(IsBright(row, divider), "the divider line covers the edge");
             Assert.False(IsBright(row, divider + 20), "the result stays dark beside the line");
         });
 
-    private static (int Start, int End, int Length) ContentSpan(byte[] row)
+    /// <summary>
+    /// Waagerechte Ausdehnung des Bildinhalts innerhalb der Vergleichsfläche. Der Fensterrand
+    /// bleibt außen vor: dort liegt reines Weiß beziehungsweise Schwarz, das sonst als Inhalt
+    /// gezählt würde.
+    /// </summary>
+    private static (int Start, int End, int Length) ContentSpan(byte[] row, Rect surface)
     {
-        // Der Fensterhintergrund ist weder rein weiß noch rein schwarz; gesucht ist der Bereich,
-        // in dem überhaupt Bildinhalt liegt.
         var start = -1;
         var end = -1;
-        for (var x = 0; x < WindowWidth; x++)
+        for (var x = (int)surface.X; x < (int)surface.Right; x++)
         {
             if (!IsContent(row, x))
             {
@@ -90,11 +93,14 @@ public sealed class CompareWipeTests(AvaloniaSession session)
         return (start, end, start < 0 ? 0 : end - start);
     }
 
+    /// <summary>
+    /// Bildinhalt ist genau reines Weiß oder reines Schwarz. Ein Schwellwert genügt nicht: der
+    /// helle Fensterhintergrund liegt nah am Weiß der Originalvorschau und würde mitgezählt.
+    /// </summary>
     private static bool IsContent(byte[] row, int x)
     {
         var (r, g, b) = Pixel(row, x);
-        var uniform = r == g && g == b;
-        return uniform && (r < 40 || r > 230);
+        return (r == 255 && g == 255 && b == 255) || (r == 0 && g == 0 && b == 0);
     }
 
     private static bool IsBright(byte[] row, int x) => Pixel(row, x).R > 230;
@@ -102,15 +108,13 @@ public sealed class CompareWipeTests(AvaloniaSession session)
     private static (byte R, byte G, byte B) Pixel(byte[] row, int x) =>
         (row[x * 4], row[(x * 4) + 1], row[(x * 4) + 2]);
 
-    private static async Task<byte[]> RenderRowAsync(double dividerFraction) =>
-        (await RenderAsync(dividerFraction)).Row;
-
     /// <summary>Rendert die Ansicht und gibt eine Bildzeile durch die Mitte der Vergleichsfläche zurück.</summary>
     private static async Task<(byte[] Row, Rect Surface)> RenderAsync(double dividerFraction)
     {
-        var renderer = new MonochromeRenderer();
-        var compare = new CompareViewModel(renderer);
-        compare.Offer(Published("a.png", "a_compressed.jpg"));
+        var compare = new CompareViewModel(new MonochromeRenderer());
+        compare.AttachQueue(
+            new ObservableCollection<QueueItemViewModel>(
+                [Published("a.png", "a_compressed.jpg")]));
         for (var attempt = 0; attempt < 100 && !compare.HasPreview; attempt++)
         {
             Dispatcher.UIThread.RunJobs();
@@ -130,9 +134,15 @@ public sealed class CompareWipeTests(AvaloniaSession session)
 
         var surface = view.FindControl<Grid>("CompareSurface")!;
         // Bounds sind elternrelativ; gebraucht wird die Lage im Fenster, also im Bildpuffer.
-        var origin = surface.TranslatePoint(default, window)!.Value;
-        var rect = new Rect(origin, surface.Bounds.Size);
-        return (ReadRow(window.CaptureRenderedFrame()!, (int)rect.Center.Y), rect);
+        var rect = new Rect(surface.TranslatePoint(default, window)!.Value, surface.Bounds.Size);
+
+        // Gemessen wird durch die Mitte des gezeichneten Bildes, nicht der Fläche: das Bild ist
+        // auf sein Seitenverhältnis eingepasst und füllt die Fläche nicht.
+        var image = view.FindControl<Image>("CompressedImage")!;
+        var imageRect = new Rect(
+            image.TranslatePoint(default, window)!.Value,
+            image.Bounds.Size);
+        return (ReadRow(window.CaptureRenderedFrame()!, (int)imageRect.Center.Y), rect);
     }
 
     private static byte[] ReadRow(Bitmap frame, int y)
@@ -177,7 +187,17 @@ public sealed class CompareWipeTests(AvaloniaSession session)
             var value = (byte)(inputPath.EndsWith(".png", StringComparison.Ordinal) ? 255 : 0);
             var pixels = new byte[40 * 30 * 3];
             Array.Fill(pixels, value);
-            return Task.FromResult(new PreviewResult(new PreviewImage(40, 30, pixels), null));
+            return Task.FromResult(new PreviewResult(new PreviewImage(40, 30, pixels, 40, 30), null));
         }
+
+        public Task<EncodedPreviewResult> RenderEncodedPreviewAsync(
+            string inputPath,
+            int maxEdge,
+            JpegliSettings settings,
+            RgbColor alphaBackground,
+            ExifPolicy exifPolicy,
+            ColorProfilePolicy colorProfilePolicy,
+            CancellationToken cancellationToken) =>
+            Task.FromResult(RenderPreviewAsync(inputPath, maxEdge, alphaBackground, cancellationToken).Result is var r && r.Image is not null ? new EncodedPreviewResult(r.Image, 0, null) : EncodedPreviewResult.Failed("x"));
     }
 }

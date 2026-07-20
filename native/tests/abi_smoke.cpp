@@ -74,7 +74,7 @@ int main() {
 
   pc_preview_options preview_options{sizeof(pc_preview_options), 512, 255, 255,
                                      255};
-  pc_preview preview{sizeof(pc_preview), 0, 0, nullptr, 0};
+  pc_preview preview{sizeof(pc_preview), 0, 0, nullptr, 0, 0, 0};
   char preview_error[128]{};
   Check(pc_render_preview("input.png", &preview_options, &preview, cancel,
                           preview_error, sizeof(preview_error)) ==

@@ -18,7 +18,7 @@
 extern "C" {
 #endif
 
-#define PC_ABI_VERSION 4u
+#define PC_ABI_VERSION 6u
 
 typedef enum pc_status {
   PC_STATUS_OK = 0,
@@ -80,6 +80,10 @@ typedef struct pc_preview {
   int32_t height;
   uint8_t* rgb;
   size_t rgb_size;
+  // Maße des aufrecht gedrehten Originals vor dem Verkleinern. Nur damit kann der
+  // Aufrufer die tatsächliche Anzeigeskalierung bestimmen.
+  int32_t source_width;
+  int32_t source_height;
 } pc_preview;
 
 typedef struct pc_cancel_handle pc_cancel_handle;
@@ -107,6 +111,20 @@ PC_API pc_status pc_render_preview(
     const char* input_path_utf8,
     const pc_preview_options* options,
     pc_preview* preview,
+    const pc_cancel_handle* cancel,
+    char* error_utf8,
+    size_t error_capacity);
+
+// Kodiert die Eingabe mit den angegebenen Optionen ausschliesslich im Speicher und
+// liefert die Vorschau des Ergebnisses samt seiner Groesse in Bytes. Es wird keine
+// Datei geschrieben: die Vorschau eines noch nicht komprimierten Bildes darf nichts
+// veroeffentlichen.
+PC_API pc_status pc_render_encoded_preview(
+    const char* input_path_utf8,
+    const pc_jpegli_options* options,
+    const pc_preview_options* preview_options,
+    pc_preview* preview,
+    int64_t* encoded_size,
     const pc_cancel_handle* cancel,
     char* error_utf8,
     size_t error_capacity);
