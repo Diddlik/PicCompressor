@@ -26,6 +26,8 @@ public interface INativeCodecBridge
         string outputPath,
         JpegliSettings settings,
         RgbColor alphaBackground,
+        ExifPolicy exifPolicy,
+        ColorProfilePolicy colorProfilePolicy,
         CancellationToken cancellationToken);
 
     Task<NativeCodecResult> EncodeGuetzliAsync(

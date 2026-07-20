@@ -18,7 +18,7 @@
 extern "C" {
 #endif
 
-#define PC_ABI_VERSION 2u
+#define PC_ABI_VERSION 3u
 
 typedef enum pc_status {
   PC_STATUS_OK = 0,
@@ -40,6 +40,18 @@ typedef enum pc_chroma_subsampling {
   PC_CHROMA_420 = 3
 } pc_chroma_subsampling;
 
+typedef enum pc_exif_policy {
+  PC_EXIF_KEEP = 0,
+  PC_EXIF_PRIVATE = 1,
+  PC_EXIF_REMOVE = 2
+} pc_exif_policy;
+
+typedef enum pc_color_profile_policy {
+  PC_COLOR_PROFILE_PRESERVE = 0,
+  PC_COLOR_PROFILE_SRGB = 1,
+  PC_COLOR_PROFILE_REMOVE = 2
+} pc_color_profile_policy;
+
 typedef struct pc_jpegli_options {
   uint32_t struct_size;
   int32_t quality;
@@ -48,6 +60,8 @@ typedef struct pc_jpegli_options {
   int32_t alpha_red;
   int32_t alpha_green;
   int32_t alpha_blue;
+  pc_exif_policy exif_policy;
+  pc_color_profile_policy color_profile_policy;
 } pc_jpegli_options;
 
 typedef struct pc_cancel_handle pc_cancel_handle;

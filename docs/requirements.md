@@ -275,6 +275,8 @@ Vor dem Encoding MUSS die Anwendung:
 - Das Ergebnis MUSS visuell korrekt orientiert sein.
 - Nach physischer Rotation wird die Orientierung im Ergebnis auf Normalstellung gesetzt oder entfernt.
 
+Die Rotation erfolgt unabhängig von der Metadatenrichtlinie, weil die Ausgabe auch dann aufrecht stehen muss, wenn der tragende EXIF-Block anschließend entfällt. Die eingebundene Jpegli-Revision wendet die Orientierung nicht selbst an; sie bleibt Aufgabe des Wrappers.
+
 ### 8.3 Metadatenrichtlinie
 
 EXIF und Farbprofil werden getrennt konfiguriert:
@@ -288,7 +290,11 @@ EXIF und Farbprofil werden getrennt konfiguriert:
 | Farbprofil sRGB | Pixel nach sRGB transformieren und gültiges sRGB-Profil kennzeichnen |
 | Farbprofil entfernen | nur zulässig, wenn Pixel bereits sRGB repräsentieren |
 
-Guetzlis Ignorieren eingebetteter Profile MUSS durch Vorverarbeitung kompensiert oder als nicht unterstützte Kombination abgelehnt werden. „Metadaten erhalten“ darf nicht lediglich Byte-Blöcke ungeprüft kopieren.
+Guetzlis Ignorieren eingebetteter Profile MUSS durch Vorverarbeitung kompensiert oder als nicht unterstützte Kombination abgelehnt werden. „Metadaten erhalten” darf nicht lediglich Byte-Blöcke ungeprüft kopieren.
+
+`EXIF privat` wird über eine Positivliste zulässiger Tags umgesetzt, nicht über eine Sperrliste: ein unbekanntes Tag gilt als identifizierend und entfällt. Damit entfallen ohne Einzelprüfung auch MakerNote, GPS-IFD, Serien- und Besitzerangaben sowie Herstellererweiterungen. Der Thumbnail-IFD wird ebenfalls verworfen, weil er eine unbereinigte Kopie des Originals tragen kann. Der Blob wird dabei neu serialisiert; ein bloßes Entfernen der Verweise würde die Nutzdaten im Puffer belassen.
+
+`Farbprofil entfernen` MUSS abgelehnt werden, wenn die Eingabe ein Profil trägt, das nicht sRGB entspricht; andernfalls würde das Entfernen die Farben verändern.
 
 ## 9. Qualitätseinstellungen
 
@@ -575,14 +581,14 @@ Eine Anforderung ist erst umgesetzt, wenn:
 | Bereich | Status | Verifiziert |
 |---|---|---|
 | Anforderungen | Baseline erstellt | 2026-07-19 |
-| Solution und Projekte | Teilweise verifiziert | Windows x64: .NET SDK 10.0.302; normaler Solution-Build erzeugt den MSVC-`RelWithDebInfo`-Wrapper inkrementell, führt dessen ABI-Test aus und kopiert DLL/PDB transitiv zu Desktop, CLI und Testhost; vollständige Solution mit 146 Tests am 2026-07-19 verifiziert |
+| Solution und Projekte | Teilweise verifiziert | Windows x64: .NET SDK 10.0.302; normaler Solution-Build erzeugt den MSVC-`RelWithDebInfo`-Wrapper inkrementell, führt dessen ABI- und EXIF-Tests aus und kopiert DLL/PDB transitiv zu Desktop, CLI und Testhost; vollständige Solution mit 157 Tests am 2026-07-20 verifiziert |
 | Domain-Modell | In Arbeit | Windows x64: Job-Invarianten und Statusübergänge |
-| Native Wrapper/Interop | In Arbeit | Windows x64: C-ABI v2, Capability-Metadaten, Status-/Fehlerübersetzung und kooperatives Abbruch-Handle; ABI-Smoke-Test; gepinntes Jpegli 0.12.0 mit skcms, libpng und zlib statisch eingebunden; lokaler MSVC-`RelWithDebInfo`-Build mit PDB und gemischtem Visual-Studio-Launchprofil verifiziert. Reines MSVC `Debug` blockiert beim Encoding und ist ausgeschlossen; Guetzli ist noch nicht eingebunden |
-| Jpegli-Adapter | In Arbeit | Windows x64: reale PNG-/JPEG-Dekodierung und JPEG-Erzeugung über P/Invoke sowie vollständiger CLI-Einzeldateipfad verifiziert; Qualität, Chroma, Progressive-Level und Alpha-Hintergrund werden übertragen; aktuell nur `ExifPolicy.Remove` mit `ColorProfilePolicy.Preserve`, andere Metadatenrichtlinien werden abgelehnt |
+| Native Wrapper/Interop | In Arbeit | Windows x64: C-ABI v3, Capability-Metadaten, Status-/Fehlerübersetzung und kooperatives Abbruch-Handle; ABI-Smoke-Test und eigener EXIF-Modultest (`piccompressor_exif_tests`); gepinntes Jpegli 0.12.0 mit skcms, libpng und zlib statisch eingebunden; UCRT64- und MSVC-`RelWithDebInfo`-Build am 2026-07-20 verifiziert. Reines MSVC `Debug` blockiert beim Encoding und ist ausgeschlossen; Guetzli ist noch nicht eingebunden |
+| Jpegli-Adapter | In Arbeit | Windows x64: reale PNG-/JPEG-Dekodierung und JPEG-Erzeugung über P/Invoke sowie vollständiger CLI-Einzeldateipfad verifiziert; Qualität, Chroma, Progressive-Level und Alpha-Hintergrund werden übertragen. Alle Metadatenrichtlinien aus 8.3 sind umgesetzt: EXIF-Orientierung wird auf die Pixel angewendet (Orientierungen 1–8 gegen den echten Wrapper getestet), `Keep`/`Private`/`Remove` sowie `Preserve`/`Srgb`/`Remove` werden über die ABI übertragen. Die Ablehnung von `Farbprofil entfernen` bei Nicht-sRGB-Eingaben ist implementiert, aber mangels Testbild mit fremdem ICC-Profil noch nicht automatisiert verifiziert |
 | Guetzli-Adapter | Nicht begonnen | – |
 | Sichere Dateipipeline | In Arbeit | Windows x64: Eingabeprüfung, Datei-/Pixelgrenzen, Kollisionsplanung, reservierte temporäre Dateien, bedarfsgerechtes Anlegen verschachtelter Zielverzeichnisse, strukturelle JPEG-Ausgabeprüfung, `discard`/`keep`-Veröffentlichung sowie gemeinsamer Einzeljob-Anwendungsfall mit Fehler-/Abbruchbereinigung |
 | Queue und Ressourcensteuerung | In Arbeit | Windows x64: gemeinsame Application-Batchausführung mit konfigurierbarer harter Parallelitätsgrenze, stabiler Ergebnisreihenfolge, geordneten Statusmeldungen (`WaitingForResources`, `Encoding`, `Finalizing` und terminale Zustände) und `Canceled`-Ergebnissen für noch wartende Jobs; GUI-Wiederholung erzeugt einen neuen Job mit Vorgängerreferenz. CPU-/speichergewichtete Budgets bleiben bis O-005 offen |
-| CLI | In Arbeit | Windows x64: mehrere Datei- und Ordnereingaben, optionale Rekursion ohne Verfolgung von Verzeichnislinks, Erhalt relativer Unterordner, Ausschluss des Ausgabeordners, `dry-run`, begrenzte Parallelität, Jpegli-Optionen, menschenlesbare/JSON-Ausgabe, `Ctrl+C` und Batch-Exit-Codes; History fehlt |
+| CLI | In Arbeit | Windows x64: mehrere Datei- und Ordnereingaben, optionale Rekursion ohne Verfolgung von Verzeichnislinks, Erhalt relativer Unterordner, Ausschluss des Ausgabeordners, `dry-run`, begrenzte Parallelität, Jpegli-Optionen, `--exif` und `--color-profile`, menschenlesbare/JSON-Ausgabe, `Ctrl+C` und Batch-Exit-Codes; History fehlt |
 | GUI | In Arbeit | Windows x64: Avalonia-12-Shell (Titelzeile, Navigationsschiene mit kompaktem Zustand, Statuszeile), Light-/Dark-Farbrollen der Vorlage, vier Ansichten (Arbeitsbereich, Einstellungen, Verlauf, Vergleich) sowie Drag-and-drop und Dateiauswahl gebaut und gestartet. Oberflächentexte vollständig aus `Strings.resx`/`Strings.de.resx`; Sprachwechsel Deutsch/Englisch und Designwechsel System/Hell/Dunkel zur Laufzeit verifiziert. Der Desktop Host bindet reale Jpegli-Kompression, Engine-Erkennung, Application-Queue, Fortschritt, Abbruch, Wiederholung und lokalen Verlauf an die ViewModels an. Vorschauerzeugung sowie Persistenz von Sprach-, Design- und Kompressionseinstellungen fehlen |
 | History und Logging | In Arbeit | Windows x64: lokaler GUI-Verlauf über eine versionierte SQLite-Datenbank (`user_version = 1`) im Anwendungsdatenverzeichnis; transaktionales Schreiben, serialisierter Zugriff und erneutes Öffnen getestet. Gespeichert wird nur der Dateiname statt des vollständigen Eingabepfads. CLI-Anbindung, Löschung/Aufbewahrung, Migration aus älteren Schemata und strukturiertes Logging fehlen |
 | Packaging und Plattformmatrix | In Arbeit | Windows x64: Release `0.2.0-alpha.1` mit separatem Desktop-Composition-Root, verifiziertem `VelopackApp.Build().Run()`, selbstenthaltendem Desktop-/CLI-Publish, gepinntem VeloPack-1.2.0-Workflow ohne Bootstrap-Prüf-Bypass, UCRT64-Native-Build, ABI-/Portable-CLI-Smoke, One-Click-Installer, Portable ZIP, Updatepaket, Lizenzen und validierten SHA256-Manifesten erzeugt. GUI-Updateoberfläche, Signierung, Rollbacktests und weitere RIDs fehlen |
@@ -595,7 +601,7 @@ Statuswerte: `Nicht begonnen`, `In Arbeit`, `Teilweise verifiziert`, `Verifizier
 |---|---|---|
 | O-001 | Jpegli-Pin `031a0077f5799a6041004267fc12b956c1f52a20` freigeben | reproduzierbarer Build und Referenztests je Runtime |
 | O-002 | Guetzli-Unterstützung je Plattform | verfügbare, lizenzkonforme, getestete Library-Einbindungen |
-| O-003 | Farbmanagement-Bibliothek | ICC-Korrektheit, Lizenz, native Plattformabdeckung |
+| O-007 | Positivliste der bei `EXIF privat` erhaltenen Tags | Abgleich mit realen Kameramodellen; die aktuelle Liste ist bewusst eng und kann fachlich nützliche Felder verwerfen |
 | O-004 | Standardwerte der Qualitätsprofile | Vergleichstest mit repräsentativem Bildkorpus |
 | O-005 | Ressourcenbudgets | Benchmarks nach Pixelzahl, Engine und Runtime |
 | O-006 | Signing-Dienst und Hosting für direkte Releases | Signaturtest mit Azure Artifact Signing, Hostingkosten, Rollback und Wartungsaufwand |
@@ -625,6 +631,9 @@ Offene Entscheidungen dürfen nicht durch stillschweigende Implementierungsdetai
 | D-016 | 2026-07-19 | Die GUI folgt der UI-Vorlage in Layout, Farbrollen und Informationshierarchie, weicht aber dort ab, wo die Vorlage diesem Dokument widerspricht (Tabelle in 11.1); die GUI hängt nur von Domain und Application ab und nutzt keine zusätzliche MVVM-Bibliothek | Produktanforderungen haben nach 11.1 Vorrang; die Schichtregel aus 14.1 verbietet der GUI direkte Infrastruktur- und Interop-Abhängigkeiten |
 | D-017 | 2026-07-19 | Oberflächentexte liegen ausschließlich in `.resx`-Ressourcen; Sprache (System/Englisch/Deutsch, Startwert Systemsprache mit Rückfall auf Englisch) und Design (System/Hell/Dunkel, Standard System) wirken ohne Neustart | eine feste Sprache im Quelltext lässt sich nicht prüfen und nicht erweitern; ein Neustartzwang widerspricht der Bedienbarkeitsanforderung aus Abschnitt 11 |
 | D-019 | 2026-07-19 | Ein eigener Desktop Host ist Composition Root und VeloPack-Einstiegspunkt; das GUI-Projekt bleibt eine von Infrastruktur und Interop unabhängige Präsentationsbibliothek | die Schichtregel bleibt erhalten, während installierte GUI, reale Adapter und Update-Lifecycle in einem ausführbaren Host zusammengeführt werden |
+| D-021 | 2026-07-20 | C-ABI v3 überträgt EXIF- und Farbprofilrichtlinie; die Farbtransformation nach sRGB nutzt das bereits statisch eingebundene skcms. Schließt O-003 | eine weitere Farbmanagement-Bibliothek wäre eine zusätzliche native Abhängigkeit ohne fachlichen Mehrwert, da skcms bereits über `jpegli_cms` im Paket liegt |
+| D-022 | 2026-07-20 | `EXIF privat` filtert über eine Positivliste und serialisiert den TIFF-Blob neu; der Thumbnail-IFD entfällt | eine Sperrliste lässt unbekannte und herstellerspezifische Felder durch, und das bloße Entfernen von Verweisen ließe die Nutzdaten im Puffer stehen |
+| D-023 | 2026-07-20 | Der mitgelieferte libpng-Build verwendet immer die vorgefertigte `pnglibconf.h`; die AWK-basierte Neugenerierung wird abgeschaltet | sie lief nur, wenn zufällig ein AWK im PATH lag, und scheiterte dann unter dem Visual-Studio-Generator an fehlenden zlib-Headern. Der Build war damit vom Entwicklerrechner abhängig und widersprach der Reproduzierbarkeitsvorgabe aus Abschnitt 15 |
 | D-020 | 2026-07-19 | Lokale Windows-Debug-Builds verwenden MSVC `RelWithDebInfo` mit PDB und werden inkrementell vom Managed-Interop-Projekt ausgelöst; reines MSVC `Debug` ist wegen eines reproduzierten Encoding-Hängers ausgeschlossen; Windows-Releases bleiben beim gepinnten UCRT64-/MinGW-Build | Visual Studio kann Managed- und Native-Code gemeinsam debuggen, ohne einen blockierenden Upstream-Build oder eine stillschweigend geänderte Release-Toolchain einzuführen |
 
 ## 22. Pflege dieses Dokuments

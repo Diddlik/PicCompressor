@@ -90,19 +90,22 @@ Invoke-CheckedProcess $cmake $configureArguments
 Invoke-CheckedProcess $cmake @(
     "--build", $BuildDirectory,
     "--target", "piccompressor_native", "piccompressor_native_tests",
+    "piccompressor_exif_tests",
     "--config", $Configuration,
     "--parallel", "4"
 )
 
-$nativeTest = if ($Toolchain -eq "Msvc") {
-    Join-Path $BuildDirectory "$Configuration\piccompressor_native_tests.exe"
+$testDirectory = if ($Toolchain -eq "Msvc") {
+    Join-Path $BuildDirectory $Configuration
 }
 else {
-    Join-Path $BuildDirectory "piccompressor_native_tests.exe"
+    $BuildDirectory
 }
 
 $env:PATH = "$OutputDirectory;$env:PATH"
-Invoke-CheckedProcess $nativeTest @()
+foreach ($test in "piccompressor_native_tests", "piccompressor_exif_tests") {
+    Invoke-CheckedProcess (Join-Path $testDirectory "$test.exe") @()
+}
 
 if (-not (Test-Path -LiteralPath $nativeLibrary -PathType Leaf)) {
     throw "Native build did not produce $nativeLibrary"

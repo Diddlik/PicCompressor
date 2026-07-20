@@ -18,6 +18,8 @@ internal static class CliApplication
           --suffix <text>               Output suffix (default: _compressed)
           --collision <skip|rename|overwrite>
           --larger-output <discard|keep>
+          --exif <keep|private|remove>  EXIF handling (default: remove)
+          --color-profile <preserve|srgb|remove>
           --recursive                   Scan input directories recursively
           --dry-run                     Validate and plan without writing
           --parallelism <1-256>         Maximum concurrent jobs (default: 1)
@@ -96,8 +98,8 @@ internal static class CliApplication
                         options.Quality,
                         JpegliChromaSubsampling.Subsampling420,
                         2),
-                    ExifPolicy.Remove,
-                    ColorProfilePolicy.Preserve,
+                    options.ExifPolicy,
+                    options.ColorProfilePolicy,
                     RgbColor.White,
                     options.CollisionPolicy,
                     options.LargerOutputPolicy,

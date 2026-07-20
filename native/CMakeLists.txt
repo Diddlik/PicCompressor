@@ -23,6 +23,11 @@ if(PC_ENABLE_JPEGLI)
     set(JPEGLI_ENABLE_TCMALLOC OFF CACHE BOOL "" FORCE)
     set(JPEGLI_BUNDLE_LIBPNG ON CACHE BOOL "" FORCE)
     set(JPEGLI_STATIC ON CACHE BOOL "" FORCE)
+    # The bundled libpng regenerates pnglibconf.h only when it finds an AWK on
+    # PATH, and that generated path fails to see zlib's headers under the Visual
+    # Studio generator. Whether it triggers depends on the developer's PATH, so
+    # the build is pinned to libpng's prebuilt configuration instead.
+    set(AWK "" CACHE FILEPATH "Disabled: use libpng's prebuilt pnglibconf.h" FORCE)
     FetchContent_Declare(
         jpegli
         GIT_REPOSITORY https://github.com/google/jpegli.git
@@ -46,7 +51,8 @@ if(PC_ENABLE_JPEGLI)
 endif()
 
 add_library(piccompressor_native SHARED
-    src/piccompressor_native.cpp)
+    src/piccompressor_native.cpp
+    src/pc_exif.cpp)
 set_target_properties(piccompressor_native PROPERTIES PREFIX "")
 target_compile_features(piccompressor_native PRIVATE cxx_std_20)
 target_compile_definitions(piccompressor_native PRIVATE PC_NATIVE_BUILD)
@@ -97,4 +103,19 @@ if(BUILD_TESTING)
     endif()
     target_link_libraries(piccompressor_native_tests PRIVATE piccompressor_native)
     add_test(NAME piccompressor_native_abi COMMAND piccompressor_native_tests)
+
+    # The EXIF handling is independent of Jpegli and is tested directly.
+    add_executable(piccompressor_exif_tests
+        tests/exif_test.cpp
+        src/pc_exif.cpp)
+    target_compile_features(piccompressor_exif_tests PRIVATE cxx_std_20)
+    target_include_directories(piccompressor_exif_tests PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    if(MSVC)
+        target_compile_options(piccompressor_exif_tests PRIVATE /W4 /WX /permissive-)
+    else()
+        target_compile_options(piccompressor_exif_tests PRIVATE
+            -Wall -Wextra -Wpedantic -Werror)
+    endif()
+    add_test(NAME piccompressor_native_exif COMMAND piccompressor_exif_tests)
 endif()

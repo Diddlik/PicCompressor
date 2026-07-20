@@ -9,6 +9,8 @@ internal sealed record CliOptions(
     string Suffix,
     CollisionPolicy CollisionPolicy,
     LargerOutputPolicy LargerOutputPolicy,
+    ExifPolicy ExifPolicy,
+    ColorProfilePolicy ColorProfilePolicy,
     bool Recursive,
     bool DryRun,
     int Parallelism,
@@ -23,6 +25,8 @@ internal sealed record CliOptions(
         var suffix = "_compressed";
         var collisionPolicy = CollisionPolicy.Skip;
         var largerOutputPolicy = LargerOutputPolicy.Discard;
+        var exifPolicy = ExifPolicy.Remove;
+        var colorProfilePolicy = ColorProfilePolicy.Preserve;
         var recursive = false;
         var dryRun = false;
         var parallelism = 1;
@@ -63,6 +67,16 @@ internal sealed record CliOptions(
                         NextValue(args, ref index, "--larger-output"),
                         "--larger-output");
                     break;
+                case "--exif":
+                    exifPolicy = ParseEnum<ExifPolicy>(
+                        NextValue(args, ref index, "--exif"),
+                        "--exif");
+                    break;
+                case "--color-profile":
+                    colorProfilePolicy = ParseEnum<ColorProfilePolicy>(
+                        NextValue(args, ref index, "--color-profile"),
+                        "--color-profile");
+                    break;
                 default:
                     if (args[index].StartsWith('-'))
                     {
@@ -83,6 +97,8 @@ internal sealed record CliOptions(
             suffix,
             collisionPolicy,
             largerOutputPolicy,
+            exifPolicy,
+            colorProfilePolicy,
             recursive,
             dryRun,
             parallelism,

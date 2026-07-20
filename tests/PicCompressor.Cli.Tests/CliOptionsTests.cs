@@ -10,6 +10,31 @@ public sealed class CliOptionsTests
         Assert.Equal(80, options.Quality);
         Assert.Equal(PicCompressor.Domain.CollisionPolicy.Skip, options.CollisionPolicy);
         Assert.Equal(PicCompressor.Domain.LargerOutputPolicy.Discard, options.LargerOutputPolicy);
+        Assert.Equal(PicCompressor.Domain.ExifPolicy.Remove, options.ExifPolicy);
+        Assert.Equal(
+            PicCompressor.Domain.ColorProfilePolicy.Preserve,
+            options.ColorProfilePolicy);
+    }
+
+    [Fact]
+    public void Parse_accepts_metadata_policies()
+    {
+        var options = CliOptions.Parse(
+            ["input.png", "--exif", "private", "--color-profile", "srgb"]);
+
+        Assert.Equal(PicCompressor.Domain.ExifPolicy.Private, options.ExifPolicy);
+        Assert.Equal(
+            PicCompressor.Domain.ColorProfilePolicy.Srgb,
+            options.ColorProfilePolicy);
+    }
+
+    [Fact]
+    public void Parse_rejects_unknown_metadata_policy()
+    {
+        var exception = Assert.Throws<CliUsageException>(
+            () => CliOptions.Parse(["input.png", "--exif", "anonymise"]));
+
+        Assert.Contains("--exif", exception.Message);
     }
 
     [Fact]

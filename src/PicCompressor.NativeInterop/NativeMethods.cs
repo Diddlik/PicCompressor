@@ -27,12 +27,14 @@ internal struct NativeJpegliOptions
     internal int AlphaRed;
     internal int AlphaGreen;
     internal int AlphaBlue;
+    internal int ExifPolicy;
+    internal int ColorProfilePolicy;
 }
 
 internal static partial class NativeMethods
 {
     internal const string LibraryName = "piccompressor_native";
-    internal const uint AbiVersion = 2;
+    internal const uint AbiVersion = 3;
 
     [LibraryImport(LibraryName, EntryPoint = "pc_abi_version")]
     internal static partial uint GetAbiVersion();

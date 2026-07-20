@@ -1,3 +1,4 @@
+using System.Text;
 using PicCompressor.Application;
 using PicCompressor.Domain;
 
@@ -54,6 +55,8 @@ public sealed class NativeCodecBridgeTests
                 outputPath,
                 new JpegliSettings(80, JpegliChromaSubsampling.Subsampling420, 2),
                 RgbColor.White,
+                ExifPolicy.Remove,
+                ColorProfilePolicy.Preserve,
                 CancellationToken.None);
 
             Assert.Equal(NativeCodecStatus.Succeeded, result.Status);
@@ -68,6 +71,8 @@ public sealed class NativeCodecBridgeTests
                 secondOutputPath,
                 new JpegliSettings(75, JpegliChromaSubsampling.Subsampling444, 0),
                 RgbColor.White,
+                ExifPolicy.Remove,
+                ColorProfilePolicy.Preserve,
                 CancellationToken.None);
 
             Assert.Equal(NativeCodecStatus.Succeeded, secondResult.Status);
@@ -76,6 +81,268 @@ public sealed class NativeCodecBridgeTests
         finally
         {
             Directory.Delete(directory, true);
+        }
+    }
+
+    [Theory]
+    [InlineData(1, 3, 2)]
+    [InlineData(3, 3, 2)]
+    [InlineData(6, 2, 3)]
+    [InlineData(8, 2, 3)]
+    public async Task EncodeJpegliAsync_applies_exif_orientation_to_pixels(
+        int orientation,
+        int expectedWidth,
+        int expectedHeight)
+    {
+        using var workspace = new Workspace();
+
+        var source = await EncodeAsync(
+            workspace,
+            "source",
+            CreatePortablePixmap(3, 2),
+            ExifPolicy.Remove);
+        var oriented = workspace.Write(
+            "oriented.jpg",
+            InsertExif(source, CreateExifTiff(orientation, artist: null)));
+
+        var output = await EncodeAsync(
+            workspace,
+            "rotated",
+            await File.ReadAllBytesAsync(oriented),
+            ExifPolicy.Remove);
+
+        var (width, height) = ReadJpegSize(output);
+        Assert.Equal(expectedWidth, width);
+        Assert.Equal(expectedHeight, height);
+    }
+
+    [Fact]
+    public async Task EncodeJpegliAsync_keeps_exif_but_normalises_orientation()
+    {
+        using var workspace = new Workspace();
+
+        var source = await EncodeAsync(
+            workspace,
+            "source",
+            CreatePortablePixmap(3, 2),
+            ExifPolicy.Remove);
+        var input = InsertExif(source, CreateExifTiff(6, artist: null));
+
+        var output = await EncodeAsync(workspace, "kept", input, ExifPolicy.Keep);
+
+        var exif = FindExif(output);
+        Assert.NotNull(exif);
+        // The pixels were rotated, so a surviving orientation tag would rotate
+        // the image a second time in any viewer.
+        Assert.Equal(1, ReadOrientation(exif));
+    }
+
+    [Fact]
+    public async Task EncodeJpegliAsync_removes_exif_completely()
+    {
+        using var workspace = new Workspace();
+
+        var source = await EncodeAsync(
+            workspace,
+            "source",
+            CreatePortablePixmap(3, 2),
+            ExifPolicy.Remove);
+        var input = InsertExif(source, CreateExifTiff(1, "Bob"));
+
+        var output = await EncodeAsync(workspace, "removed", input, ExifPolicy.Remove);
+
+        Assert.Null(FindExif(output));
+    }
+
+    [Fact]
+    public async Task EncodeJpegliAsync_strips_identifying_exif_fields()
+    {
+        using var workspace = new Workspace();
+
+        var source = await EncodeAsync(
+            workspace,
+            "source",
+            CreatePortablePixmap(3, 2),
+            ExifPolicy.Remove);
+        var input = InsertExif(source, CreateExifTiff(1, "Bob"));
+        Assert.Contains("Bob", Encoding.ASCII.GetString(input), StringComparison.Ordinal);
+
+        var output = await EncodeAsync(workspace, "private", input, ExifPolicy.Private);
+
+        Assert.NotNull(FindExif(output));
+        Assert.DoesNotContain(
+            "Bob",
+            Encoding.ASCII.GetString(output),
+            StringComparison.Ordinal);
+    }
+
+    private async Task<byte[]> EncodeAsync(
+        Workspace workspace,
+        string name,
+        byte[] input,
+        ExifPolicy exifPolicy)
+    {
+        var inputPath = workspace.Write($"{name}-input.bin", input);
+        var outputPath = Path.Combine(workspace.Directory, $"{name}-output.jpg");
+
+        var result = await Bridge.EncodeJpegliAsync(
+            inputPath,
+            outputPath,
+            new JpegliSettings(90, JpegliChromaSubsampling.Subsampling444, 0),
+            RgbColor.White,
+            exifPolicy,
+            ColorProfilePolicy.Preserve,
+            CancellationToken.None);
+
+        Assert.Equal(NativeCodecStatus.Succeeded, result.Status);
+        return await File.ReadAllBytesAsync(outputPath);
+    }
+
+    private sealed class Workspace : IDisposable
+    {
+        public string Directory { get; } = Path.Combine(
+            Path.GetTempPath(),
+            $"piccompressor-{Guid.NewGuid():N}");
+
+        public Workspace() => System.IO.Directory.CreateDirectory(Directory);
+
+        public string Write(string name, byte[] content)
+        {
+            var path = Path.Combine(Directory, name);
+            File.WriteAllBytes(path, content);
+            return path;
+        }
+
+        public void Dispose() => System.IO.Directory.Delete(Directory, true);
+    }
+
+    // A binary PPM is the smallest input format Jpegli decodes without needing
+    // a hand-written PNG or JPEG fixture.
+    private static byte[] CreatePortablePixmap(int width, int height)
+    {
+        var header = Encoding.ASCII.GetBytes($"P6\n{width} {height}\n255\n");
+        var pixels = new byte[width * height * 3];
+        for (var index = 0; index < pixels.Length; index++)
+        {
+            pixels[index] = (byte)(index * 37 % 256);
+        }
+        return [.. header, .. pixels];
+    }
+
+    private static byte[] CreateExifTiff(int orientation, string? artist)
+    {
+        var entries = new List<(ushort Tag, ushort Type, uint Count, byte[] Value)>
+        {
+            (0x0112, 3, 1, [(byte)orientation, 0])
+        };
+        if (artist is not null)
+        {
+            var value = Encoding.ASCII.GetBytes(artist + "\0");
+            entries.Add((0x013b, 2, (uint)value.Length, value));
+        }
+
+        var body = new List<byte> { 0x49, 0x49, 0x2a, 0x00 };
+        var data = new List<byte>();
+        var dataOffset = 8 + 2 + (entries.Count * 12) + 4;
+
+        body.AddRange(BitConverter.GetBytes(8));
+        body.AddRange(BitConverter.GetBytes((ushort)entries.Count));
+        foreach (var entry in entries)
+        {
+            body.AddRange(BitConverter.GetBytes(entry.Tag));
+            body.AddRange(BitConverter.GetBytes(entry.Type));
+            body.AddRange(BitConverter.GetBytes(entry.Count));
+            if (entry.Value.Length <= 4)
+            {
+                body.AddRange(entry.Value);
+                body.AddRange(new byte[4 - entry.Value.Length]);
+            }
+            else
+            {
+                body.AddRange(BitConverter.GetBytes(dataOffset + data.Count));
+                data.AddRange(entry.Value);
+            }
+        }
+        body.AddRange(new byte[4]);
+        body.AddRange(data);
+        return [.. body];
+    }
+
+    private static byte[] InsertExif(byte[] jpeg, byte[] tiff)
+    {
+        var payload = new List<byte>(Encoding.ASCII.GetBytes("Exif")) { 0, 0 };
+        payload.AddRange(tiff);
+        var length = payload.Count + 2;
+
+        var result = new List<byte>();
+        result.AddRange(jpeg[..2]);
+        result.AddRange([0xff, 0xe1, (byte)(length >> 8), (byte)(length & 0xff)]);
+        result.AddRange(payload);
+        result.AddRange(jpeg[2..]);
+        return [.. result];
+    }
+
+    private static (int Width, int Height) ReadJpegSize(byte[] jpeg)
+    {
+        foreach (var (marker, offset, _) in EnumerateSegments(jpeg))
+        {
+            // Every start-of-frame marker except DHT, JPG and DAC.
+            if (marker is >= 0xc0 and <= 0xcf and not 0xc4 and not 0xc8 and not 0xcc)
+            {
+                return (
+                    (jpeg[offset + 7] << 8) | jpeg[offset + 8],
+                    (jpeg[offset + 5] << 8) | jpeg[offset + 6]);
+            }
+        }
+        throw new InvalidOperationException("The output carries no frame header.");
+    }
+
+    private static byte[]? FindExif(byte[] jpeg)
+    {
+        var signature = Encoding.ASCII.GetBytes("Exif\0\0");
+        foreach (var (marker, offset, length) in EnumerateSegments(jpeg))
+        {
+            if (marker != 0xe1 || length < 2 + signature.Length)
+            {
+                continue;
+            }
+            var payload = jpeg.AsSpan(offset + 4, length - 2);
+            if (payload[..signature.Length].SequenceEqual(signature))
+            {
+                return payload[signature.Length..].ToArray();
+            }
+        }
+        return null;
+    }
+
+    private static int ReadOrientation(byte[] tiff)
+    {
+        var count = BitConverter.ToUInt16(tiff, 8);
+        for (var index = 0; index < count; index++)
+        {
+            var entry = 10 + (index * 12);
+            if (BitConverter.ToUInt16(tiff, entry) == 0x0112)
+            {
+                return BitConverter.ToUInt16(tiff, entry + 8);
+            }
+        }
+        throw new InvalidOperationException("The blob carries no orientation.");
+    }
+
+    private static IEnumerable<(byte Marker, int Offset, int Length)>
+        EnumerateSegments(byte[] jpeg)
+    {
+        var offset = 2;
+        while (offset + 4 <= jpeg.Length && jpeg[offset] == 0xff)
+        {
+            var marker = jpeg[offset + 1];
+            if (marker == 0xda)
+            {
+                yield break;
+            }
+            var length = (jpeg[offset + 2] << 8) | jpeg[offset + 3];
+            yield return (marker, offset, length);
+            offset += 2 + length;
         }
     }
 

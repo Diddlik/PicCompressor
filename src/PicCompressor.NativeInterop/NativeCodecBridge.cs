@@ -46,6 +46,8 @@ public sealed class NativeCodecBridge(TimeProvider timeProvider) : INativeCodecB
         string outputPath,
         JpegliSettings settings,
         RgbColor alphaBackground,
+        ExifPolicy exifPolicy,
+        ColorProfilePolicy colorProfilePolicy,
         CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(inputPath);
@@ -67,6 +69,8 @@ public sealed class NativeCodecBridge(TimeProvider timeProvider) : INativeCodecB
                 outputPath,
                 settings,
                 alphaBackground,
+                exifPolicy,
+                colorProfilePolicy,
                 cancellationToken),
             CancellationToken.None);
     }
@@ -117,6 +121,8 @@ public sealed class NativeCodecBridge(TimeProvider timeProvider) : INativeCodecB
         string outputPath,
         JpegliSettings settings,
         RgbColor alphaBackground,
+        ExifPolicy exifPolicy,
+        ColorProfilePolicy colorProfilePolicy,
         CancellationToken cancellationToken)
     {
         return Encode(
@@ -130,7 +136,9 @@ public sealed class NativeCodecBridge(TimeProvider timeProvider) : INativeCodecB
                     ProgressiveLevel = settings.ProgressiveLevel,
                     AlphaRed = alphaBackground.Red,
                     AlphaGreen = alphaBackground.Green,
-                    AlphaBlue = alphaBackground.Blue
+                    AlphaBlue = alphaBackground.Blue,
+                    ExifPolicy = ToNativeExifPolicy(exifPolicy),
+                    ColorProfilePolicy = ToNativeColorProfilePolicy(colorProfilePolicy)
                 };
                 return NativeMethods.EncodeJpegli(
                     inputPath,
@@ -206,6 +214,26 @@ public sealed class NativeCodecBridge(TimeProvider timeProvider) : INativeCodecB
         nint cancelHandle,
         byte* error,
         nuint errorCapacity);
+
+    // Mapped explicitly rather than cast: the native ABI values are a contract
+    // and must not follow a reordering of the domain enums.
+    private static int ToNativeExifPolicy(ExifPolicy policy) =>
+        policy switch
+        {
+            ExifPolicy.Keep => 0,
+            ExifPolicy.Private => 1,
+            ExifPolicy.Remove => 2,
+            _ => throw new ArgumentOutOfRangeException(nameof(policy))
+        };
+
+    private static int ToNativeColorProfilePolicy(ColorProfilePolicy policy) =>
+        policy switch
+        {
+            ColorProfilePolicy.Preserve => 0,
+            ColorProfilePolicy.Srgb => 1,
+            ColorProfilePolicy.Remove => 2,
+            _ => throw new ArgumentOutOfRangeException(nameof(policy))
+        };
 
     private static NativeEngine ToNativeEngine(string engineId) =>
         engineId switch

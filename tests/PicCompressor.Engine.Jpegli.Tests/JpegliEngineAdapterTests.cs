@@ -41,23 +41,29 @@ public sealed class JpegliEngineAdapterTests
         Assert.Equal(RgbColor.White, bridge.AlphaBackground);
     }
 
-    [Fact]
-    public async Task EncodeAsync_rejects_unimplemented_metadata_policy()
+    [Theory]
+    [InlineData(ExifPolicy.Keep, ColorProfilePolicy.Preserve)]
+    [InlineData(ExifPolicy.Private, ColorProfilePolicy.Srgb)]
+    [InlineData(ExifPolicy.Remove, ColorProfilePolicy.Remove)]
+    public async Task EncodeAsync_forwards_every_metadata_policy(
+        ExifPolicy exifPolicy,
+        ColorProfilePolicy colorProfilePolicy)
     {
         var bridge = new StubBridge();
         var adapter = new JpegliEngineAdapter(bridge);
         var job = CreateJob(
             new JpegliSettings(80, JpegliChromaSubsampling.Subsampling420, 2),
-            ExifPolicy.Private);
+            exifPolicy,
+            colorProfilePolicy);
 
         var result = await adapter.EncodeAsync(
             job,
             Path.GetFullPath("temporary.jpg"),
             CancellationToken.None);
 
-        Assert.Equal(EngineEncodingStatus.Failed, result.Status);
-        Assert.Equal(CompressionErrorCategory.InvalidArguments, result.ErrorCategory);
-        Assert.Null(bridge.Settings);
+        Assert.Equal(EngineEncodingStatus.Succeeded, result.Status);
+        Assert.Equal(exifPolicy, bridge.RequestedExifPolicy);
+        Assert.Equal(colorProfilePolicy, bridge.RequestedColorProfilePolicy);
     }
 
     [Theory]
@@ -86,14 +92,15 @@ public sealed class JpegliEngineAdapterTests
 
     private static CompressionJob CreateJob(
         CompressionEngineSettings settings,
-        ExifPolicy exifPolicy = ExifPolicy.Remove) =>
+        ExifPolicy exifPolicy = ExifPolicy.Remove,
+        ColorProfilePolicy colorProfilePolicy = ColorProfilePolicy.Preserve) =>
         new(
             Guid.NewGuid(),
             Path.GetFullPath("input.png"),
             Path.GetFullPath("output.jpg"),
             settings,
             exifPolicy,
-            ColorProfilePolicy.Preserve,
+            colorProfilePolicy,
             RgbColor.White,
             CollisionPolicy.Skip,
             LargerOutputPolicy.Discard,
@@ -112,6 +119,8 @@ public sealed class JpegliEngineAdapterTests
         public string? OutputPath { get; private set; }
         public JpegliSettings? Settings { get; private set; }
         public RgbColor AlphaBackground { get; private set; }
+        public ExifPolicy? RequestedExifPolicy { get; private set; }
+        public ColorProfilePolicy? RequestedColorProfilePolicy { get; private set; }
 
         public EngineCapability GetEngineCapability(string engineId) => Capability;
 
@@ -120,12 +129,16 @@ public sealed class JpegliEngineAdapterTests
             string outputPath,
             JpegliSettings settings,
             RgbColor alphaBackground,
+            ExifPolicy exifPolicy,
+            ColorProfilePolicy colorProfilePolicy,
             CancellationToken cancellationToken)
         {
             InputPath = inputPath;
             OutputPath = outputPath;
             Settings = settings;
             AlphaBackground = alphaBackground;
+            RequestedExifPolicy = exifPolicy;
+            RequestedColorProfilePolicy = colorProfilePolicy;
             return Task.FromResult(Result);
         }
 

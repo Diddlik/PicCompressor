@@ -31,20 +31,13 @@ public sealed class JpegliEngineAdapter(INativeCodecBridge nativeBridge)
                 TimeSpan.Zero);
         }
 
-        if (job.ExifPolicy is not ExifPolicy.Remove
-            || job.ColorProfilePolicy is not ColorProfilePolicy.Preserve)
-        {
-            return EngineEncodingResult.Failed(
-                CompressionErrorCategory.InvalidArguments,
-                "Jpegli currently supports ExifPolicy.Remove and ColorProfilePolicy.Preserve.",
-                TimeSpan.Zero);
-        }
-
         var result = await nativeBridge.EncodeJpegliAsync(
             job.InputPath,
             temporaryOutputPath,
             settings,
             job.AlphaBackground,
+            job.ExifPolicy,
+            job.ColorProfilePolicy,
             cancellationToken).ConfigureAwait(false);
 
         return result.Status switch
