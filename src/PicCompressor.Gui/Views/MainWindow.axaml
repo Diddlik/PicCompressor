@@ -1,0 +1,125 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:PicCompressor.Gui.ViewModels"
+        xmlns:l="using:PicCompressor.Gui.Localization"
+        xmlns:views="using:PicCompressor.Gui.Views"
+        x:Class="PicCompressor.Gui.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Title="{l:Localize App_Title}"
+        WindowStartupLocation="CenterScreen"
+        Width="1280" Height="720" MinWidth="420" MinHeight="440"
+        Background="{DynamicResource PcBg}"
+        Foreground="{DynamicResource PcText}">
+
+  <!-- Ansichtswechsel per Tastatur, unabhängig vom Fokus. -->
+  <Window.KeyBindings>
+    <KeyBinding Gesture="Ctrl+D1" Command="{Binding ShowDashboardCommand}" />
+    <KeyBinding Gesture="Ctrl+D2" Command="{Binding ShowSettingsCommand}" />
+    <KeyBinding Gesture="Ctrl+D3" Command="{Binding ShowHistoryCommand}" />
+    <KeyBinding Gesture="Ctrl+D4" Command="{Binding ShowCompareCommand}" />
+    <KeyBinding Gesture="Ctrl+Enter" Command="{Binding Dashboard.CompressAllCommand}" />
+    <KeyBinding Gesture="Escape" Command="{Binding Dashboard.CancelCommand}" />
+  </Window.KeyBindings>
+
+  <!-- Shell nach der UI-Referenzvorlage: Titelzeile · Navigationsschiene + Inhalt · Statuszeile. -->
+  <Grid RowDefinitions="44,*,Auto">
+
+    <Border Grid.Row="0" Background="{DynamicResource PcPanel}"
+            BorderBrush="{DynamicResource PcBorderSoft}" BorderThickness="0,0,0,1">
+      <Grid ColumnDefinitions="Auto,*" Margin="12,0">
+        <StackPanel Orientation="Horizontal" Spacing="11" VerticalAlignment="Center">
+          <Border Width="26" Height="26" CornerRadius="7" Background="{DynamicResource PcAccent}">
+            <Path HorizontalAlignment="Center" VerticalAlignment="Center"
+                  Data="M6 2 L2.5 8 L6 14 M10 2 L13.5 8 L10 14"
+                  Stroke="#FFFFFF" StrokeThickness="1.8"
+                  StrokeLineCap="Round" StrokeJoin="Round" />
+          </Border>
+          <TextBlock Text="{l:Localize App_Title}" FontSize="13.5" FontWeight="SemiBold"
+                     VerticalAlignment="Center" />
+        </StackPanel>
+
+        <TextBlock Grid.Column="1" Classes="hint" VerticalAlignment="Center"
+                   HorizontalAlignment="Right" Margin="16,0,0,0"
+                   TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"
+                   Text="{Binding EngineStatus}" ToolTip.Tip="{Binding EngineStatus}" />
+      </Grid>
+    </Border>
+
+    <Grid Grid.Row="1" ColumnDefinitions="Auto,*">
+
+      <Border Background="{DynamicResource PcPanel}"
+              BorderBrush="{DynamicResource PcBorderSoft}" BorderThickness="0,0,1,0"
+              Padding="10,12" Width="{Binding NavigationRailWidth}">
+        <StackPanel Spacing="4" AutomationProperties.Name="{l:Localize Nav_Name}">
+          <RadioButton Classes="nav" GroupName="Nav" IsChecked="{Binding IsDashboard}"
+                       AutomationProperties.Name="{l:Localize Nav_Workspace}"
+                       ToolTip.Tip="{l:Localize Nav_Workspace}">
+            <StackPanel Orientation="Horizontal" Spacing="12">
+              <Path Width="17" Height="17" Stretch="Uniform" VerticalAlignment="Center"
+                    Stroke="{Binding $parent[RadioButton].Foreground}" StrokeThickness="1.5"
+                    Data="M1.5,1.5 h6 v6 h-6 z M9.5,1.5 h6 v6 h-6 z M1.5,9.5 h6 v6 h-6 z M9.5,9.5 h6 v6 h-6 z" />
+              <TextBlock Text="{l:Localize Nav_Workspace}" VerticalAlignment="Center"
+                         IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ShowNavigationLabels}" />
+            </StackPanel>
+          </RadioButton>
+
+          <RadioButton Classes="nav" GroupName="Nav" IsChecked="{Binding IsSettings}"
+                       AutomationProperties.Name="{l:Localize Nav_Settings}"
+                       ToolTip.Tip="{l:Localize Nav_Settings}">
+            <StackPanel Orientation="Horizontal" Spacing="12">
+              <Path Width="17" Height="17" Stretch="Uniform" VerticalAlignment="Center"
+                    Stroke="{Binding $parent[RadioButton].Foreground}" StrokeThickness="1.5"
+                    Data="M1.5,4 h14 M1.5,8.5 h14 M1.5,13 h14 M11.5,2 a2,2 0 1 1 0,4 a2,2 0 1 1 0,-4 M5,6.5 a2,2 0 1 1 0,4 a2,2 0 1 1 0,-4 M12,11 a2,2 0 1 1 0,4 a2,2 0 1 1 0,-4" />
+              <TextBlock Text="{l:Localize Nav_Settings}" VerticalAlignment="Center"
+                         IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ShowNavigationLabels}" />
+            </StackPanel>
+          </RadioButton>
+
+          <RadioButton Classes="nav" GroupName="Nav" IsChecked="{Binding IsHistory}"
+                       AutomationProperties.Name="{l:Localize Nav_History}"
+                       ToolTip.Tip="{l:Localize Nav_History}">
+            <StackPanel Orientation="Horizontal" Spacing="12">
+              <Path Width="17" Height="17" Stretch="Uniform" VerticalAlignment="Center"
+                    Stroke="{Binding $parent[RadioButton].Foreground}" StrokeThickness="1.5"
+                    Data="M8.5,1.5 a7,7 0 1 1 0,14 a7,7 0 1 1 0,-14 M8.5,4.5 V8.5 L11.5,10" />
+              <TextBlock Text="{l:Localize Nav_History}" VerticalAlignment="Center"
+                         IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ShowNavigationLabels}" />
+            </StackPanel>
+          </RadioButton>
+
+          <RadioButton Classes="nav" GroupName="Nav" IsChecked="{Binding IsCompare}"
+                       AutomationProperties.Name="{l:Localize Nav_Compare}"
+                       ToolTip.Tip="{l:Localize Nav_Compare}">
+            <StackPanel Orientation="Horizontal" Spacing="12">
+              <Path Width="17" Height="17" Stretch="Uniform" VerticalAlignment="Center"
+                    Stroke="{Binding $parent[RadioButton].Foreground}" StrokeThickness="1.5"
+                    Data="M1.5,2.5 h14 v12 h-14 z M8.5,2.5 V14.5 M4.2,8.5 h2.3 M5.3,7.4 l-1.1,1.1 l1.1,1.1 M12.8,8.5 h-2.3 M11.7,7.4 l1.1,1.1 l-1.1,1.1" />
+              <TextBlock Text="{l:Localize Nav_Compare}" VerticalAlignment="Center"
+                         IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ShowNavigationLabels}" />
+            </StackPanel>
+          </RadioButton>
+        </StackPanel>
+      </Border>
+
+      <!-- Genau eine Ansicht ist geladen; jede bringt ihr eigenes Scrollen mit. -->
+      <Panel Grid.Column="1">
+        <views:DashboardView DataContext="{Binding Dashboard}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsDashboard}" />
+        <views:SettingsView DataContext="{Binding Settings}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsSettings}" />
+        <views:HistoryView DataContext="{Binding History}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsHistory}" />
+        <views:CompareView DataContext="{Binding Compare}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsCompare}" />
+      </Panel>
+    </Grid>
+
+    <Border Grid.Row="2" Background="{DynamicResource PcPanel}"
+            BorderBrush="{DynamicResource PcBorderSoft}" BorderThickness="0,1,0,0"
+            Padding="14,7" AutomationProperties.Name="{l:Localize Status_Bar}">
+      <Grid ColumnDefinitions="*,Auto">
+        <TextBlock Classes="mono" VerticalAlignment="Center"
+                   TextTrimming="CharacterEllipsis" Text="{Binding StatusSummary}" />
+        <TextBlock Grid.Column="1" Classes="mono" VerticalAlignment="Center" Margin="12,0,0,0"
+                   Text="{Binding Settings.EngineId}" />
+      </Grid>
+    </Border>
+
+  </Grid>
+</Window>

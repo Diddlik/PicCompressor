@@ -1,0 +1,8 @@
+bin/
+obj/
+.vs/
+.dotnet-home/
+TestResults/
+artifacts/
+native/build*/
+native/*.o

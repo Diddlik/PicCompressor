@@ -1,0 +1,22 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/PicCompressor.Application/PicCompressor.Application.csproj" />
+    <Project Path="src/PicCompressor.Cli/PicCompressor.Cli.csproj" />
+    <Project Path="src/PicCompressor.Domain/PicCompressor.Domain.csproj" />
+    <Project Path="src/PicCompressor.Desktop/PicCompressor.Desktop.csproj" />
+    <Project Path="src/PicCompressor.Engine.Jpegli/PicCompressor.Engine.Jpegli.csproj" />
+    <Project Path="src/PicCompressor.Gui/PicCompressor.Gui.csproj" />
+    <Project Path="src/PicCompressor.Infrastructure/PicCompressor.Infrastructure.csproj" />
+    <Project Path="src/PicCompressor.NativeInterop/PicCompressor.NativeInterop.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/PicCompressor.Application.Tests/PicCompressor.Application.Tests.csproj" />
+    <Project Path="tests/PicCompressor.Cli.Tests/PicCompressor.Cli.Tests.csproj" />
+    <Project Path="tests/PicCompressor.Domain.Tests/PicCompressor.Domain.Tests.csproj" />
+    <Project Path="tests/PicCompressor.Desktop.Tests/PicCompressor.Desktop.Tests.csproj" />
+    <Project Path="tests/PicCompressor.Engine.Jpegli.Tests/PicCompressor.Engine.Jpegli.Tests.csproj" />
+    <Project Path="tests/PicCompressor.Gui.Tests/PicCompressor.Gui.Tests.csproj" />
+    <Project Path="tests/PicCompressor.Infrastructure.Tests/PicCompressor.Infrastructure.Tests.csproj" />
+    <Project Path="tests/PicCompressor.NativeInterop.Tests/PicCompressor.NativeInterop.Tests.csproj" />
+  </Folder>
+</Solution>

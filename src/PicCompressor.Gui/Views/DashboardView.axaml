@@ -1,0 +1,206 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:PicCompressor.Gui.ViewModels"
+             xmlns:l="using:PicCompressor.Gui.Localization"
+             x:Class="PicCompressor.Gui.Views.DashboardView"
+             x:DataType="vm:DashboardViewModel">
+
+  <UserControl.Resources>
+
+    <DataTemplate x:Key="QueueCard" x:DataType="vm:DashboardViewModel">
+      <Border Classes="card" MinHeight="220">
+        <DockPanel>
+          <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="0,0,0,12">
+            <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+              <TextBlock Classes="h2" Text="{l:Localize Dash_Queue}" />
+              <TextBlock Classes="hint" VerticalAlignment="Center" Text="{Binding QueueCountLabel}" />
+            </StackPanel>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
+              <Button Classes="secondary" Content="{l:Localize Dash_RetryFailed}"
+                      Command="{Binding RetryFailedCommand}"
+                      AutomationProperties.Name="{l:Localize Dash_RetryFailed}" />
+              <Button Classes="secondary" Content="{l:Localize Dash_ClearCompleted}"
+                      Command="{Binding ClearCompletedCommand}"
+                      AutomationProperties.Name="{l:Localize Dash_ClearCompleted}" />
+              <Button Classes="secondary" Content="{l:Localize Dash_RemoveAll}"
+                      Command="{Binding RemoveAllCommand}"
+                      AutomationProperties.Name="{l:Localize Dash_RemoveAll}" />
+            </StackPanel>
+          </Grid>
+
+          <TextBlock DockPanel.Dock="Top" Classes="hint" Margin="0,0,0,8"
+                     IsVisible="{Binding IsQueueEmpty}"
+                     Text="{l:Localize Dash_QueueEmpty}" />
+
+          <ScrollViewer MaxHeight="420">
+            <ItemsControl ItemsSource="{Binding Queue}"
+                          AutomationProperties.Name="{l:Localize Dash_QueueLabel}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:QueueItemViewModel">
+                  <Border Classes="row" Margin="0,0,0,8"
+                          AutomationProperties.Name="{Binding AccessibleSummary}">
+                    <Grid ColumnDefinitions="*,12,Auto">
+                      <StackPanel Spacing="4">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                          <TextBlock Text="{Binding FileName}" FontSize="12.5" FontWeight="Medium"
+                                     Foreground="{DynamicResource PcText}"
+                                     TextTrimming="CharacterEllipsis"
+                                     ToolTip.Tip="{Binding InputPath}" />
+                          <Border Classes="pill" Background="{DynamicResource PcAccentSoft}">
+                            <TextBlock Text="{Binding EngineLabel}" FontSize="10" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource PcAccent}" />
+                          </Border>
+                        </StackPanel>
+                        <TextBlock Classes="mono" Text="{Binding SizeSummary}" />
+                        <ProgressBar Height="5" Minimum="0" Maximum="100"
+                                     Value="{Binding ProgressPercent, FallbackValue=0}"
+                                     IsIndeterminate="{Binding IsIndeterminate}"
+                                     IsVisible="{Binding !IsTerminal}"
+                                     Foreground="{DynamicResource PcAccent}"
+                                     Background="{DynamicResource PcTrack}" />
+                        <TextBlock Classes="hint" Text="{Binding Warning}"
+                                   IsVisible="{Binding HasWarning}" TextWrapping="Wrap"
+                                   Foreground="{DynamicResource PcWarn}" />
+                        <TextBlock Classes="hint" Text="{Binding ErrorSummary}"
+                                   IsVisible="{Binding HasError}" TextWrapping="Wrap"
+                                   Foreground="{DynamicResource PcError}" />
+                      </StackPanel>
+
+                      <StackPanel Grid.Column="2" MinWidth="96" Spacing="4"
+                                  HorizontalAlignment="Right">
+                        <Border Classes="pill" HorizontalAlignment="Right"
+                                Background="{DynamicResource PcPanel}">
+                          <TextBlock Text="{Binding StatusLabel}" FontSize="10.5"
+                                     FontWeight="SemiBold" Foreground="{DynamicResource PcDim}" />
+                        </Border>
+                      </StackPanel>
+                    </Grid>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+        </DockPanel>
+      </Border>
+    </DataTemplate>
+
+    <DataTemplate x:Key="QuickSettingsCard" x:DataType="vm:DashboardViewModel">
+      <Border Classes="card">
+        <StackPanel Spacing="14">
+          <TextBlock Classes="h2" Text="{l:Localize Dash_QuickSettings}" />
+
+          <StackPanel Spacing="7" DataContext="{Binding Settings}">
+            <TextBlock Classes="caps" Text="{l:Localize Common_Engine}" />
+            <Border Classes="segmentHost">
+              <UniformGrid Columns="2">
+                <RadioButton Classes="segment" GroupName="QuickEngine"
+                             Content="{l:Localize Engine_Jpegli}"
+                             IsChecked="{Binding IsJpegli}"
+                             AutomationProperties.Name="{l:Localize Engine_Jpegli}" />
+                <RadioButton Classes="segment" GroupName="QuickEngine"
+                             Content="{l:Localize Engine_Guetzli}"
+                             IsChecked="{Binding IsGuetzli}"
+                             AutomationProperties.Name="{l:Localize Engine_Guetzli}" />
+              </UniformGrid>
+            </Border>
+            <TextBlock Classes="hint" Text="{Binding EngineDescription}" />
+            <TextBlock Classes="hint" Foreground="{DynamicResource PcError}" TextWrapping="Wrap"
+                       Text="{Binding EngineAvailabilityText}"
+                       IsVisible="{Binding !IsSelectedEngineAvailable}" />
+          </StackPanel>
+
+          <StackPanel Spacing="6" DataContext="{Binding Settings}">
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBlock Text="{l:Localize Common_Quality}" FontSize="12.5" FontWeight="Medium"
+                         Foreground="{DynamicResource PcText}" />
+              <TextBlock Grid.Column="1" Classes="mono" FontSize="12.5" FontWeight="SemiBold"
+                         Foreground="{DynamicResource PcAccent}" Text="{Binding Quality}" />
+            </Grid>
+            <Slider Minimum="{Binding MinQuality}" Maximum="100" TickFrequency="1"
+                    IsSnapToTickEnabled="True" Value="{Binding Quality}"
+                    AutomationProperties.Name="{l:Localize Common_Quality}" />
+            <TextBlock Classes="hint" Foreground="{DynamicResource PcWarn}"
+                       IsVisible="{Binding IsGuetzli}" TextWrapping="Wrap"
+                       Text="{l:Localize Engine_GuetzliFloor}" />
+          </StackPanel>
+
+          <Border Height="1" Background="{DynamicResource PcBorderSoft}" />
+
+          <Button Classes="primary" Content="{l:Localize Dash_CompressAll}"
+                  Command="{Binding CompressAllCommand}"
+                  HorizontalAlignment="Stretch"
+                  AutomationProperties.Name="{l:Localize Dash_CompressAll}" />
+          <Button Classes="secondary" Content="{l:Localize Dash_Cancel}"
+                  Command="{Binding CancelCommand}"
+                  IsVisible="{Binding IsRunning}"
+                  HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                  AutomationProperties.Name="{l:Localize Dash_Cancel}" />
+        </StackPanel>
+      </Border>
+    </DataTemplate>
+
+  </UserControl.Resources>
+
+  <ScrollViewer Padding="20">
+    <StackPanel Spacing="15">
+
+      <Grid ColumnDefinitions="*,Auto">
+        <StackPanel Spacing="2">
+          <TextBlock Classes="h1" Text="{l:Localize Dash_Title}" />
+          <TextBlock Classes="sub" Text="{l:Localize Dash_Subtitle}" />
+        </StackPanel>
+        <Button Grid.Column="1" Classes="secondary" x:Name="AddFilesButton"
+                Content="{l:Localize Dash_AddFiles}" VerticalAlignment="Bottom"
+                AutomationProperties.Name="{l:Localize Dash_AddFiles}" />
+      </Grid>
+
+      <!-- Ablagebereich; die Schaltfläche darin ist der gleichwertige Tastaturweg. -->
+      <Border x:Name="DropZone" Background="{DynamicResource PcPanel}"
+              BorderBrush="{DynamicResource PcBorder}" BorderThickness="1.5"
+              CornerRadius="12" Padding="24" DragDrop.AllowDrop="True"
+              AutomationProperties.Name="{l:Localize Dash_DropZoneName}">
+        <StackPanel Spacing="9" HorizontalAlignment="Center">
+          <Path HorizontalAlignment="Center"
+                Data="M17 3 V19 M11 13 l6 6 l6 -6 M4 22 v5 a3 3 0 0 0 3 3 h20 a3 3 0 0 0 3 -3 v-5"
+                Stroke="{DynamicResource PcAccent}" StrokeThickness="1.7"
+                StrokeLineCap="Round" StrokeJoin="Round" />
+          <TextBlock HorizontalAlignment="Center" FontSize="14.5" FontWeight="SemiBold"
+                     TextAlignment="Center" TextWrapping="Wrap"
+                     Foreground="{DynamicResource PcText}"
+                     Text="{l:Localize Dash_DropHere}" />
+          <TextBlock Classes="hint" HorizontalAlignment="Center" TextAlignment="Center"
+                     Text="{l:Localize Dash_DropHint}" />
+          <CheckBox HorizontalAlignment="Center" Content="{l:Localize Dash_Recurse}"
+                    Foreground="{DynamicResource PcDim}" FontSize="12"
+                    IsChecked="{Binding RecurseFolders}"
+                    AutomationProperties.Name="{l:Localize Dash_Recurse}" />
+          <Button Classes="primary" x:Name="BrowseButton" HorizontalAlignment="Center"
+                  Content="{l:Localize Dash_Browse}"
+                  AutomationProperties.Name="{l:Localize Dash_Browse}" />
+          <TextBlock Classes="hint" HorizontalAlignment="Center" TextAlignment="Center"
+                     Foreground="{DynamicResource PcWarn}"
+                     Text="{Binding DropHint}" IsVisible="{Binding HasDropHint}" />
+        </StackPanel>
+      </Border>
+
+      <!-- Schmale Fenster stapeln Warteschlange und Schnelleinstellungen. -->
+      <Panel>
+        <Grid x:Name="WideLayout" ColumnDefinitions="*,14,264"
+              IsVisible="{Binding !$parent[Window].((vm:MainWindowViewModel)DataContext).IsNarrow}">
+          <ContentControl Grid.Column="0" Content="{Binding}"
+                          ContentTemplate="{StaticResource QueueCard}" />
+          <ContentControl Grid.Column="2" Content="{Binding}" VerticalAlignment="Top"
+                          ContentTemplate="{StaticResource QuickSettingsCard}" />
+        </Grid>
+
+        <StackPanel x:Name="StackedLayout" Spacing="14"
+                    IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsNarrow}">
+          <ContentControl Content="{Binding}" ContentTemplate="{StaticResource QuickSettingsCard}" />
+          <ContentControl Content="{Binding}" ContentTemplate="{StaticResource QueueCard}" />
+        </StackPanel>
+      </Panel>
+
+    </StackPanel>
+  </ScrollViewer>
+
+</UserControl>

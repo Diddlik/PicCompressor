@@ -1,0 +1,252 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:PicCompressor.Gui.ViewModels"
+             xmlns:l="using:PicCompressor.Gui.Localization"
+             x:Class="PicCompressor.Gui.Views.SettingsView"
+             x:DataType="vm:SettingsViewModel">
+
+  <ScrollViewer Padding="20">
+    <StackPanel Spacing="15" MaxWidth="680" HorizontalAlignment="Left">
+
+    <StackPanel Spacing="2">
+      <TextBlock Classes="h1" Text="{l:Localize Set_Title}" />
+      <TextBlock Classes="sub" Text="{l:Localize Set_Subtitle}" />
+    </StackPanel>
+
+    <!-- Ausgabe -->
+    <Border Classes="card">
+      <StackPanel Spacing="12">
+        <TextBlock Classes="h2" Text="{l:Localize Set_OutputTarget}" />
+
+        <RadioButton Classes="option" GroupName="Target" IsChecked="{Binding UsesSuffix}">
+          <StackPanel Spacing="3">
+            <TextBlock Text="{l:Localize Set_TargetSuffix}" FontSize="12.5" FontWeight="Medium" />
+            <TextBlock Classes="hint" Text="{l:Localize Set_TargetSuffixHint}" />
+            <TextBox Width="200" HorizontalAlignment="Left" Text="{Binding Suffix}"
+                     AutomationProperties.Name="{l:Localize Set_TargetSuffix}"
+                     FontFamily="{StaticResource PcMono}"
+                     IsVisible="{Binding UsesSuffix}" />
+          </StackPanel>
+        </RadioButton>
+
+        <RadioButton Classes="option" GroupName="Target" IsChecked="{Binding UsesCustomDirectory}">
+          <StackPanel Spacing="3">
+            <TextBlock Text="{l:Localize Set_TargetCustom}" FontSize="12.5" FontWeight="Medium" />
+            <TextBlock Classes="hint" Text="{l:Localize Set_TargetCustomHint}" />
+            <Grid ColumnDefinitions="*,6,Auto" IsVisible="{Binding UsesCustomDirectory}">
+              <TextBox Text="{Binding OutputDirectory}" FontFamily="{StaticResource PcMono}"
+                       AutomationProperties.Name="{l:Localize Set_TargetCustom}" />
+              <Button Grid.Column="2" Classes="secondary" x:Name="BrowseDirectoryButton" Content="{l:Localize Common_Browse}" />
+            </Grid>
+          </StackPanel>
+        </RadioButton>
+      </StackPanel>
+    </Border>
+
+    <!-- Kollision und Größe -->
+    <Border Classes="card">
+      <StackPanel Spacing="12">
+        <TextBlock Classes="h2" Text="{l:Localize Set_Collision}" />
+        <TextBlock Classes="hint" Text="{l:Localize Set_CollisionHint}" />
+
+        <RadioButton Classes="option" GroupName="Collision" IsChecked="{Binding CollisionSkip}">
+          <StackPanel Spacing="2">
+            <TextBlock Text="{l:Localize Set_CollisionSkip}" FontSize="12.5" FontWeight="Medium" />
+            <TextBlock Classes="hint" Text="{l:Localize Set_CollisionSkipHint}" />
+          </StackPanel>
+        </RadioButton>
+        <RadioButton Classes="option" GroupName="Collision" IsChecked="{Binding CollisionRename}">
+          <StackPanel Spacing="2">
+            <TextBlock Text="{l:Localize Set_CollisionRename}" FontSize="12.5" FontWeight="Medium" />
+            <TextBlock Classes="hint" Text="{l:Localize Set_CollisionRenameHint}" />
+          </StackPanel>
+        </RadioButton>
+        <RadioButton Classes="option" GroupName="Collision" IsChecked="{Binding CollisionOverwrite}">
+          <StackPanel Spacing="2">
+            <TextBlock Text="{l:Localize Set_CollisionOverwrite}" FontSize="12.5" FontWeight="Medium" />
+            <TextBlock Classes="hint" Foreground="{DynamicResource PcWarn}"
+                       Text="{l:Localize Set_CollisionOverwriteHint}" />
+          </StackPanel>
+        </RadioButton>
+
+        <Border Height="1" Background="{DynamicResource PcBorderSoft}" />
+
+        <Grid ColumnDefinitions="*,Auto">
+          <StackPanel Spacing="2">
+            <TextBlock Text="{l:Localize Set_DiscardLarger}" FontSize="12.5" FontWeight="Medium" />
+            <TextBlock Classes="hint" Text="{l:Localize Set_DiscardLargerHint}" />
+          </StackPanel>
+          <ToggleSwitch Grid.Column="1" IsChecked="{Binding DiscardLargerOutput}"
+                        AutomationProperties.Name="{l:Localize Set_DiscardLarger}" />
+        </Grid>
+      </StackPanel>
+    </Border>
+
+    <!-- Metadaten -->
+    <Border Classes="card">
+      <StackPanel Spacing="12">
+        <TextBlock Classes="h2" Text="{l:Localize Set_Metadata}" />
+        <TextBlock Classes="hint" Text="{l:Localize Set_MetadataHint}" />
+
+        <TextBlock Classes="caps" Text="{l:Localize Set_Exif}" />
+        <RadioButton Classes="option" GroupName="Exif" IsChecked="{Binding ExifKeep}"
+                     Content="{l:Localize Set_ExifKeep}" />
+        <RadioButton Classes="option" GroupName="Exif" IsChecked="{Binding ExifPrivate}"
+                     Content="{l:Localize Set_ExifPrivate}" />
+        <RadioButton Classes="option" GroupName="Exif" IsChecked="{Binding ExifRemove}"
+                     Content="{l:Localize Set_ExifRemove}" />
+
+        <Border Height="1" Background="{DynamicResource PcBorderSoft}" />
+
+        <TextBlock Classes="caps" Text="{l:Localize Set_Profile}" />
+        <RadioButton Classes="option" GroupName="Profile" IsChecked="{Binding ProfilePreserve}"
+                     Content="{l:Localize Set_ProfilePreserve}" />
+        <RadioButton Classes="option" GroupName="Profile" IsChecked="{Binding ProfileSrgb}"
+                     Content="{l:Localize Set_ProfileSrgb}" />
+        <RadioButton Classes="option" GroupName="Profile" IsChecked="{Binding ProfileRemove}"
+                     Content="{l:Localize Set_ProfileRemove}" />
+
+        <Border Height="1" Background="{DynamicResource PcBorderSoft}" />
+
+        <Grid ColumnDefinitions="*,Auto">
+          <StackPanel Spacing="2">
+            <TextBlock Text="{l:Localize Set_AlphaBackground}" FontSize="12.5" FontWeight="Medium" />
+            <TextBlock Classes="hint" Text="{l:Localize Set_AlphaBackgroundHint}" />
+          </StackPanel>
+          <TextBlock Grid.Column="1" Classes="mono" VerticalAlignment="Center"
+                     Text="{Binding AlphaBackgroundHex}" />
+        </Grid>
+      </StackPanel>
+    </Border>
+
+    <!-- Engine -->
+    <Border Classes="card">
+      <StackPanel Spacing="14">
+        <Grid ColumnDefinitions="*,Auto">
+          <TextBlock Classes="h2" Text="{l:Localize Set_EngineHeading}" VerticalAlignment="Center" />
+          <Border Grid.Column="1" Classes="segmentHost" Width="190">
+            <UniformGrid Columns="2">
+              <RadioButton Classes="segment" GroupName="Engine" Content="{l:Localize Engine_Jpegli}"
+                           AutomationProperties.Name="{l:Localize Engine_Jpegli}"
+                           IsChecked="{Binding IsJpegli}" />
+              <RadioButton Classes="segment" GroupName="Engine" Content="{l:Localize Engine_Guetzli}"
+                           AutomationProperties.Name="{l:Localize Engine_Guetzli}"
+                           IsChecked="{Binding IsGuetzli}" />
+            </UniformGrid>
+          </Border>
+        </Grid>
+        <TextBlock Classes="hint" Text="{Binding EngineDescription}" />
+
+        <StackPanel Spacing="6">
+          <Grid ColumnDefinitions="*,Auto">
+            <TextBlock Text="{l:Localize Common_Quality}" FontSize="12.5" FontWeight="Medium" />
+            <TextBlock Grid.Column="1" Classes="mono" FontSize="12.5" FontWeight="SemiBold"
+                       Foreground="{DynamicResource PcAccent}" Text="{Binding Quality}" />
+          </Grid>
+          <Slider Minimum="{Binding MinQuality}" Maximum="100" TickFrequency="1"
+                  IsSnapToTickEnabled="True" Value="{Binding Quality}"
+                  AutomationProperties.Name="{l:Localize Common_Quality}" />
+          <TextBlock Classes="hint"
+                     Text="{l:Localize Engine_QualityNotComparable}" />
+        </StackPanel>
+
+        <StackPanel Spacing="7" IsVisible="{Binding IsJpegli}">
+          <TextBlock Text="{l:Localize Set_Chroma}" FontSize="12.5" FontWeight="Medium" />
+          <Border Classes="segmentHost" MaxWidth="340" HorizontalAlignment="Left">
+            <UniformGrid Columns="4">
+              <RadioButton Classes="segment" GroupName="Chroma" Content="4:4:4" IsChecked="{Binding Is444}" />
+              <RadioButton Classes="segment" GroupName="Chroma" Content="4:4:0" IsChecked="{Binding Is440}" />
+              <RadioButton Classes="segment" GroupName="Chroma" Content="4:2:2" IsChecked="{Binding Is422}" />
+              <RadioButton Classes="segment" GroupName="Chroma" Content="4:2:0" IsChecked="{Binding Is420}" />
+            </UniformGrid>
+          </Border>
+
+          <Grid ColumnDefinitions="*,Auto" Margin="0,6,0,0">
+            <StackPanel Spacing="2">
+              <TextBlock Text="{l:Localize Set_Progressive}" FontSize="12.5" FontWeight="Medium" />
+              <TextBlock Classes="hint" Text="{l:Localize Set_ProgressiveHint}" />
+            </StackPanel>
+            <TextBlock Grid.Column="1" Classes="mono" VerticalAlignment="Center"
+                       Foreground="{DynamicResource PcAccent}" Text="{Binding ProgressiveLevel}" />
+          </Grid>
+          <Slider Minimum="0" Maximum="2" TickFrequency="1" IsSnapToTickEnabled="True"
+                  TickPlacement="BottomRight" Value="{Binding ProgressiveLevel}"
+                  AutomationProperties.Name="{l:Localize Set_Progressive}" />
+        </StackPanel>
+
+        <Border CornerRadius="9" Padding="12,11" IsVisible="{Binding IsGuetzli}"
+                Background="{DynamicResource PcWarnSoft}"
+                BorderBrush="{DynamicResource PcWarn}" BorderThickness="1">
+          <TextBlock FontSize="11.5" TextWrapping="Wrap" Foreground="{DynamicResource PcWarn}"
+                     Text="{l:Localize Engine_GuetzliWarning}" />
+        </Border>
+      </StackPanel>
+    </Border>
+
+    <!-- Sprache und Design -->
+    <Border Classes="card" DataContext="{Binding Appearance}">
+      <StackPanel Spacing="14">
+        <TextBlock Classes="h2" Text="{l:Localize Set_Appearance}" />
+
+        <StackPanel Spacing="7">
+          <TextBlock Classes="caps" Text="{l:Localize Set_Language}" />
+          <Border Classes="segmentHost" MaxWidth="340" HorizontalAlignment="Left">
+            <UniformGrid Columns="3">
+              <RadioButton Classes="segment" GroupName="Language"
+                           Content="{l:Localize Set_LanguageSystem}"
+                           AutomationProperties.Name="{l:Localize Set_LanguageSystem}"
+                           IsChecked="{Binding LanguageSystem}" />
+              <RadioButton Classes="segment" GroupName="Language"
+                           Content="{l:Localize Set_LanguageEnglish}"
+                           AutomationProperties.Name="{l:Localize Set_LanguageEnglish}"
+                           IsChecked="{Binding LanguageEnglish}" />
+              <RadioButton Classes="segment" GroupName="Language"
+                           Content="{l:Localize Set_LanguageGerman}"
+                           AutomationProperties.Name="{l:Localize Set_LanguageGerman}"
+                           IsChecked="{Binding LanguageGerman}" />
+            </UniformGrid>
+          </Border>
+          <TextBlock Classes="hint" Text="{l:Localize Set_LanguageHint}" />
+        </StackPanel>
+
+        <StackPanel Spacing="7">
+          <TextBlock Classes="caps" Text="{l:Localize Set_Theme}" />
+          <Border Classes="segmentHost" MaxWidth="340" HorizontalAlignment="Left">
+            <UniformGrid Columns="3">
+              <RadioButton Classes="segment" GroupName="Theme"
+                           Content="{l:Localize Set_ThemeSystem}"
+                           AutomationProperties.Name="{l:Localize Set_ThemeSystem}"
+                           IsChecked="{Binding ThemeSystem}" />
+              <RadioButton Classes="segment" GroupName="Theme"
+                           Content="{l:Localize Set_ThemeLight}"
+                           AutomationProperties.Name="{l:Localize Set_ThemeLight}"
+                           IsChecked="{Binding ThemeLight}" />
+              <RadioButton Classes="segment" GroupName="Theme"
+                           Content="{l:Localize Set_ThemeDark}"
+                           AutomationProperties.Name="{l:Localize Set_ThemeDark}"
+                           IsChecked="{Binding ThemeDark}" />
+            </UniformGrid>
+          </Border>
+        </StackPanel>
+      </StackPanel>
+    </Border>
+
+    <!-- Verarbeitung -->
+    <Border Classes="card">
+      <StackPanel Spacing="13">
+        <TextBlock Classes="h2" Text="{l:Localize Set_Processing}" />
+        <Grid ColumnDefinitions="*,Auto">
+          <TextBlock Text="{l:Localize Set_ParallelJobs}" FontSize="12.5" FontWeight="Medium" />
+          <TextBlock Grid.Column="1" Classes="mono" Text="{Binding ParallelJobs}" />
+        </Grid>
+        <Slider Minimum="1" Maximum="{Binding MaxParallelJobs}" TickFrequency="1"
+                IsSnapToTickEnabled="True" Value="{Binding ParallelJobs}"
+                AutomationProperties.Name="{l:Localize Set_ParallelJobs}" />
+        <TextBlock Classes="hint"
+                   Text="{l:Localize Set_ParallelJobsHint}" />
+      </StackPanel>
+    </Border>
+
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

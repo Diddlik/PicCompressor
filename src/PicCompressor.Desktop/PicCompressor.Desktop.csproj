@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\PicCompressor.Application\PicCompressor.Application.csproj" />
+    <ProjectReference Include="..\PicCompressor.Domain\PicCompressor.Domain.csproj" />
+    <ProjectReference Include="..\PicCompressor.Engine.Jpegli\PicCompressor.Engine.Jpegli.csproj" />
+    <ProjectReference Include="..\PicCompressor.Gui\PicCompressor.Gui.csproj" />
+    <ProjectReference Include="..\PicCompressor.Infrastructure\PicCompressor.Infrastructure.csproj" />
+    <ProjectReference Include="..\PicCompressor.NativeInterop\PicCompressor.NativeInterop.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia.Desktop" Version="12.1.0" />
+    <PackageReference Include="Velopack" Version="1.2.0" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <PlatformTarget Condition="$([MSBuild]::IsOSPlatform('Windows'))">x64</PlatformTarget>
+  </PropertyGroup>
+
+</Project>

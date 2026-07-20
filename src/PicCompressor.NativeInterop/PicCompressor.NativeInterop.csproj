@@ -1,0 +1,74 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\PicCompressor.Application\PicCompressor.Application.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="$([MSBuild]::IsOSPlatform('Windows'))">
+    <PicCompressorNativeLibraryWasSpecified
+        Condition="'$(PicCompressorNativeLibrary)' != ''">true</PicCompressorNativeLibraryWasSpecified>
+    <PicCompressorNativeLibrary
+        Condition="'$(PicCompressorNativeLibrary)' == ''">$([MSBuild]::NormalizePath('$(MSBuildThisFileDirectory)', '..', '..', 'artifacts', 'native', 'win-x64', '$(Configuration)', 'piccompressor_native.dll'))</PicCompressorNativeLibrary>
+    <PicCompressorBuildNative
+        Condition="'$(PicCompressorBuildNative)' == '' and '$(PicCompressorNativeLibraryWasSpecified)' != 'true'">true</PicCompressorBuildNative>
+    <PicCompressorBuildNative
+        Condition="'$(PicCompressorBuildNative)' == ''">false</PicCompressorBuildNative>
+    <PicCompressorNativeToolchainRoot
+        Condition="'$(PicCompressorNativeToolchainRoot)' == ''">C:\msys64\ucrt64</PicCompressorNativeToolchainRoot>
+    <PicCompressorNativeBuildDirectory
+        Condition="'$(PicCompressorNativeBuildDirectory)' == ''">$([MSBuild]::NormalizePath('$(MSBuildThisFileDirectory)', '..', '..', 'native', 'build-msvc-win-x64'))</PicCompressorNativeBuildDirectory>
+    <PicCompressorNativeConfiguration
+        Condition="'$(PicCompressorNativeConfiguration)' == '' and '$(Configuration)' == 'Debug'">RelWithDebInfo</PicCompressorNativeConfiguration>
+    <PicCompressorNativeConfiguration
+        Condition="'$(PicCompressorNativeConfiguration)' == ''">$(Configuration)</PicCompressorNativeConfiguration>
+    <PicCompressorNativeSymbols
+        Condition="'$(PicCompressorBuildNative)' == 'true'">$([System.IO.Path]::ChangeExtension('$(PicCompressorNativeLibrary)', '.pdb'))</PicCompressorNativeSymbols>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(PicCompressorNativeLibrary)' != ''">
+    <None Include="$(PicCompressorNativeLibrary)"
+          Link="piccompressor_native.dll"
+          CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="PreserveNewest" />
+    <None Include="$(PicCompressorNativeSymbols)"
+          Condition="'$(PicCompressorNativeSymbols)' != ''"
+          Link="piccompressor_native.pdb"
+          CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="Never" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(PicCompressorBuildNative)' == 'true'">
+    <_PicCompressorNativeInput Include="$(MSBuildThisFileDirectory)..\..\native\CMakeLists.txt" />
+    <_PicCompressorNativeInput Include="$(MSBuildThisFileDirectory)..\..\native\dependencies.lock.cmake" />
+    <_PicCompressorNativeInput Include="$(MSBuildThisFileDirectory)..\..\native\include\**\*" />
+    <_PicCompressorNativeInput Include="$(MSBuildThisFileDirectory)..\..\native\src\**\*" />
+    <_PicCompressorNativeInput Include="$(MSBuildThisFileDirectory)..\..\native\tests\**\*" />
+    <_PicCompressorNativeInput Include="$(MSBuildThisFileDirectory)..\..\scripts\build-native-win-x64.ps1" />
+    <UpToDateCheckInput Include="@(_PicCompressorNativeInput)" />
+    <UpToDateCheckOutput Include="$(PicCompressorNativeLibrary)" />
+    <UpToDateCheckOutput Include="$(PicCompressorNativeSymbols)" />
+  </ItemGroup>
+
+  <Target Name="BuildPicCompressorNative"
+          BeforeTargets="PrepareForBuild"
+          Condition="'$(PicCompressorBuildNative)' == 'true' and '$(DesignTimeBuild)' != 'true'"
+          Inputs="@(_PicCompressorNativeInput)"
+          Outputs="$(PicCompressorNativeLibrary);$(PicCompressorNativeSymbols)">
+    <Exec Command="pwsh -NoProfile -NonInteractive -File &quot;$(MSBuildThisFileDirectory)..\..\scripts\build-native-win-x64.ps1&quot; -Configuration &quot;$(PicCompressorNativeConfiguration)&quot; -Toolchain Msvc -ToolchainRoot &quot;$(PicCompressorNativeToolchainRoot)&quot; -OutputDirectory &quot;$([System.IO.Path]::GetDirectoryName('$(PicCompressorNativeLibrary)'))&quot; -BuildDirectory &quot;$(PicCompressorNativeBuildDirectory)&quot;" />
+  </Target>
+
+  <Target Name="ValidatePicCompressorNative"
+          BeforeTargets="Build"
+          DependsOnTargets="BuildPicCompressorNative"
+          Condition="'$(DesignTimeBuild)' != 'true' and '$(PicCompressorNativeLibrary)' != '' and !Exists('$(PicCompressorNativeLibrary)')">
+    <Error Text="PicCompressorNativeLibrary does not exist: $(PicCompressorNativeLibrary)" />
+  </Target>
+
+</Project>

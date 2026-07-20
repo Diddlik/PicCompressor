@@ -1,0 +1,119 @@
+using PicCompressor.Domain;
+
+namespace PicCompressor.Cli;
+
+internal sealed record CliOptions(
+    IReadOnlyList<string> InputPaths,
+    int Quality,
+    string? OutputDirectory,
+    string Suffix,
+    CollisionPolicy CollisionPolicy,
+    LargerOutputPolicy LargerOutputPolicy,
+    bool Recursive,
+    bool DryRun,
+    int Parallelism,
+    bool Json)
+{
+    internal static CliOptions Parse(string[] args)
+    {
+        ArgumentNullException.ThrowIfNull(args);
+        var inputPaths = new List<string>();
+        string? outputDirectory = null;
+        var quality = 80;
+        var suffix = "_compressed";
+        var collisionPolicy = CollisionPolicy.Skip;
+        var largerOutputPolicy = LargerOutputPolicy.Discard;
+        var recursive = false;
+        var dryRun = false;
+        var parallelism = 1;
+        var json = false;
+
+        for (var index = 0; index < args.Length; index++)
+        {
+            switch (args[index])
+            {
+                case "--json":
+                    json = true;
+                    break;
+                case "--recursive":
+                    recursive = true;
+                    break;
+                case "--dry-run":
+                    dryRun = true;
+                    break;
+                case "--parallelism":
+                    parallelism = ParseParallelism(NextValue(args, ref index, "--parallelism"));
+                    break;
+                case "--quality":
+                    quality = ParseQuality(NextValue(args, ref index, "--quality"));
+                    break;
+                case "--output-dir":
+                    outputDirectory = NextValue(args, ref index, "--output-dir");
+                    break;
+                case "--suffix":
+                    suffix = NextValue(args, ref index, "--suffix");
+                    break;
+                case "--collision":
+                    collisionPolicy = ParseEnum<CollisionPolicy>(
+                        NextValue(args, ref index, "--collision"),
+                        "--collision");
+                    break;
+                case "--larger-output":
+                    largerOutputPolicy = ParseEnum<LargerOutputPolicy>(
+                        NextValue(args, ref index, "--larger-output"),
+                        "--larger-output");
+                    break;
+                default:
+                    if (args[index].StartsWith('-'))
+                    {
+                        throw new CliUsageException($"Unknown option: {args[index]}");
+                    }
+
+                    inputPaths.Add(args[index]);
+                    break;
+            }
+        }
+
+        return new(
+            inputPaths.Count > 0
+                ? inputPaths
+                : throw new CliUsageException("At least one input path is required."),
+            quality,
+            outputDirectory,
+            suffix,
+            collisionPolicy,
+            largerOutputPolicy,
+            recursive,
+            dryRun,
+            parallelism,
+            json);
+    }
+
+    private static int ParseQuality(string value) =>
+        int.TryParse(value, out var quality) && quality is >= 1 and <= 100
+            ? quality
+            : throw new CliUsageException("--quality must be an integer from 1 to 100.");
+
+    private static int ParseParallelism(string value) =>
+        int.TryParse(value, out var parallelism) && parallelism is >= 1 and <= 256
+            ? parallelism
+            : throw new CliUsageException("--parallelism must be an integer from 1 to 256.");
+
+    private static T ParseEnum<T>(string value, string option)
+        where T : struct, Enum =>
+        Enum.TryParse<T>(value, true, out var result) && Enum.IsDefined(result)
+            ? result
+            : throw new CliUsageException($"Invalid value for {option}: {value}");
+
+    private static string NextValue(string[] args, ref int index, string option)
+    {
+        if (++index >= args.Length || args[index].StartsWith('-'))
+        {
+            throw new CliUsageException($"Missing value for {option}.");
+        }
+
+        return args[index];
+    }
+}
+
+internal sealed class CliUsageException(string message) : Exception(message);

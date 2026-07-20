@@ -1,0 +1,172 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <Style Selector="TextBlock.h1">
+    <Setter Property="FontSize" Value="18" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{DynamicResource PcText}" />
+  </Style>
+
+  <Style Selector="TextBlock.h2">
+    <Setter Property="FontSize" Value="13.5" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{DynamicResource PcText}" />
+  </Style>
+
+  <Style Selector="TextBlock.sub">
+    <Setter Property="FontSize" Value="12.5" />
+    <Setter Property="Foreground" Value="{DynamicResource PcDim}" />
+    <Setter Property="TextWrapping" Value="Wrap" />
+  </Style>
+
+  <Style Selector="TextBlock.hint">
+    <Setter Property="FontSize" Value="11" />
+    <Setter Property="Foreground" Value="{DynamicResource PcFaint}" />
+    <Setter Property="TextWrapping" Value="Wrap" />
+  </Style>
+
+  <Style Selector="TextBlock.mono">
+    <Setter Property="FontFamily" Value="{StaticResource PcMono}" />
+    <Setter Property="FontSize" Value="11" />
+    <Setter Property="Foreground" Value="{DynamicResource PcDim}" />
+  </Style>
+
+  <Style Selector="TextBlock.caps">
+    <Setter Property="FontSize" Value="11" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{DynamicResource PcFaint}" />
+  </Style>
+
+  <!-- Karte: Panel-Fläche mit Rahmen, wie die Vorlagen-Panels. -->
+  <Style Selector="Border.card">
+    <Setter Property="Background" Value="{DynamicResource PcPanel}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource PcBorder}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="{StaticResource PcCardRadius}" />
+    <Setter Property="Padding" Value="16,15" />
+  </Style>
+
+  <Style Selector="Border.row">
+    <Setter Property="Background" Value="{DynamicResource PcPanel2}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource PcBorderSoft}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="9" />
+    <Setter Property="Padding" Value="10,9" />
+  </Style>
+
+  <Style Selector="Button.primary">
+    <Setter Property="Background" Value="{DynamicResource PcAccent}" />
+    <Setter Property="Foreground" Value="#FFFFFF" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="CornerRadius" Value="{StaticResource PcControlRadius}" />
+    <Setter Property="Padding" Value="16,10" />
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Button.primary:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource PcAccentStrong}" />
+    <Setter Property="TextElement.Foreground" Value="#FFFFFF" />
+  </Style>
+
+  <Style Selector="Button.secondary">
+    <Setter Property="Background" Value="{DynamicResource PcPanel2}" />
+    <Setter Property="Foreground" Value="{DynamicResource PcText}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource PcBorder}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="{StaticResource PcControlRadius}" />
+    <Setter Property="Padding" Value="13,8" />
+    <Setter Property="FontSize" Value="12.5" />
+  </Style>
+  <Style Selector="Button.secondary:pointerover /template/ ContentPresenter">
+    <Setter Property="BorderBrush" Value="{DynamicResource PcAccent}" />
+    <Setter Property="Background" Value="{DynamicResource PcPanel2}" />
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource PcText}" />
+  </Style>
+
+  <!-- Navigationsschiene: ToggleButton als Reiter, Zustand nicht nur über Farbe (Aktivbalken links). -->
+  <Style Selector="RadioButton.nav">
+    <Setter Property="Foreground" Value="{DynamicResource PcDim}" />
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Name="root" Background="Transparent" CornerRadius="9" Padding="11,10">
+          <Grid ColumnDefinitions="3,Auto,*">
+            <Border Name="mark" Grid.Column="0" Width="3" CornerRadius="2"
+                    Background="Transparent" Margin="0,1,9,1" />
+            <ContentPresenter Grid.Column="2"
+                              Content="{TemplateBinding Content}"
+                              ContentTemplate="{TemplateBinding ContentTemplate}"
+                              TextElement.Foreground="{TemplateBinding Foreground}"
+                              VerticalAlignment="Center" />
+          </Grid>
+        </Border>
+      </ControlTemplate>
+    </Setter>
+  </Style>
+  <Style Selector="RadioButton.nav:pointerover /template/ Border#root">
+    <Setter Property="Background" Value="{DynamicResource PcPanel2}" />
+  </Style>
+  <Style Selector="RadioButton.nav:checked /template/ Border#root">
+    <Setter Property="Background" Value="{DynamicResource PcAccentSoft}" />
+  </Style>
+  <Style Selector="RadioButton.nav:checked /template/ Border#mark">
+    <Setter Property="Background" Value="{DynamicResource PcAccent}" />
+  </Style>
+  <Style Selector="RadioButton.nav:checked">
+    <Setter Property="Foreground" Value="{DynamicResource PcAccent}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+
+  <!-- Segment-Umschalter (Engine, Chroma). -->
+  <Style Selector="RadioButton.segment">
+    <Setter Property="Foreground" Value="{DynamicResource PcDim}" />
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Name="root" Background="Transparent" CornerRadius="7" Padding="10,7">
+          <ContentPresenter Content="{TemplateBinding Content}"
+                            TextElement.Foreground="{TemplateBinding Foreground}"
+                            HorizontalAlignment="Center" />
+        </Border>
+      </ControlTemplate>
+    </Setter>
+  </Style>
+  <Style Selector="RadioButton.segment:checked /template/ Border#root">
+    <Setter Property="Background" Value="{DynamicResource PcAccent}" />
+  </Style>
+  <Style Selector="RadioButton.segment:checked">
+    <Setter Property="Foreground" Value="#FFFFFF" />
+  </Style>
+
+  <Style Selector="Border.segmentHost">
+    <Setter Property="Background" Value="{DynamicResource PcPanel2}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource PcBorderSoft}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="9" />
+    <Setter Property="Padding" Value="3" />
+  </Style>
+
+  <Style Selector="RadioButton.option">
+    <Setter Property="Foreground" Value="{DynamicResource PcText}" />
+    <Setter Property="Padding" Value="8,0,0,0" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+  </Style>
+
+  <Style Selector="TextBox">
+    <Setter Property="Background" Value="{DynamicResource PcPanel2}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource PcBorder}" />
+    <Setter Property="Foreground" Value="{DynamicResource PcText}" />
+    <Setter Property="CornerRadius" Value="7" />
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="Padding" Value="9,6" />
+  </Style>
+
+  <Style Selector="Border.pill">
+    <Setter Property="CornerRadius" Value="20" />
+    <Setter Property="Padding" Value="9,3" />
+  </Style>
+
+</Styles>

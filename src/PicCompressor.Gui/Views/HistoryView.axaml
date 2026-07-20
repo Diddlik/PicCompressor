@@ -1,0 +1,89 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:PicCompressor.Gui.ViewModels"
+             xmlns:l="using:PicCompressor.Gui.Localization"
+             x:Class="PicCompressor.Gui.Views.HistoryView"
+             x:DataType="vm:HistoryViewModel">
+
+  <DockPanel LastChildFill="True" Margin="20">
+
+    <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="0,0,0,14">
+      <StackPanel Spacing="2">
+        <TextBlock Classes="h1" Text="{l:Localize Hist_Title}" />
+        <TextBlock Classes="sub" Text="{Binding Summary}" />
+      </StackPanel>
+      <TextBox Grid.Column="1" Width="180" MinWidth="120" VerticalAlignment="Bottom"
+               PlaceholderText="{l:Localize Hist_Search}" Text="{Binding Search}"
+               AutomationProperties.Name="{l:Localize Hist_Search}" />
+    </Grid>
+
+    <!-- Ohne verdrahteten Verlaufsspeicher wird das offen ausgewiesen (Abschnitt 13.1). -->
+    <Border DockPanel.Dock="Top" Margin="0,0,0,12" CornerRadius="9" Padding="12,10"
+            IsVisible="{Binding !IsPersistent}"
+            Background="{DynamicResource PcWarnSoft}"
+            BorderBrush="{DynamicResource PcWarn}" BorderThickness="1">
+      <TextBlock FontSize="11.5" TextWrapping="Wrap" Foreground="{DynamicResource PcWarn}"
+                 Text="{l:Localize Hist_NotPersistent}" />
+    </Border>
+
+    <Border BorderBrush="{DynamicResource PcBorder}" BorderThickness="1"
+            CornerRadius="{StaticResource PcCardRadius}"
+            Background="{DynamicResource PcPanel}" ClipToBounds="True">
+      <Panel>
+        <TextBlock Classes="hint" Margin="14" VerticalAlignment="Top"
+                   IsVisible="{Binding IsEmpty}" Text="{l:Localize Hist_Empty}" />
+
+        <!-- Schmale Fenster scrollen die Tabelle waagerecht, statt Spalten zu quetschen. -->
+        <ScrollViewer HorizontalScrollBarVisibility="Auto"
+                      IsVisible="{Binding !IsEmpty}">
+          <DockPanel MinWidth="760" LastChildFill="True">
+
+            <Border DockPanel.Dock="Top" Background="{DynamicResource PcPanel2}"
+                    BorderBrush="{DynamicResource PcBorder}" BorderThickness="0,0,0,1"
+                    Padding="14,11">
+              <Grid ColumnDefinitions="150,*,90,96,96,110,130">
+                <TextBlock Classes="caps" Grid.Column="0" Text="{l:Localize Hist_ColTimestamp}" />
+                <TextBlock Classes="caps" Grid.Column="1" Text="{l:Localize Hist_ColFile}" />
+                <TextBlock Classes="caps" Grid.Column="2" Text="{l:Localize Hist_ColEngine}" />
+                <TextBlock Classes="caps" Grid.Column="3" Text="{l:Localize Hist_ColBefore}" />
+                <TextBlock Classes="caps" Grid.Column="4" Text="{l:Localize Hist_ColAfter}" />
+                <TextBlock Classes="caps" Grid.Column="5" Text="{l:Localize Hist_ColSavings}" />
+                <TextBlock Classes="caps" Grid.Column="6" Text="{l:Localize Hist_ColStatus}"
+                           TextAlignment="Right" />
+              </Grid>
+            </Border>
+
+            <ScrollViewer>
+              <ItemsControl ItemsSource="{Binding VisibleEntries}"
+                            AutomationProperties.Name="{l:Localize Hist_TableName}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:HistoryEntryViewModel">
+                    <Border BorderBrush="{DynamicResource PcBorderSoft}" BorderThickness="0,0,0,1"
+                            Padding="14,11"
+                            AutomationProperties.Name="{Binding AccessibleSummary}">
+                      <Grid ColumnDefinitions="150,*,90,96,96,110,130">
+                        <TextBlock Classes="mono" Grid.Column="0" Text="{Binding Timestamp}" />
+                        <TextBlock Grid.Column="1" FontSize="12" FontWeight="Medium"
+                                   Foreground="{DynamicResource PcText}"
+                                   TextTrimming="CharacterEllipsis" Text="{Binding FileName}" />
+                        <TextBlock Grid.Column="2" FontSize="12"
+                                   Foreground="{DynamicResource PcDim}" Text="{Binding EngineLabel}" />
+                        <TextBlock Classes="mono" Grid.Column="3" Text="{Binding Before}" />
+                        <TextBlock Classes="mono" Grid.Column="4" Text="{Binding After}" />
+                        <TextBlock Classes="mono" Grid.Column="5" FontWeight="SemiBold"
+                                   Text="{Binding Savings}" />
+                        <TextBlock Grid.Column="6" FontSize="11.5" FontWeight="SemiBold"
+                                   TextAlignment="Right" TextTrimming="CharacterEllipsis"
+                                   Foreground="{DynamicResource PcDim}" Text="{Binding StatusLabel}" />
+                      </Grid>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </ScrollViewer>
+          </DockPanel>
+        </ScrollViewer>
+      </Panel>
+    </Border>
+  </DockPanel>
+</UserControl>

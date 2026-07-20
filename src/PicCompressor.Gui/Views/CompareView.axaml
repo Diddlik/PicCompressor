@@ -1,0 +1,86 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:PicCompressor.Gui.ViewModels"
+             xmlns:l="using:PicCompressor.Gui.Localization"
+             x:Class="PicCompressor.Gui.Views.CompareView"
+             x:DataType="vm:CompareViewModel">
+
+  <ScrollViewer Padding="20">
+    <StackPanel Spacing="14">
+
+      <StackPanel Spacing="2">
+        <TextBlock Classes="h1" Text="{l:Localize Cmp_Title}" />
+        <TextBlock Classes="sub" Text="{l:Localize Cmp_Subtitle}" />
+      </StackPanel>
+
+      <!-- Ohne validiertes, veröffentlichtes Ergebnis gibt es nichts zu vergleichen. -->
+      <Border Classes="card" IsVisible="{Binding !HasCandidates}">
+        <TextBlock Classes="sub" Text="{l:Localize Cmp_NoCandidates}" />
+      </Border>
+
+      <StackPanel Spacing="14" IsVisible="{Binding HasSelection}">
+
+        <Border Height="300" MinHeight="180" CornerRadius="12" ClipToBounds="True"
+                BorderBrush="{DynamicResource PcBorder}" BorderThickness="1">
+          <Grid x:Name="CompareSurface">
+            <Border Background="{DynamicResource PcPanel2}">
+              <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="6">
+                <TextBlock Classes="mono" HorizontalAlignment="Center"
+                           Text="{l:Localize Cmp_Compressed}" />
+                <TextBlock Classes="hint" HorizontalAlignment="Center" TextAlignment="Center"
+                           Text="{l:Localize Cmp_PreviewPending}" />
+              </StackPanel>
+            </Border>
+
+            <Border x:Name="OriginalPane" Background="{DynamicResource PcAccentSoft}"
+                    HorizontalAlignment="Left" ClipToBounds="True">
+              <TextBlock Classes="mono" HorizontalAlignment="Center" VerticalAlignment="Center"
+                         Text="{l:Localize Cmp_Original}" />
+            </Border>
+
+            <Border Classes="pill" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="12"
+                    Background="{DynamicResource PcPanel}">
+              <TextBlock Classes="mono" Text="{l:Localize Cmp_Original}" />
+            </Border>
+            <Border Classes="pill" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="12"
+                    Background="{DynamicResource PcAccent}">
+              <TextBlock Classes="mono" Foreground="#FFFFFF" Text="{l:Localize Cmp_Compressed}" />
+            </Border>
+          </Grid>
+        </Border>
+
+        <StackPanel Spacing="6">
+          <TextBlock Classes="caps" Text="{l:Localize Cmp_Divider}" />
+          <Slider Minimum="0" Maximum="1" Value="{Binding DividerFraction}"
+                  SmallChange="0.02" LargeChange="0.1"
+                  AutomationProperties.Name="{l:Localize Cmp_Divider}" />
+        </StackPanel>
+
+        <Border Classes="card" DataContext="{Binding Selected}">
+          <StackPanel Spacing="6">
+            <TextBlock Classes="h2" Text="{Binding FileName}" />
+            <TextBlock Classes="mono" Text="{Binding SizeSummary}" />
+          </StackPanel>
+        </Border>
+      </StackPanel>
+
+      <StackPanel Spacing="8" IsVisible="{Binding HasCandidates}">
+        <TextBlock Classes="caps" Text="{l:Localize Cmp_Results}" />
+        <ListBox ItemsSource="{Binding Candidates}" SelectedItem="{Binding Selected}"
+                 Background="Transparent" BorderThickness="0" MaxHeight="200"
+                 AutomationProperties.Name="{l:Localize Cmp_CandidatesName}">
+          <ListBox.ItemTemplate>
+            <DataTemplate x:DataType="vm:QueueItemViewModel">
+              <StackPanel Spacing="2" AutomationProperties.Name="{Binding AccessibleSummary}">
+                <TextBlock Text="{Binding FileName}" FontSize="12.5"
+                           TextTrimming="CharacterEllipsis" />
+                <TextBlock Classes="mono" Text="{Binding SizeSummary}" />
+              </StackPanel>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </StackPanel>
+
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

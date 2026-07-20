@@ -1,0 +1,56 @@
+using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Markup.Xaml;
+using PicCompressor.Gui.Services;
+using PicCompressor.Gui.ViewModels;
+using PicCompressor.Gui.Views;
+
+namespace PicCompressor.Gui;
+
+// Vollqualifiziert, weil PicCompressor.Application den Namen 'Application' verdeckt.
+public sealed class App : Avalonia.Application
+{
+    private static Func<AppServices> serviceFactory = static () =>
+        new(
+            new UnconfiguredCompressionService(),
+            new UnconfiguredEngineCatalogService(),
+            new InMemoryHistoryService());
+
+    private readonly AppServices services = serviceFactory();
+
+    public static void ConfigureServices(
+        ICompressionService compressionService,
+        IEngineCatalogService engineCatalogService,
+        IHistoryService historyService)
+    {
+        ArgumentNullException.ThrowIfNull(compressionService);
+        ArgumentNullException.ThrowIfNull(engineCatalogService);
+        ArgumentNullException.ThrowIfNull(historyService);
+        serviceFactory = () => new(compressionService, engineCatalogService, historyService);
+    }
+
+    public override void Initialize() => AvaloniaXamlLoader.Load(this);
+
+    public override void OnFrameworkInitializationCompleted()
+    {
+        if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+        {
+            var viewModel = new MainWindowViewModel(
+                services.CompressionService,
+                services.EngineCatalogService,
+                services.HistoryService);
+
+            var window = new MainWindow { DataContext = viewModel };
+            window.Opened += async (_, _) =>
+                await viewModel.InitializeAsync(CancellationToken.None).ConfigureAwait(true);
+
+            desktop.MainWindow = window;
+        }
+
+        base.OnFrameworkInitializationCompleted();
+    }
+
+    private sealed record AppServices(
+        ICompressionService CompressionService,
+        IEngineCatalogService EngineCatalogService,
+        IHistoryService HistoryService);
+}

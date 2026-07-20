@@ -1,0 +1,430 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence><xsd:element name="value" type="xsd:string" minOccurs="0" /></xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence><xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" /></xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a2c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a2c561934e089</value></resheader>
+  <data name="App_Title" xml:space="preserve">
+    <value>PicCompressor</value>
+  </data>
+  <data name="Nav_Workspace" xml:space="preserve">
+    <value>Workspace</value>
+  </data>
+  <data name="Nav_Settings" xml:space="preserve">
+    <value>Settings</value>
+  </data>
+  <data name="Nav_History" xml:space="preserve">
+    <value>History</value>
+  </data>
+  <data name="Nav_Compare" xml:space="preserve">
+    <value>Compare</value>
+  </data>
+  <data name="Status_NoJobs" xml:space="preserve">
+    <value>No jobs</value>
+  </data>
+  <data name="Status_Completed" xml:space="preserve">
+    <value>{0} / {1} completed</value>
+  </data>
+  <data name="Status_EngineNotWired" xml:space="preserve">
+    <value>Engine detection not wired up yet</value>
+  </data>
+  <data name="Dash_Title" xml:space="preserve">
+    <value>Workspace</value>
+  </data>
+  <data name="Dash_Subtitle" xml:space="preserve">
+    <value>Drop images or folders to queue them.</value>
+  </data>
+  <data name="Dash_AddFiles" xml:space="preserve">
+    <value>Add files…</value>
+  </data>
+  <data name="Dash_DropHere" xml:space="preserve">
+    <value>Drag images or folders here</value>
+  </data>
+  <data name="Dash_DropHint" xml:space="preserve">
+    <value>JPEG and PNG · output is always JPEG</value>
+  </data>
+  <data name="Dash_Recurse" xml:space="preserve">
+    <value>Descend into subfolders</value>
+  </data>
+  <data name="Dash_Browse" xml:space="preserve">
+    <value>Choose files…</value>
+  </data>
+  <data name="Dash_Queue" xml:space="preserve">
+    <value>Queue</value>
+  </data>
+  <data name="Dash_QueueCount" xml:space="preserve">
+    <value>· {0} files</value>
+  </data>
+  <data name="Dash_ClearCompleted" xml:space="preserve">
+    <value>Remove completed</value>
+  </data>
+  <data name="Dash_RetryFailed" xml:space="preserve">
+    <value>Retry failed</value>
+  </data>
+  <data name="Dash_QueueEmpty" xml:space="preserve">
+    <value>No files queued yet.</value>
+  </data>
+  <data name="Dash_QuickSettings" xml:space="preserve">
+    <value>Quick settings</value>
+  </data>
+  <data name="Dash_CompressAll" xml:space="preserve">
+    <value>Compress all</value>
+  </data>
+  <data name="Dash_PickerTitle" xml:space="preserve">
+    <value>Choose images</value>
+  </data>
+  <data name="Dash_PickerFilter" xml:space="preserve">
+    <value>JPEG and PNG</value>
+  </data>
+  <data name="Dash_InputUnreadable" xml:space="preserve">
+    <value>Input file is not readable.</value>
+  </data>
+  <data name="Common_Engine" xml:space="preserve">
+    <value>ENGINE</value>
+  </data>
+  <data name="Common_Quality" xml:space="preserve">
+    <value>Quality</value>
+  </data>
+  <data name="Common_Browse" xml:space="preserve">
+    <value>Browse</value>
+  </data>
+  <data name="Engine_Jpegli" xml:space="preserve">
+    <value>Jpegli</value>
+  </data>
+  <data name="Engine_Guetzli" xml:space="preserve">
+    <value>Guetzli</value>
+  </data>
+  <data name="Engine_JpegliDescription" xml:space="preserve">
+    <value>Default engine. Quality 1–100, chroma subsampling and progressive level are explicit parameters.</value>
+  </data>
+  <data name="Engine_GuetzliDescription" xml:space="preserve">
+    <value>Optional legacy engine. Very slow, high memory use, sequential JPEG only.</value>
+  </data>
+  <data name="Engine_GuetzliFloor" xml:space="preserve">
+    <value>Guetzli enforces a minimum quality of 84.</value>
+  </data>
+  <data name="Engine_GuetzliWarning" xml:space="preserve">
+    <value>Guetzli is an optional legacy engine: minimum quality 84, sequential JPEG only, high memory and time cost.</value>
+  </data>
+  <data name="Engine_QualityNotComparable" xml:space="preserve">
+    <value>Quality values of different engines are not comparable.</value>
+  </data>
+  <data name="Set_EngineHeading" xml:space="preserve">
+    <value>Engine</value>
+  </data>
+  <data name="Set_Title" xml:space="preserve">
+    <value>Configuration</value>
+  </data>
+  <data name="Set_Subtitle" xml:space="preserve">
+    <value>Applies to every queued file. Effective values are recorded in the result and history.</value>
+  </data>
+  <data name="Set_OutputTarget" xml:space="preserve">
+    <value>Output target</value>
+  </data>
+  <data name="Set_TargetSuffix" xml:space="preserve">
+    <value>Next to the original with a name suffix</value>
+  </data>
+  <data name="Set_TargetSuffixHint" xml:space="preserve">
+    <value>Originals stay untouched; directory structure is preserved.</value>
+  </data>
+  <data name="Set_TargetCustom" xml:space="preserve">
+    <value>Dedicated output folder</value>
+  </data>
+  <data name="Set_TargetCustomHint" xml:space="preserve">
+    <value>Relative directory structure of the inputs is preserved.</value>
+  </data>
+  <data name="Set_FolderPickerTitle" xml:space="preserve">
+    <value>Choose output folder</value>
+  </data>
+  <data name="Set_Collision" xml:space="preserve">
+    <value>Collisions and output size</value>
+  </data>
+  <data name="Set_CollisionHint" xml:space="preserve">
+    <value>Behaviour when the target path is already taken.</value>
+  </data>
+  <data name="Set_CollisionSkip" xml:space="preserve">
+    <value>Skip (default)</value>
+  </data>
+  <data name="Set_CollisionSkipHint" xml:space="preserve">
+    <value>An existing target file stays untouched.</value>
+  </data>
+  <data name="Set_CollisionRename" xml:space="preserve">
+    <value>Rename</value>
+  </data>
+  <data name="Set_CollisionRenameHint" xml:space="preserve">
+    <value>Appends a unique numeric suffix.</value>
+  </data>
+  <data name="Set_CollisionOverwrite" xml:space="preserve">
+    <value>Overwrite</value>
+  </data>
+  <data name="Set_CollisionOverwriteHint" xml:space="preserve">
+    <value>Replaces existing target files. Choose only after a deliberate decision.</value>
+  </data>
+  <data name="Set_DiscardLarger" xml:space="preserve">
+    <value>Discard larger output</value>
+  </data>
+  <data name="Set_DiscardLargerHint" xml:space="preserve">
+    <value>If the result is not smaller it is discarded; the job succeeds with a warning.</value>
+  </data>
+  <data name="Set_Metadata" xml:space="preserve">
+    <value>Metadata</value>
+  </data>
+  <data name="Set_MetadataHint" xml:space="preserve">
+    <value>EXIF and colour profile are configured separately.</value>
+  </data>
+  <data name="Set_Exif" xml:space="preserve">
+    <value>EXIF</value>
+  </data>
+  <data name="Set_ExifKeep" xml:space="preserve">
+    <value>Keep · copy allowed fields, correct orientation</value>
+  </data>
+  <data name="Set_ExifPrivate" xml:space="preserve">
+    <value>Private · remove GPS, serial numbers and identifying fields</value>
+  </data>
+  <data name="Set_ExifRemove" xml:space="preserve">
+    <value>Remove · carry over no EXIF data</value>
+  </data>
+  <data name="Set_Profile" xml:space="preserve">
+    <value>COLOUR PROFILE</value>
+  </data>
+  <data name="Set_ProfilePreserve" xml:space="preserve">
+    <value>Preserve · carry over the profile or convert to sRGB in a controlled way</value>
+  </data>
+  <data name="Set_ProfileSrgb" xml:space="preserve">
+    <value>sRGB · transform pixels and tag as sRGB</value>
+  </data>
+  <data name="Set_ProfileRemove" xml:space="preserve">
+    <value>Remove · only allowed if pixels already are sRGB</value>
+  </data>
+  <data name="Set_AlphaBackground" xml:space="preserve">
+    <value>Background for transparent inputs</value>
+  </data>
+  <data name="Set_AlphaBackgroundHint" xml:space="preserve">
+    <value>JPEG cannot store transparency. Default is white.</value>
+  </data>
+  <data name="Set_Chroma" xml:space="preserve">
+    <value>Chroma subsampling</value>
+  </data>
+  <data name="Set_Progressive" xml:space="preserve">
+    <value>Progressive level</value>
+  </data>
+  <data name="Set_ProgressiveHint" xml:space="preserve">
+    <value>0 = sequential JPEG · 1–2 = progressive</value>
+  </data>
+  <data name="Set_Processing" xml:space="preserve">
+    <value>Processing</value>
+  </data>
+  <data name="Set_ParallelJobs" xml:space="preserve">
+    <value>Parallel jobs</value>
+  </data>
+  <data name="Set_ParallelJobsHint" xml:space="preserve">
+    <value>The queue additionally accounts for the estimated memory demand per engine.</value>
+  </data>
+  <data name="Set_Appearance" xml:space="preserve">
+    <value>Language and appearance</value>
+  </data>
+  <data name="Set_Language" xml:space="preserve">
+    <value>Language</value>
+  </data>
+  <data name="Set_LanguageSystem" xml:space="preserve">
+    <value>System</value>
+  </data>
+  <data name="Set_LanguageEnglish" xml:space="preserve">
+    <value>English</value>
+  </data>
+  <data name="Set_LanguageGerman" xml:space="preserve">
+    <value>German</value>
+  </data>
+  <data name="Set_LanguageHint" xml:space="preserve">
+    <value>System uses the operating system language and falls back to English.</value>
+  </data>
+  <data name="Set_Theme" xml:space="preserve">
+    <value>Theme</value>
+  </data>
+  <data name="Set_ThemeSystem" xml:space="preserve">
+    <value>System</value>
+  </data>
+  <data name="Set_ThemeLight" xml:space="preserve">
+    <value>Light</value>
+  </data>
+  <data name="Set_ThemeDark" xml:space="preserve">
+    <value>Dark</value>
+  </data>
+  <data name="Hist_Title" xml:space="preserve">
+    <value>History</value>
+  </data>
+  <data name="Hist_Search" xml:space="preserve">
+    <value>Search file name…</value>
+  </data>
+  <data name="Hist_Summary" xml:space="preserve">
+    <value>{0} operations · {1} saved</value>
+  </data>
+  <data name="Hist_ColTimestamp" xml:space="preserve">
+    <value>TIMESTAMP</value>
+  </data>
+  <data name="Hist_ColFile" xml:space="preserve">
+    <value>FILE</value>
+  </data>
+  <data name="Hist_ColEngine" xml:space="preserve">
+    <value>ENGINE</value>
+  </data>
+  <data name="Hist_ColBefore" xml:space="preserve">
+    <value>BEFORE</value>
+  </data>
+  <data name="Hist_ColAfter" xml:space="preserve">
+    <value>AFTER</value>
+  </data>
+  <data name="Hist_ColSavings" xml:space="preserve">
+    <value>SAVINGS</value>
+  </data>
+  <data name="Hist_ColStatus" xml:space="preserve">
+    <value>STATUS</value>
+  </data>
+  <data name="Hist_Success" xml:space="preserve">
+    <value>Success</value>
+  </data>
+  <data name="Hist_Error" xml:space="preserve">
+    <value>Error</value>
+  </data>
+  <data name="Cmp_Title" xml:space="preserve">
+    <value>Before / after</value>
+  </data>
+  <data name="Cmp_Subtitle" xml:space="preserve">
+    <value>The comparison becomes available only after the output has been validated.</value>
+  </data>
+  <data name="Cmp_NoSelection" xml:space="preserve">
+    <value>No validated result selected.</value>
+  </data>
+  <data name="Cmp_Original" xml:space="preserve">
+    <value>Original</value>
+  </data>
+  <data name="Cmp_Compressed" xml:space="preserve">
+    <value>Compressed</value>
+  </data>
+  <data name="Cmp_Divider" xml:space="preserve">
+    <value>COMPARISON SLIDER</value>
+  </data>
+  <data name="Cmp_Results" xml:space="preserve">
+    <value>VALIDATED RESULTS</value>
+  </data>
+  <data name="Job_Queued" xml:space="preserve">
+    <value>Queued</value>
+  </data>
+  <data name="Job_Validating" xml:space="preserve">
+    <value>Validating</value>
+  </data>
+  <data name="Job_WaitingForResources" xml:space="preserve">
+    <value>Waiting for resources</value>
+  </data>
+  <data name="Job_Encoding" xml:space="preserve">
+    <value>Encoding</value>
+  </data>
+  <data name="Job_Finalizing" xml:space="preserve">
+    <value>Finalizing</value>
+  </data>
+  <data name="Job_Succeeded" xml:space="preserve">
+    <value>Done</value>
+  </data>
+  <data name="Job_Failed" xml:space="preserve">
+    <value>Failed</value>
+  </data>
+  <data name="Job_Canceled" xml:space="preserve">
+    <value>Canceled</value>
+  </data>
+  <data name="Status_EnginesAvailable" xml:space="preserve">
+    <value>Engines: {0}</value>
+  </data>
+  <data name="Error_NoCompressionService" xml:space="preserve">
+    <value>No compression service is wired up in this build.</value>
+  </data>
+  <data name="Error_NoEngineCatalog" xml:space="preserve">
+    <value>No engine catalogue is wired up in this build.</value>
+  </data>
+  <data name="Engine_Unavailable" xml:space="preserve">
+    <value>Engine {0} is not available.</value>
+  </data>
+  <data name="Dash_Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="Dash_RemoveAll" xml:space="preserve">
+    <value>Clear queue</value>
+  </data>
+  <data name="Dash_AddedFiles" xml:space="preserve">
+    <value>{0} files added</value>
+  </data>
+  <data name="Dash_NoSupportedFiles" xml:space="preserve">
+    <value>No supported files found in the dropped items.</value>
+  </data>
+  <data name="Dash_QueueLabel" xml:space="preserve">
+    <value>Job queue</value>
+  </data>
+  <data name="Dash_DropZoneName" xml:space="preserve">
+    <value>Drop zone for images and folders</value>
+  </data>
+  <data name="Hist_NotPersistent" xml:space="preserve">
+    <value>Not stored: this build keeps the history only for the current session.</value>
+  </data>
+  <data name="Hist_Empty" xml:space="preserve">
+    <value>No entries.</value>
+  </data>
+  <data name="Hist_TableName" xml:space="preserve">
+    <value>History table</value>
+  </data>
+  <data name="Cmp_NoCandidates" xml:space="preserve">
+    <value>No comparable result yet. A result becomes comparable once its output has been validated and published.</value>
+  </data>
+  <data name="Cmp_PreviewPending" xml:space="preserve">
+    <value>Preview rendering is not implemented yet.</value>
+  </data>
+  <data name="Cmp_CandidatesName" xml:space="preserve">
+    <value>Comparable results</value>
+  </data>
+  <data name="Nav_Name" xml:space="preserve">
+    <value>Main navigation</value>
+  </data>
+  <data name="Status_Bar" xml:space="preserve">
+    <value>Status bar</value>
+  </data>
+</root>

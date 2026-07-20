@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" Version="6.0.4" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\PicCompressor.Gui\PicCompressor.Gui.csproj" />
+  </ItemGroup>
+
+  <!-- Die Ressourcenprüfung liest die .resx-Quellen und nicht die kompilierten Satelliten. -->
+  <ItemGroup>
+    <None Include="..\..\src\PicCompressor.Gui\Localization\Strings.resx"
+          Link="Localization\Strings.resx" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\src\PicCompressor.Gui\Localization\Strings.de.resx"
+          Link="Localization\Strings.de.resx" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <!-- Der XAML-Prüfer liest die Quelldateien der Ansichten. -->
+  <ItemGroup>
+    <ViewSource Include="..\..\src\PicCompressor.Gui\Views\*.axaml" />
+    <None Include="@(ViewSource)"
+          Link="Views\%(Filename)%(Extension)"
+          CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

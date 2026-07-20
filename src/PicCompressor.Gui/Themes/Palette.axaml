@@ -1,0 +1,56 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!-- Farbrollen der UI-Referenzvorlage (docs/UI/PicCompressor.html), aus oklch nach sRGB konvertiert. -->
+  <ResourceDictionary.ThemeDictionaries>
+
+    <ResourceDictionary x:Key="Dark">
+      <SolidColorBrush x:Key="PcBg" Color="#101318" />
+      <SolidColorBrush x:Key="PcPanel" Color="#191C22" />
+      <SolidColorBrush x:Key="PcPanel2" Color="#22252C" />
+      <SolidColorBrush x:Key="PcElev" Color="#2B2F37" />
+      <SolidColorBrush x:Key="PcBorder" Color="#34383F" />
+      <SolidColorBrush x:Key="PcBorderSoft" Color="#282B32" />
+      <SolidColorBrush x:Key="PcText" Color="#F0F2F4" />
+      <SolidColorBrush x:Key="PcDim" Color="#A5A8AE" />
+      <SolidColorBrush x:Key="PcFaint" Color="#74777F" />
+      <SolidColorBrush x:Key="PcAccent" Color="#6895F4" />
+      <SolidColorBrush x:Key="PcAccentStrong" Color="#5381E6" />
+      <SolidColorBrush x:Key="PcAccentSoft" Color="#24324F" />
+      <SolidColorBrush x:Key="PcTrack" Color="#303339" />
+      <SolidColorBrush x:Key="PcSuccess" Color="#59C886" />
+      <SolidColorBrush x:Key="PcSuccessSoft" Color="#183E27" />
+      <SolidColorBrush x:Key="PcError" Color="#FD736D" />
+      <SolidColorBrush x:Key="PcErrorSoft" Color="#5D2725" />
+      <SolidColorBrush x:Key="PcWarn" Color="#F0BA59" />
+      <SolidColorBrush x:Key="PcWarnSoft" Color="#4E3914" />
+    </ResourceDictionary>
+
+    <ResourceDictionary x:Key="Light">
+      <SolidColorBrush x:Key="PcBg" Color="#F2F3F6" />
+      <SolidColorBrush x:Key="PcPanel" Color="#FDFDFF" />
+      <SolidColorBrush x:Key="PcPanel2" Color="#EEF0F4" />
+      <SolidColorBrush x:Key="PcElev" Color="#FFFFFF" />
+      <SolidColorBrush x:Key="PcBorder" Color="#D9DBDF" />
+      <SolidColorBrush x:Key="PcBorderSoft" Color="#E6E8EB" />
+      <SolidColorBrush x:Key="PcText" Color="#252930" />
+      <SolidColorBrush x:Key="PcDim" Color="#5A5E65" />
+      <SolidColorBrush x:Key="PcFaint" Color="#83868E" />
+      <SolidColorBrush x:Key="PcAccent" Color="#406BCE" />
+      <SolidColorBrush x:Key="PcAccentStrong" Color="#2F5BC2" />
+      <SolidColorBrush x:Key="PcAccentSoft" Color="#DAE8FF" />
+      <SolidColorBrush x:Key="PcTrack" Color="#DCDEE2" />
+      <SolidColorBrush x:Key="PcSuccess" Color="#00884B" />
+      <SolidColorBrush x:Key="PcSuccessSoft" Color="#C9F4D7" />
+      <SolidColorBrush x:Key="PcError" Color="#C92F33" />
+      <SolidColorBrush x:Key="PcErrorSoft" Color="#FFD7D0" />
+      <SolidColorBrush x:Key="PcWarn" Color="#A87600" />
+      <SolidColorBrush x:Key="PcWarnSoft" Color="#FFEABA" />
+    </ResourceDictionary>
+
+  </ResourceDictionary.ThemeDictionaries>
+
+  <FontFamily x:Key="PcMono">Consolas, Menlo, DejaVu Sans Mono, monospace</FontFamily>
+
+  <CornerRadius x:Key="PcCardRadius">11</CornerRadius>
+  <CornerRadius x:Key="PcControlRadius">8</CornerRadius>
+</ResourceDictionary>
