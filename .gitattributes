@@ -1,0 +1,23 @@
+# Zeilenenden im Repository immer als LF ablegen. Ohne diese Festlegung haengt
+# der Inhalt vom Betriebssystem des Committenden ab, und ein Klon auf einer
+# anderen Plattform erzeugt einen Diff ueber das halbe Repository.
+* text=auto eol=lf
+
+# Windows-Werkzeuge erwarten CRLF in der Arbeitskopie.
+*.ps1 text eol=crlf
+*.cmd text eol=crlf
+*.bat text eol=crlf
+*.sln text eol=crlf
+*.slnx text eol=crlf
+*.csproj text eol=crlf
+*.props text eol=crlf
+
+# Binaerdateien nie konvertieren.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.ico binary
+*.pdb binary
+*.dll binary
+*.exe binary
+*.db binary
