@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Resources;
 using PicCompressor.Gui.Localization;
 using PicCompressor.Gui.ViewModels;
 
@@ -122,5 +123,38 @@ public sealed class AppearanceViewModelTests : IDisposable
         Assert.Equal(AppLanguage.German, Localizer.Instance.Language);
         Assert.True(appearance.LanguageGerman);
         Assert.False(appearance.LanguageEnglish);
+    }
+
+    /// <summary>
+    /// Ein Schlüssel ohne Übersetzung ist ein Fehler, kein offener Punkt
+    /// (agent_instructions.md, Abschnitt Lokalisierung).
+    /// </summary>
+    [Fact]
+    public void Every_key_is_translated_into_every_maintained_language()
+    {
+        var resources = new ResourceManager(
+            "PicCompressor.Gui.Localization.Strings",
+            typeof(Localizer).Assembly);
+        // tryParents muss false sein: sonst fällt jede fehlende Übersetzung auf die
+        // neutrale Ressource zurück und der Vergleich wäre immer erfolgreich.
+        var neutral = resources.GetResourceSet(
+            CultureInfo.InvariantCulture,
+            createIfNotExists: true,
+            tryParents: false);
+        var german = resources.GetResourceSet(
+            CultureInfo.GetCultureInfo("de"),
+            createIfNotExists: true,
+            tryParents: false);
+        Assert.NotNull(neutral);
+        Assert.NotNull(german);
+
+        var missing = neutral
+            .Cast<System.Collections.DictionaryEntry>()
+            .Select(entry => (string)entry.Key)
+            .Where(key => german.GetString(key) is null)
+            .OrderBy(key => key, StringComparer.Ordinal)
+            .ToArray();
+
+        Assert.Empty(missing);
     }
 }

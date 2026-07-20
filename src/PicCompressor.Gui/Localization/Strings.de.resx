@@ -64,6 +64,9 @@
   <data name="Status_NoJobs" xml:space="preserve">
     <value>Keine Jobs</value>
   </data>
+  <data name="Warning_HistoryNotRecorded" xml:space="preserve">
+    <value>Ergebnis wurde nicht im Verlauf gespeichert: {0}</value>
+  </data>
   <data name="Status_Completed" xml:space="preserve">
     <value>{0} / {1} abgeschlossen</value>
   </data>

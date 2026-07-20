@@ -29,10 +29,6 @@ internal static class Program
         var executor = new CompressionExecutor(
             jpegli,
             new SafeOutputPublisher(fileSystem, inspector));
-        var applicationData = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "PicCompressor");
-
         App.ConfigureServices(
             new ApplicationCompressionService(
                 new CompressionJobFactory(
@@ -44,7 +40,7 @@ internal static class Program
             new ApplicationEngineCatalogService(new EngineCatalog([jpegli, unavailableGuetzli])),
             new PersistentHistoryService(
                 new SqliteCompressionHistoryStore(
-                    Path.Combine(applicationData, "history.db"))));
+                    ApplicationDataPaths.HistoryDatabasePath)));
 
         return AppBuilder.Configure<App>()
             .UsePlatformDetect()

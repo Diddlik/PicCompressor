@@ -1,3 +1,4 @@
+using System.Data.Common;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using PicCompressor.Application;
@@ -24,6 +25,7 @@ internal static class CliApplication
           --dry-run                     Validate and plan without writing
           --parallelism <1-256>         Maximum concurrent jobs (default: 1)
           --json                        Emit schema-versioned JSON
+          --no-history                  Do not record results in the local history
           --help                        Show help
         """;
 
@@ -32,10 +34,58 @@ internal static class CliApplication
         Converters = { new JsonStringEnumConverter() }
     };
 
+    /// <summary>
+    /// Records finished jobs in the shared local history. A persistence failure
+    /// must not turn a correctly encoded image into a compression error, so it
+    /// is reported as a separate warning instead (requirement 14.4).
+    /// </summary>
+    private static async Task<string?> RecordHistoryAsync(
+        ICompressionHistoryStore? historyStore,
+        IReadOnlyList<CompressionExecutionResult> results)
+    {
+        if (results.Count == 0)
+        {
+            return null;
+        }
+
+        try
+        {
+            var store = historyStore
+                ?? new SqliteCompressionHistoryStore(
+                    ApplicationDataPaths.HistoryDatabasePath);
+            foreach (var result in results)
+            {
+                // The history stores the file name only; absolute paths count as
+                // potentially sensitive data (requirement 13.1).
+                await store.AppendAsync(
+                    new CompressionHistoryEntry(
+                        result.EndedAt,
+                        Path.GetFileName(result.InputPath),
+                        result.EngineId,
+                        result.InputSizeBytes,
+                        result.EncodedSizeBytes,
+                        result.Status,
+                        result.ErrorCategory),
+                    CancellationToken.None).ConfigureAwait(false);
+            }
+
+            return null;
+        }
+        catch (Exception exception) when (
+            exception is DbException
+                or IOException
+                or InvalidDataException
+                or UnauthorizedAccessException)
+        {
+            return $"Results were not recorded in the history: {exception.Message}";
+        }
+    }
+
     internal static async Task<int> RunAsync(
         string[] args,
         TextWriter standardOutput,
-        TextWriter standardError)
+        TextWriter standardError,
+        ICompressionHistoryStore? historyStore = null)
     {
         if (args.Contains("--help", StringComparer.Ordinal) || args.Contains("-h", StringComparer.Ordinal))
         {
@@ -123,6 +173,9 @@ internal static class CliApplication
                 .ExecuteAsync(jobs, options.Parallelism, cancellationSource.Token)
                 .ConfigureAwait(false);
             var exitCode = MapBatchExitCode(plans, results);
+            var historyWarning = options.NoHistory
+                ? null
+                : await RecordHistoryAsync(historyStore, results).ConfigureAwait(false);
 
             if (options.Json)
             {
@@ -137,13 +190,19 @@ internal static class CliApplication
                             results,
                             planningErrors = plans
                                 .Where(plan => plan.ErrorCategory is not null)
-                                .Select(ToPlanOutput)
+                                .Select(ToPlanOutput),
+                            historyWarning
                         },
                         JsonOptions))
                     .ConfigureAwait(false);
             }
             else
             {
+                if (historyWarning is not null)
+                {
+                    await standardError.WriteLineAsync(historyWarning).ConfigureAwait(false);
+                }
+
                 foreach (var plan in plans.Where(plan => plan.ErrorCategory is not null))
                 {
                     await standardError.WriteLineAsync(

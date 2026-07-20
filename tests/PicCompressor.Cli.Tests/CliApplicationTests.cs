@@ -35,5 +35,116 @@ public sealed class CliApplicationTests : IDisposable
         Assert.Equal("", error.ToString());
     }
 
+    [Fact]
+    public async Task RunAsync_records_every_result_in_the_history()
+    {
+        using var output = new StringWriter();
+        using var error = new StringWriter();
+        var store = new RecordingHistoryStore();
+
+        var exitCode = await CliApplication.RunAsync(
+            [Path.Combine(directory, "input.png"), "--output-dir", Path.Combine(directory, "out")],
+            output,
+            error,
+            store);
+
+        Assert.Equal(0, exitCode);
+        var entry = Assert.Single(store.Entries);
+        // Absolute paths count as sensitive data (requirement 13.1).
+        Assert.Equal("input.png", entry.FileName);
+        Assert.Equal("jpegli", entry.EngineId);
+        Assert.Equal(PicCompressor.Domain.JobStatus.Succeeded, entry.Status);
+    }
+
+    [Fact]
+    public async Task RunAsync_skips_the_history_when_disabled()
+    {
+        using var output = new StringWriter();
+        using var error = new StringWriter();
+        var store = new RecordingHistoryStore();
+
+        await CliApplication.RunAsync(
+            [
+                Path.Combine(directory, "input.png"),
+                "--output-dir", Path.Combine(directory, "out"),
+                "--no-history"
+            ],
+            output,
+            error,
+            store);
+
+        Assert.Empty(store.Entries);
+    }
+
+    [Fact]
+    public async Task RunAsync_dry_run_writes_no_history()
+    {
+        using var output = new StringWriter();
+        using var error = new StringWriter();
+        var store = new RecordingHistoryStore();
+
+        await CliApplication.RunAsync([directory, "--dry-run"], output, error, store);
+
+        Assert.Empty(store.Entries);
+    }
+
+    [Fact]
+    public async Task RunAsync_reports_a_history_failure_without_failing_the_job()
+    {
+        using var output = new StringWriter();
+        using var error = new StringWriter();
+
+        var exitCode = await CliApplication.RunAsync(
+            [
+                Path.Combine(directory, "input.png"),
+                "--output-dir", Path.Combine(directory, "out"),
+                "--json"
+            ],
+            output,
+            error,
+            new FailingHistoryStore());
+
+        using var json = JsonDocument.Parse(output.ToString());
+        // A persistence failure must not turn a correct encode into an error
+        // (requirement 14.4).
+        Assert.Equal(0, exitCode);
+        Assert.Equal(
+            "Succeeded",
+            json.RootElement.GetProperty("results")[0].GetProperty("Status").GetString());
+        Assert.Contains(
+            "not recorded",
+            json.RootElement.GetProperty("historyWarning").GetString());
+    }
+
     public void Dispose() => Directory.Delete(directory, recursive: true);
+
+    private sealed class RecordingHistoryStore : PicCompressor.Application.ICompressionHistoryStore
+    {
+        public List<PicCompressor.Application.CompressionHistoryEntry> Entries { get; } = [];
+
+        public Task<IReadOnlyList<PicCompressor.Application.CompressionHistoryEntry>> GetAsync(
+            CancellationToken cancellationToken) =>
+            Task.FromResult<IReadOnlyList<PicCompressor.Application.CompressionHistoryEntry>>(
+                Entries);
+
+        public Task AppendAsync(
+            PicCompressor.Application.CompressionHistoryEntry entry,
+            CancellationToken cancellationToken)
+        {
+            Entries.Add(entry);
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class FailingHistoryStore : PicCompressor.Application.ICompressionHistoryStore
+    {
+        public Task<IReadOnlyList<PicCompressor.Application.CompressionHistoryEntry>> GetAsync(
+            CancellationToken cancellationToken) =>
+            throw new IOException("history is unavailable");
+
+        public Task AppendAsync(
+            PicCompressor.Application.CompressionHistoryEntry entry,
+            CancellationToken cancellationToken) =>
+            throw new IOException("history is unavailable");
+    }
 }

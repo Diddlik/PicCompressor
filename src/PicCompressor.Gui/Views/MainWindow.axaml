@@ -113,10 +113,14 @@
     <Border Grid.Row="2" Background="{DynamicResource PcPanel}"
             BorderBrush="{DynamicResource PcBorderSoft}" BorderThickness="0,1,0,0"
             Padding="14,7" AutomationProperties.Name="{l:Localize Status_Bar}">
-      <Grid ColumnDefinitions="*,Auto">
+      <Grid ColumnDefinitions="Auto,*,Auto">
         <TextBlock Classes="mono" VerticalAlignment="Center"
                    TextTrimming="CharacterEllipsis" Text="{Binding StatusSummary}" />
-        <TextBlock Grid.Column="1" Classes="mono" VerticalAlignment="Center" Margin="12,0,0,0"
+        <TextBlock Grid.Column="1" Classes="hint" VerticalAlignment="Center" Margin="12,0,0,0"
+                   TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"
+                   IsVisible="{Binding HistoryWarning, Converter={x:Static ObjectConverters.IsNotNull}}"
+                   Text="{Binding HistoryWarning}" ToolTip.Tip="{Binding HistoryWarning}" />
+        <TextBlock Grid.Column="2" Classes="mono" VerticalAlignment="Center" Margin="12,0,0,0"
                    Text="{Binding Settings.EngineId}" />
       </Grid>
     </Border>

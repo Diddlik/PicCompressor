@@ -25,6 +25,7 @@ public sealed class MainWindowViewModel : ObservableObject
     private bool isCompact;
     private bool isNarrow;
     private string? engineStatus;
+    private string? historyWarning;
 
     public MainWindowViewModel(
         ICompressionService compressionService,
@@ -140,6 +141,17 @@ public sealed class MainWindowViewModel : ObservableObject
         private set => SetProperty(ref engineStatus, value);
     }
 
+    /// <summary>
+    /// Meldung, wenn ein Ergebnis nicht in den Verlauf geschrieben werden konnte.
+    /// Ein Persistenzfehler wird als eigene Warnung ausgewiesen und verändert das
+    /// Kompressionsergebnis nicht (Abschnitt 14.4).
+    /// </summary>
+    public string? HistoryWarning
+    {
+        get => historyWarning;
+        private set => SetProperty(ref historyWarning, value);
+    }
+
     public string StatusSummary
     {
         get
@@ -212,11 +224,16 @@ public sealed class MainWindowViewModel : ObservableObject
                         item.ErrorCategory),
                     CancellationToken.None)
                 .ConfigureAwait(true);
+            HistoryWarning = null;
         }
-        catch (Exception)
+        catch (Exception exception)
         {
             // Ein Persistenzfehler darf ein korrekt erzeugtes Bild nicht nachträglich als
-            // Kompressionsfehler deklarieren (Abschnitt 14.4). Der Job bleibt unverändert.
+            // Kompressionsfehler deklarieren (Abschnitt 14.4). Der Job bleibt unverändert,
+            // der Fehler wird aber als eigene Warnung sichtbar gemacht.
+            HistoryWarning = Localizer.Instance.Format(
+                "Warning_HistoryNotRecorded",
+                exception.Message);
         }
     }
 }
