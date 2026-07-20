@@ -1,0 +1,183 @@
+using System.Runtime.InteropServices;
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Headless;
+using Avalonia.Media.Imaging;
+using Avalonia.Threading;
+using PicCompressor.Application;
+using PicCompressor.Domain;
+using PicCompressor.Gui.Services;
+using PicCompressor.Gui.ViewModels;
+using PicCompressor.Gui.Views;
+
+namespace PicCompressor.Gui.ViewTests;
+
+/// <summary>
+/// Prüft den Vergleich am tatsächlich gezeichneten Bild. Ob beide Seiten wirklich übereinander
+/// liegen, lässt sich an Layouteigenschaften nicht ablesen: eine schmalere obere Fläche passt
+/// das Bild darin neu ein, obwohl die gesetzte Breite unverändert aussieht.
+///
+/// Das Original ist weiß, das Ergebnis schwarz. Die Unterscheidung über die Helligkeit ist
+/// unabhängig von der Kanalreihenfolge des kopflosen Bildpuffers.
+/// </summary>
+[Collection(AvaloniaCollection.Name)]
+public sealed class CompareWipeTests(AvaloniaSession session)
+{
+    private const int WindowWidth = 800;
+    private const int WindowHeight = 700;
+
+    [Fact]
+    public Task Both_layers_cover_the_same_area_regardless_of_the_divider() =>
+        session.RunAsync(async () =>
+        {
+            // Ganz links: nur das Ergebnis. Ganz rechts: nur das Original.
+            var onlyCompressed = await RenderRowAsync(0.0);
+            var onlyOriginal = await RenderRowAsync(1.0);
+
+            var compressedSpan = ContentSpan(onlyCompressed);
+            var originalSpan = ContentSpan(onlyOriginal);
+
+            Assert.NotEqual(0, compressedSpan.Length);
+            // Gleiche Ausdehnung heißt: gleiche Skalierung und gleiche Lage — eine Schicht über
+            // der anderen statt zwei Bilder nebeneinander.
+            Assert.Equal(compressedSpan, originalSpan);
+        });
+
+    [Fact]
+    public Task The_divider_splits_the_same_image_into_two_layers() =>
+        session.RunAsync(async () =>
+        {
+            var row = await RenderRowAsync(0.5);
+            var span = ContentSpan(row);
+            var divider = WindowWidth / 2;
+
+            // Links vom Regler das Original, rechts davon das Ergebnis — an derselben Stelle.
+            Assert.True(IsBright(row, (span.Start + divider) / 2), "left of the divider is the original");
+            Assert.False(IsBright(row, (divider + span.End) / 2), "right of the divider is the result");
+            Assert.True(span.Start < divider && span.End > divider, "the content crosses the divider");
+        });
+
+    [Fact]
+    public Task The_divider_line_is_drawn_on_the_edge() =>
+        session.RunAsync(async () =>
+        {
+            var (row, surface) = await RenderAsync(0.5);
+            var divider = (int)(surface.X + (surface.Width / 2));
+
+            // Direkt rechts der Kante liegt das schwarze Ergebnis — dort ist nur die Linie hell.
+            // Direkt auf der Kante liegt die Linie, kurz daneben schon das schwarze Ergebnis.
+            Assert.True(IsBright(row, divider), "the divider line covers the edge");
+            Assert.False(IsBright(row, divider + 20), "the result stays dark beside the line");
+        });
+
+    private static (int Start, int End, int Length) ContentSpan(byte[] row)
+    {
+        // Der Fensterhintergrund ist weder rein weiß noch rein schwarz; gesucht ist der Bereich,
+        // in dem überhaupt Bildinhalt liegt.
+        var start = -1;
+        var end = -1;
+        for (var x = 0; x < WindowWidth; x++)
+        {
+            if (!IsContent(row, x))
+            {
+                continue;
+            }
+
+            start = start < 0 ? x : start;
+            end = x;
+        }
+
+        return (start, end, start < 0 ? 0 : end - start);
+    }
+
+    private static bool IsContent(byte[] row, int x)
+    {
+        var (r, g, b) = Pixel(row, x);
+        var uniform = r == g && g == b;
+        return uniform && (r < 40 || r > 230);
+    }
+
+    private static bool IsBright(byte[] row, int x) => Pixel(row, x).R > 230;
+
+    private static (byte R, byte G, byte B) Pixel(byte[] row, int x) =>
+        (row[x * 4], row[(x * 4) + 1], row[(x * 4) + 2]);
+
+    private static async Task<byte[]> RenderRowAsync(double dividerFraction) =>
+        (await RenderAsync(dividerFraction)).Row;
+
+    /// <summary>Rendert die Ansicht und gibt eine Bildzeile durch die Mitte der Vergleichsfläche zurück.</summary>
+    private static async Task<(byte[] Row, Rect Surface)> RenderAsync(double dividerFraction)
+    {
+        var renderer = new MonochromeRenderer();
+        var compare = new CompareViewModel(renderer);
+        compare.Offer(Published("a.png", "a_compressed.jpg"));
+        for (var attempt = 0; attempt < 100 && !compare.HasPreview; attempt++)
+        {
+            Dispatcher.UIThread.RunJobs();
+            await Task.Delay(10);
+        }
+
+        Assert.True(compare.HasPreview);
+        compare.DividerFraction = dividerFraction;
+
+        var view = new CompareView { DataContext = compare };
+        var window = new Window { Content = view, Width = WindowWidth, Height = WindowHeight };
+        window.Show();
+        Dispatcher.UIThread.RunJobs(DispatcherPriority.Loaded);
+        window.UpdateLayout();
+        AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+        Dispatcher.UIThread.RunJobs();
+
+        var surface = view.FindControl<Grid>("CompareSurface")!;
+        // Bounds sind elternrelativ; gebraucht wird die Lage im Fenster, also im Bildpuffer.
+        var origin = surface.TranslatePoint(default, window)!.Value;
+        var rect = new Rect(origin, surface.Bounds.Size);
+        return (ReadRow(window.CaptureRenderedFrame()!, (int)rect.Center.Y), rect);
+    }
+
+    private static byte[] ReadRow(Bitmap frame, int y)
+    {
+        var stride = frame.PixelSize.Width * 4;
+        var buffer = new byte[stride * frame.PixelSize.Height];
+        var handle = GCHandle.Alloc(buffer, GCHandleType.Pinned);
+        try
+        {
+            frame.CopyPixels(
+                new PixelRect(frame.PixelSize),
+                handle.AddrOfPinnedObject(),
+                buffer.Length,
+                stride);
+        }
+        finally
+        {
+            handle.Free();
+        }
+
+        return buffer[(y * stride)..((y + 1) * stride)];
+    }
+
+    private static QueueItemViewModel Published(string input, string output)
+    {
+        var item = new QueueItemViewModel(input, EngineIds.Jpegli, 100);
+        item.ApplyOutcome(
+            new CompressionOutcome(
+                JobStatus.Succeeded, input, output, 100, 50, true, null, null, null));
+        return item;
+    }
+
+    /// <summary>Original weiß, Ergebnis schwarz; 4:3, damit eine falsche Einpassung auffällt.</summary>
+    private sealed class MonochromeRenderer : IPreviewRenderer
+    {
+        public Task<PreviewResult> RenderPreviewAsync(
+            string inputPath,
+            int maxEdge,
+            RgbColor alphaBackground,
+            CancellationToken cancellationToken)
+        {
+            var value = (byte)(inputPath.EndsWith(".png", StringComparison.Ordinal) ? 255 : 0);
+            var pixels = new byte[40 * 30 * 3];
+            Array.Fill(pixels, value);
+            return Task.FromResult(new PreviewResult(new PreviewImage(40, 30, pixels), null));
+        }
+    }
+}

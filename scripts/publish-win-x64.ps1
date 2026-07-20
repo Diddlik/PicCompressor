@@ -14,6 +14,7 @@ $artifactsRoot = Join-Path $root "artifacts"
 $nativeOutput = Join-Path $artifactsRoot "native\win-x64\Release-Mingw"
 $publishOutput = Join-Path $artifactsRoot "publish\win-x64"
 $releasesOutput = Join-Path $artifactsRoot "releases\win-x64"
+$applicationIcon = Join-Path $root "assets\PicCompressor.ico"
 $buildDirectory = Join-Path $root "native\build-win-x64"
 $nativeLibrary = Join-Path $nativeOutput "piccompressor_native.dll"
 $jpegliSource = Join-Path $buildDirectory "_deps\jpegli-src"
@@ -156,6 +157,7 @@ Invoke-Checked {
         --mainExe PicCompressor.Desktop.exe `
         --runtime win-x64 `
         --packTitle PicCompressor `
+        --icon $applicationIcon `
         --outputDir $releasesOutput
 }
 

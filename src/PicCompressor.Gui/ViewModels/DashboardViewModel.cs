@@ -255,8 +255,11 @@ public sealed class DashboardViewModel : ObservableObject
 
     private CompressionRequest BuildRequest(
         QueueItemViewModel item,
-        CompressionEngineSettings engineSettings) =>
-        new(
+        CompressionEngineSettings engineSettings)
+    {
+        // Der Vergleich braucht später denselben Hintergrund wie der Lauf.
+        item.AlphaBackground = Settings.AlphaBackground;
+        return new(
             item.InputPath,
             engineSettings,
             Settings.ExifPolicy,
@@ -267,6 +270,7 @@ public sealed class DashboardViewModel : ObservableObject
             Settings.UsesCustomDirectory ? Settings.OutputDirectory : null,
             Settings.Suffix,
             item.PredecessorJobId);
+    }
 
     private void Cancel() => runCancellation?.Cancel();
 

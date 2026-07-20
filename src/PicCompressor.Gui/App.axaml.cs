@@ -15,7 +15,8 @@ public sealed class App : Avalonia.Application
             new UnconfiguredCompressionService(),
             new UnconfiguredEngineCatalogService(),
             new InMemoryHistoryService(),
-            new InMemoryApplicationSettingsStore());
+            new InMemoryApplicationSettingsStore(),
+            null);
 
     private readonly AppServices services = serviceFactory();
 
@@ -23,14 +24,20 @@ public sealed class App : Avalonia.Application
         ICompressionService compressionService,
         IEngineCatalogService engineCatalogService,
         IHistoryService historyService,
-        IApplicationSettingsStore settingsStore)
+        IApplicationSettingsStore settingsStore,
+        IPreviewRenderer? previewRenderer = null)
     {
         ArgumentNullException.ThrowIfNull(compressionService);
         ArgumentNullException.ThrowIfNull(engineCatalogService);
         ArgumentNullException.ThrowIfNull(historyService);
         ArgumentNullException.ThrowIfNull(settingsStore);
         serviceFactory = () =>
-            new(compressionService, engineCatalogService, historyService, settingsStore);
+            new(
+                compressionService,
+                engineCatalogService,
+                historyService,
+                settingsStore,
+                previewRenderer);
     }
 
     public override void Initialize() => AvaloniaXamlLoader.Load(this);
@@ -43,7 +50,8 @@ public sealed class App : Avalonia.Application
                 services.CompressionService,
                 services.EngineCatalogService,
                 services.HistoryService,
-                services.SettingsStore);
+                services.SettingsStore,
+                services.PreviewRenderer);
 
             var window = new MainWindow { DataContext = viewModel };
             window.Opened += async (_, _) =>
@@ -59,5 +67,6 @@ public sealed class App : Avalonia.Application
         ICompressionService CompressionService,
         IEngineCatalogService EngineCatalogService,
         IHistoryService HistoryService,
-        IApplicationSettingsStore SettingsStore);
+        IApplicationSettingsStore SettingsStore,
+        IPreviewRenderer? PreviewRenderer);
 }

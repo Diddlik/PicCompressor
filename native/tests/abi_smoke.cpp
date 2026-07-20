@@ -72,6 +72,29 @@ int main() {
             PC_STATUS_INVALID_ARGUMENT,
         "a mismatched struct size is rejected");
 
+  pc_preview_options preview_options{sizeof(pc_preview_options), 512, 255, 255,
+                                     255};
+  pc_preview preview{sizeof(pc_preview), 0, 0, nullptr, 0};
+  char preview_error[128]{};
+  Check(pc_render_preview("input.png", &preview_options, &preview, cancel,
+                          preview_error, sizeof(preview_error)) ==
+            PC_STATUS_CANCELED,
+        "a canceled preview reports Canceled");
+  Check(preview.rgb == nullptr, "a canceled preview owns no buffer");
+
+  pc_preview_options invalid_preview = preview_options;
+  invalid_preview.max_edge = 0;
+  char invalid_preview_error[128]{};
+  Check(pc_render_preview("input.png", &invalid_preview, &preview, nullptr,
+                          invalid_preview_error,
+                          sizeof(invalid_preview_error)) ==
+            PC_STATUS_INVALID_ARGUMENT,
+        "a preview without a target size is rejected");
+
+  // Releasing a preview that was never filled must stay safe.
+  pc_preview_release(&preview);
+  pc_preview_release(nullptr);
+
   pc_cancel_destroy(cancel);
 
   char guetzli_error[128]{};

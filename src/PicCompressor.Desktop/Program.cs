@@ -65,7 +65,8 @@ internal static class Program
                 executor),
             new ApplicationEngineCatalogService(new EngineCatalog([jpegli, unavailableGuetzli])),
             new PersistentHistoryService(historyStore),
-            settingsStore);
+            settingsStore,
+            bridge);
 
         return AppBuilder.Configure<App>()
             .UsePlatformDetect()

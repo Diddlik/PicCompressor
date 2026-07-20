@@ -31,10 +31,30 @@ internal struct NativeJpegliOptions
     internal int ColorProfilePolicy;
 }
 
+[StructLayout(LayoutKind.Sequential)]
+internal struct NativePreviewOptions
+{
+    internal uint StructSize;
+    internal int MaxEdge;
+    internal int AlphaRed;
+    internal int AlphaGreen;
+    internal int AlphaBlue;
+}
+
+[StructLayout(LayoutKind.Sequential)]
+internal struct NativePreview
+{
+    internal uint StructSize;
+    internal int Width;
+    internal int Height;
+    internal nint Rgb;
+    internal nuint RgbSize;
+}
+
 internal static partial class NativeMethods
 {
     internal const string LibraryName = "piccompressor_native";
-    internal const uint AbiVersion = 3;
+    internal const uint AbiVersion = 4;
 
     [LibraryImport(LibraryName, EntryPoint = "pc_abi_version")]
     internal static partial uint GetAbiVersion();
@@ -71,6 +91,21 @@ internal static partial class NativeMethods
         nint cancelHandle,
         byte* error,
         nuint errorCapacity);
+
+    [LibraryImport(
+        LibraryName,
+        EntryPoint = "pc_render_preview",
+        StringMarshalling = StringMarshalling.Utf8)]
+    internal static unsafe partial NativeStatus RenderPreview(
+        string inputPath,
+        in NativePreviewOptions options,
+        ref NativePreview preview,
+        nint cancelHandle,
+        byte* error,
+        nuint errorCapacity);
+
+    [LibraryImport(LibraryName, EntryPoint = "pc_preview_release")]
+    internal static partial void ReleasePreview(ref NativePreview preview);
 
     [LibraryImport(
         LibraryName,
