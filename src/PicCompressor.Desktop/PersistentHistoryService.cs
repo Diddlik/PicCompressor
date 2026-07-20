@@ -25,6 +25,9 @@ public sealed class PersistentHistoryService(ICompressionHistoryStore store) : I
                 record.ErrorCategory),
             cancellationToken);
 
+    public Task ClearAsync(CancellationToken cancellationToken) =>
+        store.ClearAsync(cancellationToken);
+
     private static HistoryRecord Map(CompressionHistoryEntry entry) =>
         new(
             entry.CompletedAt,

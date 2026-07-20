@@ -26,6 +26,7 @@ internal static class CliApplication
           --parallelism <1-256>         Maximum concurrent jobs (default: 1)
           --json                        Emit schema-versioned JSON
           --no-history                  Do not record results in the local history
+          --log <path>                  Write the JSONL log to this path
           --help                        Show help
         """;
 
@@ -33,6 +34,61 @@ internal static class CliApplication
     {
         Converters = { new JsonStringEnumConverter() }
     };
+
+    /// <summary>
+    /// Writes the structured record of this run. Only file names are logged;
+    /// full paths count as unnecessary detail (requirement 13.3).
+    /// </summary>
+    private static void LogOutcome(
+        IDiagnosticLog log,
+        IReadOnlyList<CompressionJobPlan> plans,
+        IReadOnlyList<CompressionExecutionResult> results,
+        string? historyWarning)
+    {
+        const string Component = "Cli";
+        var now = DateTimeOffset.UtcNow;
+
+        foreach (var plan in plans.Where(plan => plan.ErrorCategory is not null))
+        {
+            log.Write(
+                new DiagnosticEntry(
+                    now,
+                    DiagnosticSeverity.Error,
+                    Component,
+                    "Input was rejected during planning.",
+                    Path.GetFileName(plan.Input.Path),
+                    ErrorCategory: plan.ErrorCategory));
+        }
+
+        foreach (var result in results)
+        {
+            log.Write(
+                new DiagnosticEntry(
+                    now,
+                    result.Status is JobStatus.Succeeded
+                        ? DiagnosticSeverity.Information
+                        : DiagnosticSeverity.Error,
+                    Component,
+                    result.Status is JobStatus.Succeeded
+                        ? result.OutputPublished
+                            ? "Job succeeded and the output was published."
+                            : "Job succeeded without publishing an output."
+                        : "Job did not succeed.",
+                    Path.GetFileName(result.InputPath),
+                    result.JobId,
+                    result.ErrorCategory));
+        }
+
+        if (historyWarning is not null)
+        {
+            log.Write(
+                new DiagnosticEntry(
+                    now,
+                    DiagnosticSeverity.Warning,
+                    Component,
+                    historyWarning));
+        }
+    }
 
     /// <summary>
     /// Records finished jobs in the shared local history. A persistence failure
@@ -85,7 +141,8 @@ internal static class CliApplication
         string[] args,
         TextWriter standardOutput,
         TextWriter standardError,
-        ICompressionHistoryStore? historyStore = null)
+        ICompressionHistoryStore? historyStore = null,
+        IDiagnosticLog? diagnosticLog = null)
     {
         if (args.Contains("--help", StringComparer.Ordinal) || args.Contains("-h", StringComparer.Ordinal))
         {
@@ -105,6 +162,10 @@ internal static class CliApplication
                 .ConfigureAwait(false);
             return 2;
         }
+
+        var log = diagnosticLog
+            ?? new JsonLinesDiagnosticLog(
+                options.LogPath ?? ApplicationDataPaths.DiagnosticLogPath);
 
         using var cancellationSource = new CancellationTokenSource();
         ConsoleCancelEventHandler cancelHandler = (_, eventArgs) =>
@@ -176,6 +237,8 @@ internal static class CliApplication
             var historyWarning = options.NoHistory
                 ? null
                 : await RecordHistoryAsync(historyStore, results).ConfigureAwait(false);
+
+            LogOutcome(log, plans, results, historyWarning);
 
             if (options.Json)
             {

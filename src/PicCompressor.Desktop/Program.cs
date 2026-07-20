@@ -12,6 +12,8 @@ namespace PicCompressor.Desktop;
 
 internal static class Program
 {
+    private static readonly TimeSpan DefaultHistoryRetention = TimeSpan.FromDays(90);
+
     [STAThread]
     public static int Main(string[] args)
     {
@@ -29,6 +31,28 @@ internal static class Program
         var executor = new CompressionExecutor(
             jpegli,
             new SafeOutputPublisher(fileSystem, inspector));
+        var historyStore = new SqliteCompressionHistoryStore(
+            ApplicationDataPaths.HistoryDatabasePath);
+
+        // Aufbewahrung nach Abschnitt 13.1. Die Dauer ist bis zur Persistenz der
+        // Einstellungen ein fester Vorgabewert und noch nicht benutzerkonfigurierbar.
+        try
+        {
+            historyStore
+                .ApplyRetentionAsync(
+                    DateTimeOffset.UtcNow - DefaultHistoryRetention,
+                    CancellationToken.None)
+                .GetAwaiter()
+                .GetResult();
+        }
+        catch (Exception exception) when (
+            exception is IOException
+                or InvalidDataException
+                or UnauthorizedAccessException)
+        {
+            // Ein nicht lesbarer Verlauf darf den Start nicht verhindern.
+        }
+
         App.ConfigureServices(
             new ApplicationCompressionService(
                 new CompressionJobFactory(
@@ -38,9 +62,7 @@ internal static class Program
                     TimeProvider.System),
                 executor),
             new ApplicationEngineCatalogService(new EngineCatalog([jpegli, unavailableGuetzli])),
-            new PersistentHistoryService(
-                new SqliteCompressionHistoryStore(
-                    ApplicationDataPaths.HistoryDatabasePath)));
+            new PersistentHistoryService(historyStore));
 
         return AppBuilder.Configure<App>()
             .UsePlatformDetect()

@@ -146,6 +146,31 @@ public sealed class MainWindowViewModelTests
         Assert.Same(succeeded, main.Compare.Selected);
     }
 
+    [Fact]
+    public async Task Clearing_the_history_empties_store_and_view()
+    {
+        var service = new RecordingHistoryService();
+        var history = new HistoryViewModel(service);
+        await history.AppendAsync(
+            new HistoryRecord(
+                DateTimeOffset.UtcNow,
+                "a.jpg",
+                EngineIds.Jpegli,
+                10,
+                5,
+                JobStatus.Succeeded,
+                null),
+            CancellationToken.None);
+        Assert.True(history.ClearCommand.CanExecute(null));
+
+        await history.ClearAsync(CancellationToken.None);
+
+        Assert.Empty(history.Entries);
+        Assert.Empty(service.Records);
+        // Ein leerer Verlauf lässt sich nicht erneut löschen.
+        Assert.False(history.ClearCommand.CanExecute(null));
+    }
+
     private static MainWindowViewModel Create() =>
         new(
             new UnconfiguredCompressionService(),

@@ -116,6 +116,35 @@ public sealed class CliApplicationTests : IDisposable
             json.RootElement.GetProperty("historyWarning").GetString());
     }
 
+    [Fact]
+    public async Task RunAsync_writes_a_structured_log_without_full_paths()
+    {
+        using var output = new StringWriter();
+        using var error = new StringWriter();
+        var logPath = Path.Combine(directory, "run.jsonl");
+
+        await CliApplication.RunAsync(
+            [
+                Path.Combine(directory, "input.png"),
+                "--output-dir", Path.Combine(directory, "out"),
+                "--no-history",
+                "--log", logPath
+            ],
+            output,
+            error);
+
+        var lines = File.ReadAllLines(logPath);
+        var entry = Assert.Single(lines);
+        using var document = JsonDocument.Parse(entry);
+        Assert.Equal("Cli", document.RootElement.GetProperty("Component").GetString());
+        Assert.Equal("input.png", document.RootElement.GetProperty("FileName").GetString());
+        Assert.NotEqual(
+            Guid.Empty,
+            document.RootElement.GetProperty("JobId").GetGuid());
+        // Logs enthalten keine unnötigen vollständigen Pfade (Abschnitt 13.3).
+        Assert.DoesNotContain(directory, entry, StringComparison.OrdinalIgnoreCase);
+    }
+
     public void Dispose() => Directory.Delete(directory, recursive: true);
 
     private sealed class RecordingHistoryStore : PicCompressor.Application.ICompressionHistoryStore
@@ -134,6 +163,17 @@ public sealed class CliApplicationTests : IDisposable
             Entries.Add(entry);
             return Task.CompletedTask;
         }
+
+        public Task ClearAsync(CancellationToken cancellationToken)
+        {
+            Entries.Clear();
+            return Task.CompletedTask;
+        }
+
+        public Task<int> ApplyRetentionAsync(
+            DateTimeOffset cutoff,
+            CancellationToken cancellationToken) =>
+            Task.FromResult(Entries.RemoveAll(entry => entry.CompletedAt < cutoff));
     }
 
     private sealed class FailingHistoryStore : PicCompressor.Application.ICompressionHistoryStore
@@ -144,6 +184,14 @@ public sealed class CliApplicationTests : IDisposable
 
         public Task AppendAsync(
             PicCompressor.Application.CompressionHistoryEntry entry,
+            CancellationToken cancellationToken) =>
+            throw new IOException("history is unavailable");
+
+        public Task ClearAsync(CancellationToken cancellationToken) =>
+            throw new IOException("history is unavailable");
+
+        public Task<int> ApplyRetentionAsync(
+            DateTimeOffset cutoff,
             CancellationToken cancellationToken) =>
             throw new IOException("history is unavailable");
     }

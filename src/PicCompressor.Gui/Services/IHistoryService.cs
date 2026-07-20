@@ -23,6 +23,9 @@ public interface IHistoryService
     Task<IReadOnlyList<HistoryRecord>> GetAsync(CancellationToken cancellationToken);
 
     Task AppendAsync(HistoryRecord record, CancellationToken cancellationToken);
+
+    /// <summary>Löscht den gesamten Verlauf (Abschnitt 13.1).</summary>
+    Task ClearAsync(CancellationToken cancellationToken);
 }
 
 /// <summary>
@@ -51,6 +54,17 @@ public sealed class InMemoryHistoryService : IHistoryService
         lock (records)
         {
             records.Insert(0, record);
+        }
+
+        return Task.CompletedTask;
+    }
+
+    public Task ClearAsync(CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        lock (records)
+        {
+            records.Clear();
         }
 
         return Task.CompletedTask;

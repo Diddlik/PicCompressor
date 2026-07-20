@@ -59,9 +59,14 @@ public sealed class HistoryViewModel : ObservableObject
     {
         ArgumentNullException.ThrowIfNull(historyService);
         this.historyService = historyService;
+        ClearCommand = new AsyncRelayCommand(
+            () => ClearAsync(CancellationToken.None),
+            () => Entries.Count > 0);
     }
 
     public ObservableCollection<HistoryEntryViewModel> Entries { get; } = [];
+
+    public AsyncRelayCommand ClearCommand { get; }
 
     public string Search
     {
@@ -124,10 +129,22 @@ public sealed class HistoryViewModel : ObservableObject
         RaiseAll();
     }
 
+    /// <summary>
+    /// Löscht den gesamten Verlauf (Abschnitt 13.1). Die Anzeige wird erst geleert,
+    /// wenn der Speicher den Löschvorgang bestätigt hat.
+    /// </summary>
+    public async Task ClearAsync(CancellationToken cancellationToken)
+    {
+        await historyService.ClearAsync(cancellationToken).ConfigureAwait(true);
+        Entries.Clear();
+        RaiseAll();
+    }
+
     private void RaiseAll()
     {
         Raise(nameof(VisibleEntries));
         Raise(nameof(IsEmpty));
         Raise(nameof(Summary));
+        ClearCommand.RaiseCanExecuteChanged();
     }
 }

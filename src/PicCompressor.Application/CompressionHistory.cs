@@ -18,4 +18,15 @@ public interface ICompressionHistoryStore
     Task AppendAsync(
         CompressionHistoryEntry entry,
         CancellationToken cancellationToken);
+
+    /// <summary>Entfernt alle Einträge (Abschnitt 13.1).</summary>
+    Task ClearAsync(CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Entfernt Einträge, die vor <paramref name="cutoff"/> abgeschlossen wurden,
+    /// und meldet deren Anzahl. Setzt die Aufbewahrungsdauer aus Abschnitt 13.1 um.
+    /// </summary>
+    Task<int> ApplyRetentionAsync(
+        DateTimeOffset cutoff,
+        CancellationToken cancellationToken);
 }

@@ -431,8 +431,9 @@ Fehlerdiagnosen gehen nach Standardfehler. Maschinenlesbare Ausgabe bleibt auch 
 - GUI und CLI nutzen dasselbe Schema und dieselbe Zugriffsschicht.
 - Gespeichert werden Ergebnisse, keine Bildinhalte.
 - Schreibzugriffe sind transaktional und nebenläufig sicher.
-- Schemaänderungen benötigen vorwärtsgerichtete, getestete Migrationen.
+- Schemaänderungen benötigen vorwärtsgerichtete, getestete Migrationen. Migrationen sind eine geordnete Liste von Schritten; Schritt `i` hebt das Schema von Version `i` auf `i + 1`. Bestehende Schritte werden nie umgeschrieben, eine Änderung wird angehängt. Eine neuere Schemaversion als die unterstützte wird abgelehnt statt heruntergestuft.
 - Benutzer können Verlauf deaktivieren, Einträge löschen und eine Aufbewahrungsdauer festlegen.
+- Die Aufbewahrung entfernt Einträge, die vor dem Stichtag abgeschlossen wurden. Sie läuft beim Start und darf einen fehlerhaften Verlauf nicht in einen Startfehler verwandeln.
 - Absolute Pfade gelten als potenziell sensible Daten und werden bei Export auf Wunsch anonymisiert.
 
 ### 13.2 Einstellungen
@@ -445,6 +446,8 @@ Fehlerdiagnosen gehen nach Standardfehler. Maschinenlesbare Ausgabe bleibt auch 
 ### 13.3 Logging
 
 - Interne Logs sind strukturiert und enthalten Zeit, Schweregrad, Job-ID, Komponente und Fehlerkategorie.
+- Das Format ist JSON Lines: eine Zeile je Eintrag, damit ein abgebrochener Schreibvorgang die übrigen Zeilen nicht unlesbar macht. Schweregrad und Fehlerkategorie erscheinen als stabile Bezeichner, nicht als Zahlen.
+- Ein nicht schreibbares Log ist kein Produktfehler und darf keine Kompression scheitern lassen.
 - Standardpfad ist das Anwendungsdatenverzeichnis, nicht der Bild-Zielordner.
 - Ein expliziter JSONL-Export in den Zielordner ist möglich.
 - Logs enthalten keine Bilddaten, Metadateninhalte oder unnötigen vollständigen Pfade.
@@ -583,16 +586,16 @@ Eine Anforderung ist erst umgesetzt, wenn:
 | Bereich | Status | Verifiziert |
 |---|---|---|
 | Anforderungen | Baseline erstellt | 2026-07-19 |
-| Solution und Projekte | Teilweise verifiziert | Windows x64: .NET SDK 10.0.302; normaler Solution-Build erzeugt den MSVC-`RelWithDebInfo`-Wrapper inkrementell, führt dessen ABI- und EXIF-Tests aus und kopiert DLL/PDB transitiv zu Desktop, CLI und Testhost; vollständige Solution mit 162 Tests am 2026-07-20 verifiziert |
+| Solution und Projekte | Teilweise verifiziert | Windows x64: .NET SDK 10.0.302; normaler Solution-Build erzeugt den MSVC-`RelWithDebInfo`-Wrapper inkrementell, führt dessen ABI- und EXIF-Tests aus und kopiert DLL/PDB transitiv zu Desktop, CLI und Testhost; vollständige Solution mit 173 Tests am 2026-07-20 verifiziert |
 | Domain-Modell | In Arbeit | Windows x64: Job-Invarianten und Statusübergänge |
 | Native Wrapper/Interop | In Arbeit | Windows x64: C-ABI v3, Capability-Metadaten, Status-/Fehlerübersetzung und kooperatives Abbruch-Handle; ABI-Smoke-Test und eigener EXIF-Modultest (`piccompressor_exif_tests`); gepinntes Jpegli 0.12.0 mit skcms, libpng und zlib statisch eingebunden; UCRT64- und MSVC-`RelWithDebInfo`-Build am 2026-07-20 verifiziert. Reines MSVC `Debug` blockiert beim Encoding und ist ausgeschlossen; Guetzli ist noch nicht eingebunden |
 | Jpegli-Adapter | In Arbeit | Windows x64: reale PNG-/JPEG-Dekodierung und JPEG-Erzeugung über P/Invoke sowie vollständiger CLI-Einzeldateipfad verifiziert; Qualität, Chroma, Progressive-Level und Alpha-Hintergrund werden übertragen. Alle Metadatenrichtlinien aus 8.3 sind umgesetzt: EXIF-Orientierung wird auf die Pixel angewendet (Orientierungen 1–8 gegen den echten Wrapper getestet), `Keep`/`Private`/`Remove` sowie `Preserve`/`Srgb`/`Remove` werden über die ABI übertragen. Die Ablehnung von `Farbprofil entfernen` bei Nicht-sRGB-Eingaben ist implementiert, aber mangels Testbild mit fremdem ICC-Profil noch nicht automatisiert verifiziert |
 | Guetzli-Adapter | Nicht begonnen | – |
 | Sichere Dateipipeline | In Arbeit | Windows x64: Eingabeprüfung, Datei-/Pixelgrenzen, Kollisionsplanung, reservierte temporäre Dateien, bedarfsgerechtes Anlegen verschachtelter Zielverzeichnisse, strukturelle JPEG-Ausgabeprüfung, `discard`/`keep`-Veröffentlichung sowie gemeinsamer Einzeljob-Anwendungsfall mit Fehler-/Abbruchbereinigung |
 | Queue und Ressourcensteuerung | In Arbeit | Windows x64: gemeinsame Application-Batchausführung mit konfigurierbarer harter Parallelitätsgrenze, stabiler Ergebnisreihenfolge, geordneten Statusmeldungen (`WaitingForResources`, `Encoding`, `Finalizing` und terminale Zustände) und `Canceled`-Ergebnissen für noch wartende Jobs; GUI-Wiederholung erzeugt einen neuen Job mit Vorgängerreferenz. CPU-/speichergewichtete Budgets bleiben bis O-005 offen |
-| CLI | In Arbeit | Windows x64: History angebunden; mehrere Datei- und Ordnereingaben, optionale Rekursion ohne Verfolgung von Verzeichnislinks, Erhalt relativer Unterordner, Ausschluss des Ausgabeordners, `dry-run`, begrenzte Parallelität, Jpegli-Optionen, `--exif` und `--color-profile`, `--no-history`, menschenlesbare/JSON-Ausgabe, `Ctrl+C` und Batch-Exit-Codes |
+| CLI | In Arbeit | Windows x64: History angebunden; mehrere Datei- und Ordnereingaben, optionale Rekursion ohne Verfolgung von Verzeichnislinks, Erhalt relativer Unterordner, Ausschluss des Ausgabeordners, `dry-run`, begrenzte Parallelität, Jpegli-Optionen, `--exif` und `--color-profile`, `--no-history`, `--log`, menschenlesbare/JSON-Ausgabe, `Ctrl+C` und Batch-Exit-Codes |
 | GUI | In Arbeit | Windows x64: Avalonia-12-Shell (Titelzeile, Navigationsschiene mit kompaktem Zustand, Statuszeile), Light-/Dark-Farbrollen der Vorlage, vier Ansichten (Arbeitsbereich, Einstellungen, Verlauf, Vergleich) sowie Drag-and-drop und Dateiauswahl gebaut und gestartet. Oberflächentexte vollständig aus `Strings.resx`/`Strings.de.resx`; Sprachwechsel Deutsch/Englisch und Designwechsel System/Hell/Dunkel zur Laufzeit verifiziert. Der Desktop Host bindet reale Jpegli-Kompression, Engine-Erkennung, Application-Queue, Fortschritt, Abbruch, Wiederholung und lokalen Verlauf an die ViewModels an. Vorschauerzeugung sowie Persistenz von Sprach-, Design- und Kompressionseinstellungen fehlen |
-| History und Logging | In Arbeit | Windows x64: gemeinsamer Verlauf von GUI und CLI über eine versionierte SQLite-Datenbank (`user_version = 1`) im Anwendungsdatenverzeichnis; beide Hosts lösen den Pfad über `ApplicationDataPaths` auf. Transaktionales Schreiben, serialisierter Zugriff und erneutes Öffnen getestet. Gespeichert wird nur der Dateiname statt des vollständigen Eingabepfads. Die CLI schreibt jeden abgeschlossenen Job und kennt `--no-history`; ein Persistenzfehler wird nach 14.4 als eigene Warnung gemeldet, ohne das Kompressionsergebnis zu verändern (in GUI und CLI getestet). Löschung/Aufbewahrung, Migration aus älteren Schemata und strukturiertes Logging fehlen |
+| History und Logging | In Arbeit | Windows x64: gemeinsamer Verlauf von GUI und CLI über eine versionierte SQLite-Datenbank (`user_version = 2`) im Anwendungsdatenverzeichnis; beide Hosts lösen den Pfad über `ApplicationDataPaths` auf. Transaktionales Schreiben, serialisierter Zugriff, nebenläufige Schreibvorgänge, Migration von Version 1 ohne Datenverlust und Ablehnung neuerer Schemata sind getestet. Gespeichert wird nur der Dateiname statt des vollständigen Eingabepfads. Die CLI schreibt jeden abgeschlossenen Job und kennt `--no-history`; ein Persistenzfehler wird nach 14.4 als eigene Warnung gemeldet (in GUI und CLI getestet). Löschen des gesamten Verlaufs ist in der GUI verfügbar, die Aufbewahrung läuft beim Start des Desktop Hosts. Strukturiertes JSONL-Logging mit Rotation ist umgesetzt und über `--log` umlenkbar. Offen: Löschen einzelner Einträge und die benutzerkonfigurierbare Aufbewahrungsdauer (O-008) |
 | Packaging und Plattformmatrix | In Arbeit | Windows x64: Release `0.2.0-alpha.1` mit separatem Desktop-Composition-Root, verifiziertem `VelopackApp.Build().Run()`, selbstenthaltendem Desktop-/CLI-Publish, gepinntem VeloPack-1.2.0-Workflow ohne Bootstrap-Prüf-Bypass, UCRT64-Native-Build, ABI-/Portable-CLI-Smoke, One-Click-Installer, Portable ZIP, Updatepaket, Lizenzen und validierten SHA256-Manifesten erzeugt. GUI-Updateoberfläche, Signierung, Rollbacktests und weitere RIDs fehlen |
 
 Statuswerte: `Nicht begonnen`, `In Arbeit`, `Teilweise verifiziert`, `Verifiziert`, `Blockiert`, `Verworfen`.
@@ -604,6 +607,7 @@ Statuswerte: `Nicht begonnen`, `In Arbeit`, `Teilweise verifiziert`, `Verifizier
 | O-001 | Jpegli-Pin `031a0077f5799a6041004267fc12b956c1f52a20` freigeben | reproduzierbarer Build und Referenztests je Runtime |
 | O-002 | Guetzli-Unterstützung je Plattform | verfügbare, lizenzkonforme, getestete Library-Einbindungen |
 | O-007 | Positivliste der bei `EXIF privat` erhaltenen Tags | Abgleich mit realen Kameramodellen; die aktuelle Liste ist bewusst eng und kann fachlich nützliche Felder verwerfen |
+| O-008 | Benutzerkonfigurierbare Aufbewahrungsdauer und Grenzwerte der Logrotation | setzt die Persistenz der Einstellungen nach 13.2 voraus; bis dahin gelten feste Vorgabewerte (90 Tage Verlauf, 5 MB und 5 Generationen Log) |
 | O-004 | Standardwerte der Qualitätsprofile | Vergleichstest mit repräsentativem Bildkorpus |
 | O-005 | Ressourcenbudgets | Benchmarks nach Pixelzahl, Engine und Runtime |
 | O-006 | Signing-Dienst und Hosting für direkte Releases | Signaturtest mit Azure Artifact Signing, Hostingkosten, Rollback und Wartungsaufwand |

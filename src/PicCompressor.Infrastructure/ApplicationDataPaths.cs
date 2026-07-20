@@ -13,4 +13,11 @@ public static class ApplicationDataPaths
 
     public static string HistoryDatabasePath { get; } =
         Path.Combine(ApplicationDataDirectory, "history.db");
+
+    /// <summary>
+    /// Standardpfad des strukturierten Logs. Abschnitt 13.3 verlangt das
+    /// Anwendungsdatenverzeichnis, ausdrücklich nicht den Bild-Zielordner.
+    /// </summary>
+    public static string DiagnosticLogPath { get; } =
+        Path.Combine(ApplicationDataDirectory, "logs", "piccompressor.jsonl");
 }

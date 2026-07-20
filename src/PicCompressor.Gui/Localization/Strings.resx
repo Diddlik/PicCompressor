@@ -298,6 +298,9 @@
   <data name="Hist_Title" xml:space="preserve">
     <value>History</value>
   </data>
+  <data name="Hist_Clear" xml:space="preserve">
+    <value>Clear history</value>
+  </data>
   <data name="Hist_Search" xml:space="preserve">
     <value>Search file name…</value>
   </data>

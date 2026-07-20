@@ -15,7 +15,8 @@ internal sealed record CliOptions(
     bool DryRun,
     int Parallelism,
     bool Json,
-    bool NoHistory)
+    bool NoHistory,
+    string? LogPath)
 {
     internal static CliOptions Parse(string[] args)
     {
@@ -33,6 +34,7 @@ internal sealed record CliOptions(
         var parallelism = 1;
         var json = false;
         var noHistory = false;
+        string? logPath = null;
 
         for (var index = 0; index < args.Length; index++)
         {
@@ -49,6 +51,9 @@ internal sealed record CliOptions(
                     break;
                 case "--no-history":
                     noHistory = true;
+                    break;
+                case "--log":
+                    logPath = NextValue(args, ref index, "--log");
                     break;
                 case "--parallelism":
                     parallelism = ParseParallelism(NextValue(args, ref index, "--parallelism"));
@@ -108,7 +113,8 @@ internal sealed record CliOptions(
             dryRun,
             parallelism,
             json,
-            noHistory);
+            noHistory,
+            logPath);
     }
 
     private static int ParseQuality(string value) =>

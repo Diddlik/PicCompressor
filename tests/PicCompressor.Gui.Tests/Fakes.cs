@@ -114,6 +114,12 @@ internal sealed class RecordingHistoryService : IHistoryService
         Records.Insert(0, record);
         return Task.CompletedTask;
     }
+
+    public Task ClearAsync(CancellationToken cancellationToken)
+    {
+        Records.Clear();
+        return Task.CompletedTask;
+    }
 }
 
 internal static class TempFiles
