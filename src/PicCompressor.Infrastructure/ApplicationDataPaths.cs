@@ -20,4 +20,13 @@ public static class ApplicationDataPaths
     /// </summary>
     public static string DiagnosticLogPath { get; } =
         Path.Combine(ApplicationDataDirectory, "logs", "piccompressor.jsonl");
+
+    /// <summary>
+    /// Einstellungen liegen nach Abschnitt 13.2 im Benutzer-Konfigurationsverzeichnis,
+    /// getrennt von Verlauf und Logs im Anwendungsdatenverzeichnis.
+    /// </summary>
+    public static string SettingsFilePath { get; } = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+        "PicCompressor",
+        "settings.json");
 }

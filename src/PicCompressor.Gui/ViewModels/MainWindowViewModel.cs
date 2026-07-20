@@ -1,3 +1,4 @@
+using PicCompressor.Application;
 using PicCompressor.Gui.Localization;
 using PicCompressor.Gui.Services;
 
@@ -30,7 +31,8 @@ public sealed class MainWindowViewModel : ObservableObject
     public MainWindowViewModel(
         ICompressionService compressionService,
         IEngineCatalogService engineCatalogService,
-        IHistoryService historyService)
+        IHistoryService historyService,
+        IApplicationSettingsStore? settingsStore = null)
     {
         ArgumentNullException.ThrowIfNull(compressionService);
         ArgumentNullException.ThrowIfNull(engineCatalogService);
@@ -38,7 +40,7 @@ public sealed class MainWindowViewModel : ObservableObject
 
         this.engineCatalogService = engineCatalogService;
 
-        Settings = new SettingsViewModel();
+        Settings = new SettingsViewModel(settingsStore);
         Dashboard = new DashboardViewModel(Settings, compressionService);
         History = new HistoryViewModel(historyService);
         Compare = new CompareViewModel();

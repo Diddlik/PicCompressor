@@ -1,5 +1,6 @@
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using PicCompressor.Application;
 using PicCompressor.Gui.Services;
 using PicCompressor.Gui.ViewModels;
 using PicCompressor.Gui.Views;
@@ -13,19 +14,23 @@ public sealed class App : Avalonia.Application
         new(
             new UnconfiguredCompressionService(),
             new UnconfiguredEngineCatalogService(),
-            new InMemoryHistoryService());
+            new InMemoryHistoryService(),
+            new InMemoryApplicationSettingsStore());
 
     private readonly AppServices services = serviceFactory();
 
     public static void ConfigureServices(
         ICompressionService compressionService,
         IEngineCatalogService engineCatalogService,
-        IHistoryService historyService)
+        IHistoryService historyService,
+        IApplicationSettingsStore settingsStore)
     {
         ArgumentNullException.ThrowIfNull(compressionService);
         ArgumentNullException.ThrowIfNull(engineCatalogService);
         ArgumentNullException.ThrowIfNull(historyService);
-        serviceFactory = () => new(compressionService, engineCatalogService, historyService);
+        ArgumentNullException.ThrowIfNull(settingsStore);
+        serviceFactory = () =>
+            new(compressionService, engineCatalogService, historyService, settingsStore);
     }
 
     public override void Initialize() => AvaloniaXamlLoader.Load(this);
@@ -37,7 +42,8 @@ public sealed class App : Avalonia.Application
             var viewModel = new MainWindowViewModel(
                 services.CompressionService,
                 services.EngineCatalogService,
-                services.HistoryService);
+                services.HistoryService,
+                services.SettingsStore);
 
             var window = new MainWindow { DataContext = viewModel };
             window.Opened += async (_, _) =>
@@ -52,5 +58,6 @@ public sealed class App : Avalonia.Application
     private sealed record AppServices(
         ICompressionService CompressionService,
         IEngineCatalogService EngineCatalogService,
-        IHistoryService HistoryService);
+        IHistoryService HistoryService,
+        IApplicationSettingsStore SettingsStore);
 }

@@ -1,3 +1,4 @@
+using PicCompressor.Application;
 using PicCompressor.Domain;
 using PicCompressor.Gui.Localization;
 using PicCompressor.Gui.Services;
@@ -26,6 +27,25 @@ public sealed class SettingsViewModel : ObservableObject
     private ColorProfilePolicy colorProfilePolicy = ColorProfilePolicy.Preserve;
     private RgbColor alphaBackground = RgbColor.White;
     private int parallelJobs = Math.Max(1, Environment.ProcessorCount / 2);
+
+    private readonly IApplicationSettingsStore settingsStore;
+    private ApplicationSettings stored;
+    private bool applyingStoredSettings;
+
+    /// <summary>
+    /// Ohne übergebenen Speicher bleiben die Einstellungen auf die Sitzung beschränkt.
+    /// Der persistente Speicher wird vom Desktop Host verdrahtet; die GUI kennt nur den
+    /// Application-Port, nicht die Infrastruktur (Abschnitt 14.1).
+    /// </summary>
+    public SettingsViewModel(IApplicationSettingsStore? settingsStore = null)
+    {
+        this.settingsStore = settingsStore ?? new InMemoryApplicationSettingsStore();
+        stored = this.settingsStore.Load();
+        ApplyStoredSettings(stored);
+
+        PropertyChanged += (_, _) => PersistSettings();
+        Appearance.PropertyChanged += (_, _) => PersistSettings();
+    }
 
     public string EngineId
     {
@@ -291,6 +311,76 @@ public sealed class SettingsViewModel : ObservableObject
     public int MaxParallelJobs => Environment.ProcessorCount;
 
     public AppearanceViewModel Appearance { get; } = new();
+
+    /// <summary>
+    /// Übernimmt die gespeicherten Werte. Während der Übernahme wird nicht
+    /// zurückgeschrieben, damit das Laden die Datei nicht sofort neu schreibt.
+    /// </summary>
+    private void ApplyStoredSettings(ApplicationSettings settings)
+    {
+        applyingStoredSettings = true;
+        try
+        {
+            // Die Engine zuerst: ihr Setter zieht die Qualität auf die Engine-Untergrenze.
+            EngineId = settings.EngineId;
+            Quality = settings.Quality;
+            ChromaSubsampling = settings.ChromaSubsampling;
+            ProgressiveLevel = settings.ProgressiveLevel;
+            ExifPolicy = settings.ExifPolicy;
+            ColorProfilePolicy = settings.ColorProfilePolicy;
+            CollisionPolicy = settings.CollisionPolicy;
+            LargerOutputPolicy = settings.LargerOutputPolicy;
+            Suffix = settings.Suffix;
+            OutputDirectory = settings.OutputDirectory;
+            OutputTarget = string.IsNullOrWhiteSpace(settings.OutputDirectory)
+                ? OutputTarget.SuffixNextToInput
+                : OutputTarget.CustomDirectory;
+            ParallelJobs = settings.ParallelJobs;
+            Appearance.Language = Parse(settings.Language, AppLanguage.System);
+            Appearance.Theme = Parse(settings.Theme, AppTheme.System);
+        }
+        finally
+        {
+            applyingStoredSettings = false;
+        }
+    }
+
+    private void PersistSettings()
+    {
+        if (applyingStoredSettings)
+        {
+            return;
+        }
+
+        // Aus dem geladenen Datensatz fortschreiben statt neu aufzubauen: Felder ohne
+        // Entsprechung in der Oberfläche, etwa die Aufbewahrungsdauer des Verlaufs,
+        // bleiben so erhalten.
+        stored = stored with
+        {
+            Language = Appearance.Language.ToString(),
+            Theme = Appearance.Theme.ToString(),
+            EngineId = EngineId,
+            Quality = Quality,
+            ChromaSubsampling = ChromaSubsampling,
+            ProgressiveLevel = ProgressiveLevel,
+            ExifPolicy = ExifPolicy,
+            ColorProfilePolicy = ColorProfilePolicy,
+            CollisionPolicy = CollisionPolicy,
+            LargerOutputPolicy = LargerOutputPolicy,
+            Suffix = Suffix,
+            OutputDirectory = OutputTarget is OutputTarget.CustomDirectory
+                ? OutputDirectory
+                : null,
+            ParallelJobs = ParallelJobs
+        };
+        settingsStore.Save(stored);
+    }
+
+    private static TEnum Parse<TEnum>(string? value, TEnum fallback)
+        where TEnum : struct, Enum =>
+        Enum.TryParse<TEnum>(value, ignoreCase: true, out var parsed) && Enum.IsDefined(parsed)
+            ? parsed
+            : fallback;
 
     /// <summary>
     /// Übernimmt das Ergebnis der Engine-Erkennung. Eine nicht verfügbare Engine wird nicht

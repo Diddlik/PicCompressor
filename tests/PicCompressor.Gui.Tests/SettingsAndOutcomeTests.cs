@@ -210,6 +210,67 @@ public sealed class QueueItemViewModelTests
     }
 
     /// <summary>
+    /// Einstellungen überleben einen Neustart (Abschnitt 13.2). Ein zweites
+    /// ViewModel über demselben Speicher steht für den nächsten Programmstart.
+    /// </summary>
+    [Fact]
+    public void Settings_survive_a_restart()
+    {
+        var store = new PicCompressor.Application.InMemoryApplicationSettingsStore();
+        var previousLanguage = Localizer.Instance.Language;
+        try
+        {
+            var first = new SettingsViewModel(store)
+            {
+                Quality = 61,
+                ChromaSubsampling = JpegliChromaSubsampling.Subsampling444,
+                ExifPolicy = ExifPolicy.Private,
+                ColorProfilePolicy = ColorProfilePolicy.Srgb,
+                CollisionPolicy = CollisionPolicy.Rename,
+                Suffix = "_klein",
+                ParallelJobs = 2
+            };
+            first.Appearance.Theme = AppTheme.Dark;
+            first.Appearance.Language = AppLanguage.German;
+
+            var restarted = new SettingsViewModel(store);
+
+            Assert.Equal(61, restarted.Quality);
+            Assert.Equal(JpegliChromaSubsampling.Subsampling444, restarted.ChromaSubsampling);
+            Assert.Equal(ExifPolicy.Private, restarted.ExifPolicy);
+            Assert.Equal(ColorProfilePolicy.Srgb, restarted.ColorProfilePolicy);
+            Assert.Equal(CollisionPolicy.Rename, restarted.CollisionPolicy);
+            Assert.Equal("_klein", restarted.Suffix);
+            Assert.Equal(2, restarted.ParallelJobs);
+            Assert.Equal(AppTheme.Dark, restarted.Appearance.Theme);
+            Assert.Equal(AppLanguage.German, restarted.Appearance.Language);
+        }
+        finally
+        {
+            Localizer.Instance.Language = previousLanguage;
+        }
+    }
+
+    /// <summary>
+    /// Felder ohne Entsprechung in der Oberfläche dürfen beim Speichern nicht
+    /// verloren gehen.
+    /// </summary>
+    [Fact]
+    public void Saving_preserves_fields_the_user_interface_does_not_expose()
+    {
+        var store = new PicCompressor.Application.InMemoryApplicationSettingsStore();
+        store.Save(new PicCompressor.Application.ApplicationSettings
+        {
+            HistoryRetentionDays = 7
+        });
+
+        var settings = new SettingsViewModel(store) { Quality = 55 };
+
+        Assert.Equal(7, store.Load().HistoryRetentionDays);
+        Assert.Equal(55, store.Load().Quality);
+    }
+
+    /// <summary>
     /// Fortschrittsberichte werden über <see cref="IProgress{T}"/> asynchron zugestellt
     /// und können dem Endergebnis nachlaufen. Ein terminaler Zustand darf dadurch nicht
     /// wieder verlassen werden (Abschnitt 6.2).

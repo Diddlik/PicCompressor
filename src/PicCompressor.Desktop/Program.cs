@@ -12,8 +12,6 @@ namespace PicCompressor.Desktop;
 
 internal static class Program
 {
-    private static readonly TimeSpan DefaultHistoryRetention = TimeSpan.FromDays(90);
-
     [STAThread]
     public static int Main(string[] args)
     {
@@ -31,16 +29,20 @@ internal static class Program
         var executor = new CompressionExecutor(
             jpegli,
             new SafeOutputPublisher(fileSystem, inspector));
+        var log = new JsonLinesDiagnosticLog(ApplicationDataPaths.DiagnosticLogPath);
+        var settingsStore = new JsonApplicationSettingsStore(
+            ApplicationDataPaths.SettingsFilePath,
+            log);
+        var settings = settingsStore.Load();
         var historyStore = new SqliteCompressionHistoryStore(
             ApplicationDataPaths.HistoryDatabasePath);
 
-        // Aufbewahrung nach Abschnitt 13.1. Die Dauer ist bis zur Persistenz der
-        // Einstellungen ein fester Vorgabewert und noch nicht benutzerkonfigurierbar.
+        // Aufbewahrung nach Abschnitt 13.1 mit der konfigurierten Dauer.
         try
         {
             historyStore
                 .ApplyRetentionAsync(
-                    DateTimeOffset.UtcNow - DefaultHistoryRetention,
+                    DateTimeOffset.UtcNow - TimeSpan.FromDays(settings.HistoryRetentionDays),
                     CancellationToken.None)
                 .GetAwaiter()
                 .GetResult();
@@ -62,7 +64,8 @@ internal static class Program
                     TimeProvider.System),
                 executor),
             new ApplicationEngineCatalogService(new EngineCatalog([jpegli, unavailableGuetzli])),
-            new PersistentHistoryService(historyStore));
+            new PersistentHistoryService(historyStore),
+            settingsStore);
 
         return AppBuilder.Configure<App>()
             .UsePlatformDetect()
