@@ -1,29 +1,41 @@
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using System.Runtime.InteropServices;
 using Avalonia;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using PicCompressor.Application;
+using PicCompressor.Domain;
 using PicCompressor.Gui.Localization;
 
 namespace PicCompressor.Gui.ViewModels;
 
 /// <summary>
-/// Vorher-Nachher-Vergleich. Kandidaten sind ausschließlich Jobs mit validierter, veröffentlichter
-/// Ausgabe (Abschnitt 11). Die Vorschau entsteht über denselben nativen Dekodierpfad wie das
-/// Encoding, damit Orientierung und Farbprofil identisch behandelt werden; sie ist auf
+/// Vorher-Nachher-Vergleich. Vergleichbar ist jede Datei der Warteschlange: liegt bereits eine
+/// validierte, veröffentlichte Ausgabe vor, wird genau diese gezeigt; sonst wird das Ergebnis mit
+/// den aktuellen Einstellungen im Speicher erzeugt, ohne dass eine Datei entsteht (Abschnitt 11).
+/// Die Vorschau entsteht über denselben nativen Kodierpfad wie das spätere Schreiben, damit
+/// Orientierung, Farbprofil und Qualität identisch behandelt werden; sie ist auf
 /// <see cref="MaxPreviewEdge"/> begrenzt, damit große Bilder den Speicher nicht sprengen.
 /// </summary>
 public sealed class CompareViewModel : ObservableObject
 {
-    /// <summary>Obergrenze der längeren Kante einer Vorschau in Pixeln.</summary>
-    public const int MaxPreviewEdge = 1600;
+    /// <summary>
+    /// Obergrenze der längeren Kante einer Vorschau in Pixeln. Sie entspricht der Grenze der
+    /// nativen ABI: übliche Kameraauflösungen kommen dadurch unverkleinert an, damit eine
+    /// Darstellung mit echten Bildpunkten möglich ist. Zoom und Schwenk bleiben reine
+    /// Transformationen des geladenen Bildes — ein Nachladen je Schwenkschritt hieße, die Datei
+    /// jedes Mal neu zu dekodieren.
+    /// </summary>
+    public const int MaxPreviewEdge = 8192;
 
-    public const double MinZoom = 1.0;
-    public const double MaxZoom = 8.0;
+    /// <summary>Größte Vergrößerung über die Originalauflösung hinaus.</summary>
+    public const double MaxScale = 4.0;
 
     private readonly IPreviewRenderer? previewRenderer;
+    private readonly SettingsViewModel? settings;
     private CancellationTokenSource? previewCancellation;
+    private long? livePreviewSizeBytes;
 
     private QueueItemViewModel? selected;
     private double dividerFraction = 0.5;
@@ -31,15 +43,30 @@ public sealed class CompareViewModel : ObservableObject
     private Bitmap? compressedPreview;
     private bool isPreviewLoading;
     private string? previewError;
-    private double zoom = MinZoom;
+    private double scale = 1;
+    private double viewportWidth;
+    private double viewportHeight;
+    private int sourceWidth;
+    private int sourceHeight;
+    private bool isPreviewDownscaled;
     private double panX;
     private double panY;
 
-    public CompareViewModel(IPreviewRenderer? previewRenderer = null)
+    public CompareViewModel(
+        IPreviewRenderer? previewRenderer = null,
+        SettingsViewModel? settings = null)
     {
         this.previewRenderer = previewRenderer;
-        ZoomInCommand = new RelayCommand(() => Zoom *= 1.5);
-        ZoomOutCommand = new RelayCommand(() => Zoom /= 1.5);
+        this.settings = settings;
+        if (settings is not null)
+        {
+            // Eine Einstellungsaenderung macht die Probekompression ungueltig.
+            settings.PropertyChanged += (_, _) => ReloadIfLive();
+        }
+
+        ZoomInCommand = new RelayCommand(() => Scale *= 1.5);
+        ZoomOutCommand = new RelayCommand(() => Scale /= 1.5);
+        ActualSizeCommand = new RelayCommand(() => Scale = 1);
         ResetViewCommand = new RelayCommand(ResetView);
     }
 
@@ -47,6 +74,7 @@ public sealed class CompareViewModel : ObservableObject
 
     public RelayCommand ZoomInCommand { get; }
     public RelayCommand ZoomOutCommand { get; }
+    public RelayCommand ActualSizeCommand { get; }
     public RelayCommand ResetViewCommand { get; }
 
     public QueueItemViewModel? Selected
@@ -126,21 +154,77 @@ public sealed class CompareViewModel : ObservableObject
 
     public bool HasPreviewError => !string.IsNullOrEmpty(PreviewError);
 
-    /// <summary>Gemeinsamer Zoomfaktor beider Seiten; der Vergleich bleibt damit synchron.</summary>
-    public double Zoom
+    /// <summary>
+    /// Anzeigemaßstab beider Seiten, bezogen auf die Bildpunkte des Originals: <c>1</c> bedeutet,
+    /// dass ein Bildpunkt des Originals einem Bildpunkt auf dem Schirm entspricht. Der Wert ist
+    /// absolut und nicht relativ zur Einpassung — sonst behauptete die Anzeige bei einem 5400
+    /// Punkte breiten Bild in einem 1200 Punkte breiten Fenster „100 %“.
+    /// </summary>
+    public double Scale
     {
-        get => zoom;
+        get => scale;
         set
         {
-            if (SetProperty(ref zoom, Math.Clamp(value, MinZoom, MaxZoom)))
+            // Einpassung und Originalgröße müssen immer erreichbar bleiben, auch wenn ein
+            // kleines Bild in einer großen Fläche über MaxScale hinaus eingepasst wird.
+            var lower = Math.Min(FitScale, 1);
+            var upper = Math.Max(FitScale, MaxScale);
+            if (SetProperty(ref scale, Math.Clamp(value, lower, upper)))
             {
                 ClampPan();
+                Raise(nameof(RenderScale));
                 Raise(nameof(ZoomLabel));
             }
         }
     }
 
-    public string ZoomLabel => Localizer.Instance.Format("Cmp_ZoomValue", Zoom);
+    /// <summary>Maßstab, bei dem das Bild vollständig in die Fläche passt.</summary>
+    public double FitScale => sourceWidth <= 0 || sourceHeight <= 0
+        || viewportWidth <= 0 || viewportHeight <= 0
+        ? 1
+        : Math.Min(viewportWidth / sourceWidth, viewportHeight / sourceHeight);
+
+    /// <summary>
+    /// Faktor für die Ansicht. Das Bild wird bereits eingepasst dargestellt, die Transformation
+    /// muss also nur den Unterschied zwischen Einpassung und gewünschtem Maßstab ausgleichen.
+    /// </summary>
+    public double RenderScale => FitScale <= 0 ? 1 : Scale / FitScale;
+
+    /// <summary>Anzeigemaßstab in Prozent; Formatierung über die aktive Kultur (Abschnitt 11.2).</summary>
+    public string ZoomLabel => Localizer.Instance.Format("Cmp_ZoomValue", Scale);
+
+    /// <summary>
+    /// Meldet, dass die Vorschau kleiner als das Original geladen wurde. Dann zeigt auch
+    /// <c>100 %</c> hochgerechnete Bildpunkte statt echter.
+    /// </summary>
+    public bool IsPreviewDownscaled
+    {
+        get => isPreviewDownscaled;
+        private set => SetProperty(ref isPreviewDownscaled, value);
+    }
+
+    /// <summary>
+    /// Meldet die Größe der Vergleichsfläche. Ohne sie lässt sich der Maßstab nicht bestimmen;
+    /// die Ansicht kennt sie, das ViewModel nicht.
+    /// </summary>
+    public void ApplyViewport(double width, double height)
+    {
+        if (width <= 0 || height <= 0
+            || (Math.Abs(viewportWidth - width) < 0.5 && Math.Abs(viewportHeight - height) < 0.5))
+        {
+            return;
+        }
+
+        var wasFitted = Math.Abs(Scale - FitScale) < 1e-9;
+        viewportWidth = width;
+        viewportHeight = height;
+        Raise(nameof(FitScale));
+
+        // Eine eingepasste Ansicht bleibt eingepasst, wenn sich die Fläche ändert.
+        Scale = wasFitted ? FitScale : Scale;
+        Raise(nameof(RenderScale));
+        Raise(nameof(ZoomLabel));
+    }
 
     public double PanX
     {
@@ -164,42 +248,61 @@ public sealed class CompareViewModel : ObservableObject
 
     public void ResetView()
     {
-        Zoom = MinZoom;
+        Scale = FitScale;
         PanX = 0;
         PanY = 0;
     }
 
     /// <summary>
-    /// Übernimmt einen abgeschlossenen Job nur, wenn seine Ausgabe validiert und veröffentlicht
-    /// wurde. Alles andere ist nicht vergleichbar.
+    /// Übernimmt die Warteschlange als Kandidatenliste. Vergleichbar ist jede eingereihte Datei,
+    /// nicht erst ein fertiges Ergebnis: sonst müsste man erst konvertieren, um zu sehen, ob die
+    /// Einstellungen taugen.
     /// </summary>
-    public void Offer(QueueItemViewModel item)
+    public void AttachQueue(ObservableCollection<QueueItemViewModel> queue)
     {
-        ArgumentNullException.ThrowIfNull(item);
-        if (!item.CanCompare || Candidates.Contains(item))
+        ArgumentNullException.ThrowIfNull(queue);
+
+        foreach (var item in queue)
         {
-            return;
+            Candidates.Add(item);
         }
 
-        Candidates.Insert(0, item);
-        Selected ??= item;
+        queue.CollectionChanged += OnQueueChanged;
+        Selected ??= Candidates.FirstOrDefault();
         Raise(nameof(HasCandidates));
     }
 
-    public void Remove(QueueItemViewModel item)
+    private void OnQueueChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
-        ArgumentNullException.ThrowIfNull(item);
-        if (!Candidates.Remove(item))
+        foreach (var removed in e.OldItems?.OfType<QueueItemViewModel>() ?? [])
         {
-            return;
+            Candidates.Remove(removed);
+            if (ReferenceEquals(Selected, removed))
+            {
+                Selected = Candidates.FirstOrDefault();
+            }
         }
 
-        if (ReferenceEquals(Selected, item))
+        foreach (var added in e.NewItems?.OfType<QueueItemViewModel>() ?? [])
         {
-            Selected = Candidates.FirstOrDefault();
+            Candidates.Add(added);
         }
 
+        Selected ??= Candidates.FirstOrDefault();
         Raise(nameof(HasCandidates));
+    }
+
+    /// <summary>
+    /// Erneuert eine Probekompression, wenn sich die Einstellungen geändert haben. Ein bereits
+    /// veröffentlichtes Ergebnis bleibt unberührt: es zeigt die tatsächlich geschriebene Datei
+    /// und nicht das, was aktuelle Einstellungen ergäben.
+    /// </summary>
+    public void ReloadIfLive()
+    {
+        if (Selected is { CanCompare: false })
+        {
+            _ = LoadPreviewsAsync();
+        }
     }
 
     /// <summary>
@@ -217,10 +320,13 @@ public sealed class CompareViewModel : ObservableObject
         PreviewError = null;
 
         var item = Selected;
-        if (item?.OutputPath is not string outputPath || previewRenderer is null)
+        if (item is null || previewRenderer is null)
         {
             return;
         }
+
+        livePreviewSizeBytes = null;
+        Raise(nameof(SizeSummary));
 
         var cancellation = new CancellationTokenSource();
         previewCancellation = cancellation;
@@ -229,8 +335,12 @@ public sealed class CompareViewModel : ObservableObject
         {
             var original = await RenderAsync(item.InputPath, item, cancellation.Token)
                 .ConfigureAwait(true);
-            var compressed = await RenderAsync(outputPath, item, cancellation.Token)
-                .ConfigureAwait(true);
+
+            // Ein veröffentlichtes Ergebnis wird gezeigt, wie es auf dem Datenträger liegt.
+            // Alles andere wird für die Vorschau im Speicher komprimiert.
+            var compressed = item.OutputPath is string outputPath && item.CanCompare
+                ? await RenderAsync(outputPath, item, cancellation.Token).ConfigureAwait(true)
+                : await RenderLiveAsync(item, cancellation.Token).ConfigureAwait(true);
 
             if (cancellation.IsCancellationRequested || !ReferenceEquals(Selected, item))
             {
@@ -241,6 +351,8 @@ public sealed class CompareViewModel : ObservableObject
 
             OriginalPreview = original;
             CompressedPreview = compressed;
+            Raise(nameof(SizeSummary));
+            ResetView();
         }
         catch (OperationCanceledException)
         {
@@ -259,6 +371,74 @@ public sealed class CompareViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// Komprimiert die Auswahl mit den aktuellen Einstellungen im Speicher. Es entsteht keine
+    /// Datei; die ermittelte Grösse dient nur der Anzeige.
+    /// </summary>
+    private async Task<Bitmap?> RenderLiveAsync(
+        QueueItemViewModel item,
+        CancellationToken cancellationToken)
+    {
+        if (settings?.TryBuildEngineSettings() is not JpegliSettings jpegli)
+        {
+            PreviewError = Localizer.Instance["Cmp_PreviewUnsupportedEngine"];
+            return null;
+        }
+
+        var result = await previewRenderer!
+            .RenderEncodedPreviewAsync(
+                item.InputPath,
+                MaxPreviewEdge,
+                jpegli,
+                settings.AlphaBackground,
+                settings.ExifPolicy,
+                settings.ColorProfilePolicy,
+                cancellationToken)
+            .ConfigureAwait(true);
+
+        if (result.Image is not PreviewImage image)
+        {
+            PreviewError = result.ErrorText ?? Localizer.Instance["Cmp_PreviewFailed"];
+            return null;
+        }
+
+        livePreviewSizeBytes = result.EncodedSizeBytes;
+        return ApplySource(image);
+    }
+
+    /// <summary>
+    /// Grössenvergleich der Auswahl. Für eine Probekompression stammt die Ergebnisgrösse aus dem
+    /// Speicher, nicht aus einer Datei; sie ist als Schätzung gekennzeichnet.
+    /// </summary>
+    public string? SizeSummary
+    {
+        get
+        {
+            if (Selected is not QueueItemViewModel item)
+            {
+                return null;
+            }
+
+            return livePreviewSizeBytes is long live
+                ? Localizer.Instance.Format(
+                    "Cmp_EstimatedSize",
+                    ByteFormat.Describe(item.InputSizeBytes),
+                    ByteFormat.Describe(live),
+                    ByteFormat.DescribeSavings(item.InputSizeBytes, live))
+                : item.SizeSummary;
+        }
+    }
+
+    private Bitmap ApplySource(PreviewImage image)
+    {
+        // Der Maßstab bezieht sich auf das Original, nicht auf die geladene Vorschau.
+        sourceWidth = image.SourceWidth;
+        sourceHeight = image.SourceHeight;
+        IsPreviewDownscaled = image.ScaleFromSource < 1;
+        Raise(nameof(FitScale));
+        return ToBitmap(image);
+    }
+
     private async Task<Bitmap?> RenderAsync(
         string path,
         QueueItemViewModel item,
@@ -274,7 +454,7 @@ public sealed class CompareViewModel : ObservableObject
             return null;
         }
 
-        return ToBitmap(image);
+        return ApplySource(image);
     }
 
     /// <summary>
@@ -309,13 +489,13 @@ public sealed class CompareViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Hält den Bildausschnitt innerhalb des Bildes: bei Zoom 1 gibt es keinen Schwenk,
-    /// darüber wächst der zulässige Bereich mit dem Zoomfaktor.
+    /// Hält den Bildausschnitt innerhalb des Bildes: solange alles in die Fläche passt, gibt es
+    /// nichts zu schwenken; darüber wächst der zulässige Bereich mit dem überstehenden Anteil.
     /// </summary>
     private void ClampPan()
     {
-        var limit = (Zoom - 1) * MaxPreviewEdge / 2;
-        PanX = Math.Clamp(PanX, -limit, limit);
-        PanY = Math.Clamp(PanY, -limit, limit);
+        var overflow = Math.Max(0, RenderScale - 1) / 2;
+        PanX = Math.Clamp(PanX, -viewportWidth * overflow, viewportWidth * overflow);
+        PanY = Math.Clamp(PanY, -viewportHeight * overflow, viewportHeight * overflow);
     }
 }

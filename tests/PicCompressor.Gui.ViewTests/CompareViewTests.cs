@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.Runtime.InteropServices;
 using Avalonia.Controls;
 using Avalonia.Headless;
@@ -26,11 +27,10 @@ public sealed class CompareViewTests(AvaloniaSession session)
         session.RunAsync(async () =>
         {
             // Rot, Grün, Blau als dicht gepacktes RGB; die Ansicht braucht BGRA.
-            var renderer = new StubPreviewRenderer(
-                new PreviewImage(3, 1, [255, 0, 0, 0, 255, 0, 0, 0, 255]));
-            var compare = new CompareViewModel(renderer);
-
-            compare.Offer(Published("a.png", "a_compressed.jpg"));
+            var compare = WithQueue(
+                new StubPreviewRenderer(
+                    new PreviewImage(3, 1, [255, 0, 0, 0, 255, 0, 0, 0, 255], 3, 1)),
+                Published("a.png", "a_compressed.jpg"));
             await WaitUntil(() => compare.HasPreview);
 
             var bitmap = Assert.IsType<WriteableBitmap>(compare.OriginalPreview);
@@ -47,9 +47,9 @@ public sealed class CompareViewTests(AvaloniaSession session)
     public Task A_new_selection_replaces_the_previous_preview() =>
         session.RunAsync(async () =>
         {
-            var renderer = new StubPreviewRenderer(new PreviewImage(1, 1, [1, 2, 3]));
-            var compare = new CompareViewModel(renderer);
-            compare.Offer(Published("a.png", "a_compressed.jpg"));
+            var compare = WithQueue(
+                new StubPreviewRenderer(new PreviewImage(1, 1, [1, 2, 3], 1, 1)),
+                Published("a.png", "a_compressed.jpg"));
             await WaitUntil(() => compare.HasPreview);
             var first = compare.OriginalPreview;
 
@@ -63,7 +63,9 @@ public sealed class CompareViewTests(AvaloniaSession session)
     public Task Both_sides_share_one_transform_and_follow_zoom_and_pan() =>
         session.RunAsync(() =>
         {
-            var compare = new CompareViewModel();
+            // Grosses Original, damit die Einpassung unter der Originalgroesse liegt und
+            // ueber die Einpassung hinaus vergroessert werden kann.
+            var compare = WithQueue(new StubPreviewRenderer(new PreviewImage(40, 30, new byte[40 * 30 * 3], 4000, 3000)), Published("a.png", "a_compressed.jpg"));
             Show(compare, out var view);
 
             var original = view.FindControl<Image>("OriginalImage")!;
@@ -71,14 +73,16 @@ public sealed class CompareViewTests(AvaloniaSession session)
             // Ein gemeinsames Objekt kann nicht auseinanderlaufen.
             Assert.Same(compressed.RenderTransform, original.RenderTransform);
 
-            compare.Zoom = 4;
+            // Doppelt so gross wie eingepasst; der absolute Massstab haengt an der Bildgroesse.
+            compare.Scale = compare.FitScale * 2;
             compare.Pan(30, -20);
 
             var group = Assert.IsType<TransformGroup>(original.RenderTransform);
             var scale = Assert.IsType<ScaleTransform>(group.Children[0]);
             var translate = Assert.IsType<TranslateTransform>(group.Children[1]);
-            Assert.Equal(4, scale.ScaleX);
-            Assert.Equal(4, scale.ScaleY);
+            Assert.Equal(compare.RenderScale, scale.ScaleX);
+            Assert.Equal(compare.RenderScale, scale.ScaleY);
+            Assert.Equal(2, compare.RenderScale, 6);
             Assert.Equal(compare.PanX, translate.X);
             Assert.Equal(compare.PanY, translate.Y);
         });
@@ -89,9 +93,7 @@ public sealed class CompareViewTests(AvaloniaSession session)
         {
             // Ohne Auswahl ist die Vergleichsfläche ausgeblendet und wird nicht angeordnet;
             // ohne Vorschau haben die Bilder keine Größe.
-            var compare = new CompareViewModel(
-                new StubPreviewRenderer(new PreviewImage(4, 3, new byte[4 * 3 * 3])));
-            compare.Offer(Published("a.png", "a_compressed.jpg"));
+            var compare = WithQueue(new StubPreviewRenderer(new PreviewImage(4, 3, new byte[4 * 3 * 3], 4, 3)), Published("a.png", "a_compressed.jpg"));
             await WaitUntil(() => compare.HasPreview);
             Show(compare, out var view);
 
@@ -120,24 +122,49 @@ public sealed class CompareViewTests(AvaloniaSession session)
         });
 
     [Fact]
+    public Task The_preview_grows_with_the_available_space() =>
+        session.RunAsync(async () =>
+        {
+            var compare = WithQueue(new StubPreviewRenderer(new PreviewImage(4, 3, new byte[4 * 3 * 3], 4, 3)), Published("a.png", "a_compressed.jpg"));
+            await WaitUntil(() => compare.HasPreview);
+
+            var window = Show(compare, out var view);
+            var surface = view.FindControl<Grid>("CompareSurface")!;
+            var image = view.FindControl<Image>("CompressedImage")!;
+            var before = (surface.Bounds.Height, image.Bounds.Height);
+
+            window.Height = 1000;
+            Dispatcher.UIThread.RunJobs(DispatcherPriority.Loaded);
+            window.UpdateLayout();
+
+            // Eine feste Höhe ließe das Bild unabhängig von der Fenstergröße gleich klein.
+            Assert.True(
+                surface.Bounds.Height > before.Item1,
+                $"surface {before.Item1} -> {surface.Bounds.Height}");
+            Assert.True(
+                image.Bounds.Height > before.Item2,
+                $"image {before.Item2} -> {image.Bounds.Height}");
+        });
+
+    [Fact]
     public Task Zoom_and_pan_are_reachable_from_the_keyboard() =>
         session.RunAsync(() =>
         {
-            var compare = new CompareViewModel();
-            compare.Offer(Published("a.png", "a_compressed.jpg"));
+            var compare = WithQueue(null, Published("a.png", "a_compressed.jpg"));
             var window = Show(compare, out var view);
             var surface = view.FindControl<Grid>("CompareSurface")!;
             // Die Fläche nimmt den Fokus wirklich an; die Tasten laufen danach über das Fenster.
             Assert.True(surface.Focus());
 
+            var fitted = compare.Scale;
             Press(window, Key.Add, PhysicalKey.NumPadAdd);
-            Assert.True(compare.Zoom > CompareViewModel.MinZoom);
+            Assert.True(compare.Scale > fitted);
 
             Press(window, Key.Right, PhysicalKey.ArrowRight);
             Assert.NotEqual(0, compare.PanX);
 
             Press(window, Key.D0, PhysicalKey.Digit0);
-            Assert.Equal(CompareViewModel.MinZoom, compare.Zoom);
+            Assert.Equal(compare.FitScale, compare.Scale);
             Assert.Equal(0, compare.PanX);
         });
 
@@ -179,6 +206,20 @@ public sealed class CompareViewTests(AvaloniaSession session)
         return [.. Enumerable.Range(0, width).Select(x => row[(x * 4)..((x + 1) * 4)])];
     }
 
+
+    /// <summary>
+    /// Vergleich mit angehaengter Warteschlange. Kandidat ist jede eingereihte Datei, nicht erst
+    /// ein fertiges Ergebnis.
+    /// </summary>
+    private static CompareViewModel WithQueue(
+        IPreviewRenderer? renderer,
+        params QueueItemViewModel[] items)
+    {
+        var compare = new CompareViewModel(renderer);
+        compare.AttachQueue(new ObservableCollection<QueueItemViewModel>(items));
+        return compare;
+    }
+
     private static QueueItemViewModel Published(string input, string output)
     {
         var item = new QueueItemViewModel(input, EngineIds.Jpegli, 100);
@@ -196,5 +237,15 @@ public sealed class CompareViewTests(AvaloniaSession session)
             RgbColor alphaBackground,
             CancellationToken cancellationToken) =>
             Task.FromResult(new PreviewResult(image, null));
+
+        public Task<EncodedPreviewResult> RenderEncodedPreviewAsync(
+            string inputPath,
+            int maxEdge,
+            JpegliSettings settings,
+            RgbColor alphaBackground,
+            ExifPolicy exifPolicy,
+            ColorProfilePolicy colorProfilePolicy,
+            CancellationToken cancellationToken) =>
+            Task.FromResult(new EncodedPreviewResult(image, 0, null));
     }
 }

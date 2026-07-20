@@ -33,6 +33,10 @@ public partial class CompareView : UserControl
         {
             if (e.Property == BoundsProperty)
             {
+                // Der Maßstab hängt an der Flächengröße; nur die Ansicht kennt sie.
+                boundViewModel?.ApplyViewport(
+                    CompareSurface.Bounds.Width,
+                    CompareSurface.Bounds.Height);
                 UpdateDivider();
             }
         };
@@ -62,7 +66,7 @@ public partial class CompareView : UserControl
                 return;
             }
 
-            boundViewModel.Zoom *= e.Delta.Y > 0 ? 1.25 : 1 / 1.25;
+            boundViewModel.Scale *= e.Delta.Y > 0 ? 1.25 : 1 / 1.25;
             e.Handled = true;
         };
 
@@ -82,6 +86,9 @@ public partial class CompareView : UserControl
                 boundViewModel.PropertyChanged += OnViewModelPropertyChanged;
             }
 
+            boundViewModel?.ApplyViewport(
+                CompareSurface.Bounds.Width,
+                CompareSurface.Bounds.Height);
             UpdateDivider();
             UpdateTransform();
         };
@@ -117,6 +124,9 @@ public partial class CompareView : UserControl
             case Key.D0 or Key.NumPad0:
                 boundViewModel.ResetViewCommand.Execute(null);
                 break;
+            case Key.D1 or Key.NumPad1:
+                boundViewModel.ActualSizeCommand.Execute(null);
+                break;
             default:
                 return;
         }
@@ -131,7 +141,7 @@ public partial class CompareView : UserControl
             case nameof(CompareViewModel.DividerFraction):
                 UpdateDivider();
                 break;
-            case nameof(CompareViewModel.Zoom):
+            case nameof(CompareViewModel.RenderScale):
             case nameof(CompareViewModel.PanX):
             case nameof(CompareViewModel.PanY):
                 UpdateTransform();
@@ -146,8 +156,8 @@ public partial class CompareView : UserControl
             return;
         }
 
-        scale.ScaleX = boundViewModel.Zoom;
-        scale.ScaleY = boundViewModel.Zoom;
+        scale.ScaleX = boundViewModel.RenderScale;
+        scale.ScaleY = boundViewModel.RenderScale;
         translate.X = boundViewModel.PanX;
         translate.Y = boundViewModel.PanY;
     }

@@ -44,7 +44,8 @@ public sealed class MainWindowViewModel : ObservableObject
         Settings = new SettingsViewModel(settingsStore);
         Dashboard = new DashboardViewModel(Settings, compressionService);
         History = new HistoryViewModel(historyService);
-        Compare = new CompareViewModel(previewRenderer);
+        Compare = new CompareViewModel(previewRenderer, Settings);
+        Compare.AttachQueue(Dashboard.Queue);
 
         Dashboard.JobCompleted += OnJobCompleted;
         Dashboard.PropertyChanged += (_, _) => Raise(nameof(StatusSummary));
@@ -210,7 +211,6 @@ public sealed class MainWindowViewModel : ObservableObject
 
     private async void OnJobCompleted(object? sender, QueueItemViewModel item)
     {
-        Compare.Offer(item);
         Raise(nameof(StatusSummary));
 
         try

@@ -274,113 +274,58 @@ void DownscaleToRgb(const jpegli::extras::PackedImage& image, size_t width,
     }
   }
 }
-#endif
-
-}  // namespace
-
-uint32_t pc_abi_version(void) { return PC_ABI_VERSION; }
-
-int32_t pc_engine_available(pc_engine engine) {
-  switch (engine) {
-    case PC_ENGINE_JPEGLI:
-#if defined(PC_HAVE_JPEGLI)
-      return 1;
-#else
-      return 0;
-#endif
-    case PC_ENGINE_GUETZLI:
-      return 0;
-    default:
-      return 0;
-  }
-}
-
-const char* pc_engine_build_version(pc_engine engine) {
-  switch (engine) {
-    case PC_ENGINE_JPEGLI:
-#if defined(PC_HAVE_JPEGLI)
-      return PC_JPEGLI_BUILD_VERSION;
-#else
-      return "";
-#endif
-    default:
-      return "";
-  }
-}
-
-const char* pc_engine_source_revision(pc_engine engine) {
-  switch (engine) {
-    case PC_ENGINE_JPEGLI:
-      return PC_JPEGLI_SOURCE_REVISION;
-    case PC_ENGINE_GUETZLI:
-      return PC_GUETZLI_SOURCE_REVISION;
-    default:
-      return "";
-  }
-}
-
-const char* pc_engine_unavailable_reason(pc_engine engine) {
-  switch (engine) {
-    case PC_ENGINE_JPEGLI:
-#if defined(PC_HAVE_JPEGLI)
-      return "";
-#else
-      return kJpegliUnavailable;
-#endif
-    case PC_ENGINE_GUETZLI:
-      return kGuetzliUnavailable;
-    default:
-      return "Unknown native engine.";
-  }
-}
-
-pc_cancel_handle* pc_cancel_create(void) {
-  return new (std::nothrow) pc_cancel_handle();
-}
-
-void pc_cancel_request(pc_cancel_handle* handle) {
-  if (handle != nullptr) {
-    handle->requested.store(true, std::memory_order_release);
-  }
-}
-
-int32_t pc_cancel_is_requested(const pc_cancel_handle* handle) {
-  return handle != nullptr &&
-         handle->requested.load(std::memory_order_acquire);
-}
-
-void pc_cancel_destroy(pc_cancel_handle* handle) { delete handle; }
-
-pc_status pc_encode_jpegli(
-    const char* input_path_utf8,
-    const char* output_path_utf8,
-    const pc_jpegli_options* options,
-    const pc_cancel_handle* cancel,
+// Verkleinert die dekodierten Pixel auf die gewuenschte Kantenlaenge und uebergibt
+// sie als Vorschau. Eingabe- und Ergebnisvorschau nehmen denselben Weg.
+pc_status FillPreview(
+    const jpegli::extras::PackedPixelFile& pixels,
+    int32_t max_edge_option,
+    pc_preview* preview,
     char* error_utf8,
     size_t error_capacity) {
-  if (MissingPath(input_path_utf8) || MissingPath(output_path_utf8) ||
-      options == nullptr || options->struct_size != sizeof(pc_jpegli_options) ||
-      options->quality < 1 || options->quality > 100 ||
-      options->chroma_subsampling < PC_CHROMA_444 ||
-      options->chroma_subsampling > PC_CHROMA_420 ||
-      options->progressive_level < 0 || options->progressive_level > 2 ||
-      options->alpha_red < 0 || options->alpha_red > 255 ||
-      options->alpha_green < 0 || options->alpha_green > 255 ||
-      options->alpha_blue < 0 || options->alpha_blue > 255 ||
-      options->exif_policy < PC_EXIF_KEEP ||
-      options->exif_policy > PC_EXIF_REMOVE ||
-      options->color_profile_policy < PC_COLOR_PROFILE_PRESERVE ||
-      options->color_profile_policy > PC_COLOR_PROFILE_REMOVE) {
-    CopyError("Invalid Jpegli encode request.", error_utf8, error_capacity);
-    return PC_STATUS_INVALID_ARGUMENT;
+  const jpegli::extras::PackedImage& image = pixels.frames[0].color;
+  if (image.xsize == 0 || image.ysize == 0) {
+    CopyError("Input image is empty.", error_utf8, error_capacity);
+    return PC_STATUS_ENCODE_FAILED;
   }
 
-  if (pc_cancel_is_requested(cancel)) {
-    CopyError("Encoding was canceled.", error_utf8, error_capacity);
-    return PC_STATUS_CANCELED;
+  const size_t max_edge = static_cast<size_t>(max_edge_option);
+  const size_t source_edge = std::max(image.xsize, image.ysize);
+  size_t width = image.xsize;
+  size_t height = image.ysize;
+  if (source_edge > max_edge) {
+    width = std::max<size_t>(1, image.xsize * max_edge / source_edge);
+    height = std::max<size_t>(1, image.ysize * max_edge / source_edge);
   }
 
-#if defined(PC_HAVE_JPEGLI)
+  const size_t rgb_size = width * height * 3;
+  uint8_t* rgb = new (std::nothrow) uint8_t[rgb_size];
+  if (rgb == nullptr) {
+    CopyError("Preview buffer could not be allocated.", error_utf8,
+              error_capacity);
+    return PC_STATUS_ENCODE_FAILED;
+  }
+
+  DownscaleToRgb(image, width, height, rgb);
+
+  preview->width = static_cast<int32_t>(width);
+  preview->height = static_cast<int32_t>(height);
+  preview->rgb = rgb;
+  preview->rgb_size = rgb_size;
+  preview->source_width = static_cast<int32_t>(image.xsize);
+  preview->source_height = static_cast<int32_t>(image.ysize);
+  return PC_STATUS_OK;
+}
+
+// Führt die vollständige Jpegli-Kodierung bis in einen Puffer aus. Die Ausgabe in
+// eine Datei und die Vorschau des Ergebnisses teilen sich damit exakt denselben
+// Pfad — eine Vorschau kann sonst etwas anderes zeigen als die spätere Datei.
+pc_status EncodeJpegliToBuffer(
+    const char* input_path_utf8,
+    const pc_jpegli_options* options,
+    const pc_cancel_handle* cancel,
+    std::vector<uint8_t>* encoded,
+    char* error_utf8,
+    size_t error_capacity) {
   std::vector<uint8_t> input;
   if (!ReadFile(input_path_utf8, &input)) {
     CopyError("Input image could not be read.", error_utf8, error_capacity);
@@ -492,8 +437,7 @@ pc_status pc_encode_jpegli(
                              icc_segments.end());
   }
 
-  std::vector<uint8_t> output;
-  if (!jpegli::extras::EncodeJpeg(pixels, settings, nullptr, &output)) {
+  if (!jpegli::extras::EncodeJpeg(pixels, settings, nullptr, encoded)) {
     CopyError("Jpegli encoding failed.", error_utf8, error_capacity);
     return PC_STATUS_ENCODE_FAILED;
   }
@@ -501,6 +445,122 @@ pc_status pc_encode_jpegli(
   if (pc_cancel_is_requested(cancel)) {
     CopyError("Encoding was canceled.", error_utf8, error_capacity);
     return PC_STATUS_CANCELED;
+  }
+
+  return PC_STATUS_OK;
+}
+#endif
+
+}  // namespace
+
+uint32_t pc_abi_version(void) { return PC_ABI_VERSION; }
+
+int32_t pc_engine_available(pc_engine engine) {
+  switch (engine) {
+    case PC_ENGINE_JPEGLI:
+#if defined(PC_HAVE_JPEGLI)
+      return 1;
+#else
+      return 0;
+#endif
+    case PC_ENGINE_GUETZLI:
+      return 0;
+    default:
+      return 0;
+  }
+}
+
+const char* pc_engine_build_version(pc_engine engine) {
+  switch (engine) {
+    case PC_ENGINE_JPEGLI:
+#if defined(PC_HAVE_JPEGLI)
+      return PC_JPEGLI_BUILD_VERSION;
+#else
+      return "";
+#endif
+    default:
+      return "";
+  }
+}
+
+const char* pc_engine_source_revision(pc_engine engine) {
+  switch (engine) {
+    case PC_ENGINE_JPEGLI:
+      return PC_JPEGLI_SOURCE_REVISION;
+    case PC_ENGINE_GUETZLI:
+      return PC_GUETZLI_SOURCE_REVISION;
+    default:
+      return "";
+  }
+}
+
+const char* pc_engine_unavailable_reason(pc_engine engine) {
+  switch (engine) {
+    case PC_ENGINE_JPEGLI:
+#if defined(PC_HAVE_JPEGLI)
+      return "";
+#else
+      return kJpegliUnavailable;
+#endif
+    case PC_ENGINE_GUETZLI:
+      return kGuetzliUnavailable;
+    default:
+      return "Unknown native engine.";
+  }
+}
+
+pc_cancel_handle* pc_cancel_create(void) {
+  return new (std::nothrow) pc_cancel_handle();
+}
+
+void pc_cancel_request(pc_cancel_handle* handle) {
+  if (handle != nullptr) {
+    handle->requested.store(true, std::memory_order_release);
+  }
+}
+
+int32_t pc_cancel_is_requested(const pc_cancel_handle* handle) {
+  return handle != nullptr &&
+         handle->requested.load(std::memory_order_acquire);
+}
+
+void pc_cancel_destroy(pc_cancel_handle* handle) { delete handle; }
+
+pc_status pc_encode_jpegli(
+    const char* input_path_utf8,
+    const char* output_path_utf8,
+    const pc_jpegli_options* options,
+    const pc_cancel_handle* cancel,
+    char* error_utf8,
+    size_t error_capacity) {
+  if (MissingPath(input_path_utf8) || MissingPath(output_path_utf8) ||
+      options == nullptr || options->struct_size != sizeof(pc_jpegli_options) ||
+      options->quality < 1 || options->quality > 100 ||
+      options->chroma_subsampling < PC_CHROMA_444 ||
+      options->chroma_subsampling > PC_CHROMA_420 ||
+      options->progressive_level < 0 || options->progressive_level > 2 ||
+      options->alpha_red < 0 || options->alpha_red > 255 ||
+      options->alpha_green < 0 || options->alpha_green > 255 ||
+      options->alpha_blue < 0 || options->alpha_blue > 255 ||
+      options->exif_policy < PC_EXIF_KEEP ||
+      options->exif_policy > PC_EXIF_REMOVE ||
+      options->color_profile_policy < PC_COLOR_PROFILE_PRESERVE ||
+      options->color_profile_policy > PC_COLOR_PROFILE_REMOVE) {
+    CopyError("Invalid Jpegli encode request.", error_utf8, error_capacity);
+    return PC_STATUS_INVALID_ARGUMENT;
+  }
+
+  if (pc_cancel_is_requested(cancel)) {
+    CopyError("Encoding was canceled.", error_utf8, error_capacity);
+    return PC_STATUS_CANCELED;
+  }
+
+#if defined(PC_HAVE_JPEGLI)
+  std::vector<uint8_t> output;
+  const pc_status status = EncodeJpegliToBuffer(
+      input_path_utf8, options, cancel, &output, error_utf8, error_capacity);
+  if (status != PC_STATUS_OK) {
+    return status;
   }
 
   if (!WriteFile(output_path_utf8, output)) {
@@ -537,6 +597,8 @@ pc_status pc_render_preview(
   preview->height = 0;
   preview->rgb = nullptr;
   preview->rgb_size = 0;
+  preview->source_width = 0;
+  preview->source_height = 0;
 
   if (pc_cancel_is_requested(cancel)) {
     CopyError("Preview rendering was canceled.", error_utf8, error_capacity);
@@ -590,37 +652,80 @@ pc_status pc_render_preview(
     return PC_STATUS_CANCELED;
   }
 
-  const jpegli::extras::PackedImage& image = pixels.frames[0].color;
-  if (image.xsize == 0 || image.ysize == 0) {
-    CopyError("Input image is empty.", error_utf8, error_capacity);
+  return FillPreview(pixels, options->max_edge, preview, error_utf8,
+                     error_capacity);
+#else
+  CopyError(kJpegliUnavailable, error_utf8, error_capacity);
+  return PC_STATUS_ENGINE_UNAVAILABLE;
+#endif
+}
+
+pc_status pc_render_encoded_preview(
+    const char* input_path_utf8,
+    const pc_jpegli_options* options,
+    const pc_preview_options* preview_options,
+    pc_preview* preview,
+    int64_t* encoded_size,
+    const pc_cancel_handle* cancel,
+    char* error_utf8,
+    size_t error_capacity) {
+  if (preview_options == nullptr ||
+      preview_options->struct_size != sizeof(pc_preview_options) ||
+      preview_options->max_edge < 1 || preview_options->max_edge > 8192 ||
+      preview == nullptr || preview->struct_size != sizeof(pc_preview) ||
+      encoded_size == nullptr) {
+    CopyError("Invalid encoded preview request.", error_utf8, error_capacity);
+    return PC_STATUS_INVALID_ARGUMENT;
+  }
+
+  preview->width = 0;
+  preview->height = 0;
+  preview->rgb = nullptr;
+  preview->rgb_size = 0;
+  preview->source_width = 0;
+  preview->source_height = 0;
+  *encoded_size = 0;
+
+#if defined(PC_HAVE_JPEGLI)
+  // Genau derselbe Kodierpfad wie beim Schreiben einer Datei, nur ohne Datei.
+  std::vector<uint8_t> encoded;
+  const pc_status status = EncodeJpegliToBuffer(
+      input_path_utf8, options, cancel, &encoded, error_utf8, error_capacity);
+  if (status != PC_STATUS_OK) {
+    return status;
+  }
+
+  *encoded_size = static_cast<int64_t>(encoded.size());
+
+  jpegli::extras::PackedPixelFile pixels;
+  if (!jpegli::extras::DecodeJpeg(encoded,
+                                  jpegli::extras::JpegDecompressParams{},
+                                  nullptr, &pixels) ||
+      pixels.frames.size() != 1) {
+    CopyError("Encoded result could not be decoded for the preview.",
+              error_utf8, error_capacity);
     return PC_STATUS_ENCODE_FAILED;
   }
 
-  const size_t max_edge = static_cast<size_t>(options->max_edge);
-  const size_t source_edge = std::max(image.xsize, image.ysize);
-  size_t width = image.xsize;
-  size_t height = image.ysize;
-  if (source_edge > max_edge) {
-    width = std::max<size_t>(1, image.xsize * max_edge / source_edge);
-    height = std::max<size_t>(1, image.ysize * max_edge / source_edge);
-  }
-
-  const size_t rgb_size = width * height * 3;
-  uint8_t* rgb = new (std::nothrow) uint8_t[rgb_size];
-  if (rgb == nullptr) {
-    CopyError("Preview buffer could not be allocated.", error_utf8,
+  // Das Ergebnis steht bereits aufrecht und ohne Alphakanal; nur die Farben
+  // müssen wie bei der Eingabevorschau nach sRGB.
+  if (!ConvertToSrgb(&pixels)) {
+    CopyError("Encoded result could not be transformed to sRGB.", error_utf8,
               error_capacity);
     return PC_STATUS_ENCODE_FAILED;
   }
 
-  DownscaleToRgb(image, width, height, rgb);
+  if (pc_cancel_is_requested(cancel)) {
+    CopyError("Preview rendering was canceled.", error_utf8, error_capacity);
+    return PC_STATUS_CANCELED;
+  }
 
-  preview->width = static_cast<int32_t>(width);
-  preview->height = static_cast<int32_t>(height);
-  preview->rgb = rgb;
-  preview->rgb_size = rgb_size;
-  return PC_STATUS_OK;
+  return FillPreview(pixels, preview_options->max_edge, preview, error_utf8,
+                     error_capacity);
 #else
+  (void)input_path_utf8;
+  (void)options;
+  (void)cancel;
   CopyError(kJpegliUnavailable, error_utf8, error_capacity);
   return PC_STATUS_ENGINE_UNAVAILABLE;
 #endif
@@ -636,6 +741,8 @@ void pc_preview_release(pc_preview* preview) {
   preview->rgb_size = 0;
   preview->width = 0;
   preview->height = 0;
+  preview->source_width = 0;
+  preview->source_height = 0;
 }
 
 pc_status pc_encode_guetzli(

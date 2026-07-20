@@ -49,12 +49,14 @@ internal struct NativePreview
     internal int Height;
     internal nint Rgb;
     internal nuint RgbSize;
+    internal int SourceWidth;
+    internal int SourceHeight;
 }
 
 internal static partial class NativeMethods
 {
     internal const string LibraryName = "piccompressor_native";
-    internal const uint AbiVersion = 4;
+    internal const uint AbiVersion = 6;
 
     [LibraryImport(LibraryName, EntryPoint = "pc_abi_version")]
     internal static partial uint GetAbiVersion();
@@ -100,6 +102,20 @@ internal static partial class NativeMethods
         string inputPath,
         in NativePreviewOptions options,
         ref NativePreview preview,
+        nint cancelHandle,
+        byte* error,
+        nuint errorCapacity);
+
+    [LibraryImport(
+        LibraryName,
+        EntryPoint = "pc_render_encoded_preview",
+        StringMarshalling = StringMarshalling.Utf8)]
+    internal static unsafe partial NativeStatus RenderEncodedPreview(
+        string inputPath,
+        in NativeJpegliOptions options,
+        in NativePreviewOptions previewOptions,
+        ref NativePreview preview,
+        out long encodedSize,
         nint cancelHandle,
         byte* error,
         nuint errorCapacity);
