@@ -39,6 +39,12 @@ public sealed class QueueItemViewModel : ObservableObject
 
     public long InputSizeBytes { get; }
 
+    /// <summary>
+    /// Effektiver Alpha-Hintergrund des Laufs. Die Vorschau des Originals muss transparente
+    /// Bereiche genauso auffüllen wie das Encoding (Abschnitt 8.1).
+    /// </summary>
+    public RgbColor AlphaBackground { get; set; } = RgbColor.White;
+
     public Guid? JobId { get; private set; }
 
     public Guid? PredecessorJobId { get; private set; }

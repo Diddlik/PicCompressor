@@ -347,6 +347,96 @@ public sealed class NativeCodecBridgeTests
     }
 
     [Fact]
+    public async Task RenderPreviewAsync_downscales_to_the_requested_edge()
+    {
+        using var workspace = new Workspace();
+        var inputPath = workspace.Write("large.ppm", CreatePortablePixmap(300, 200));
+
+        var result = await Bridge.RenderPreviewAsync(
+            inputPath,
+            100,
+            RgbColor.White,
+            CancellationToken.None);
+
+        Assert.Null(result.ErrorText);
+        var image = Assert.IsType<PreviewImage>(result.Image);
+        Assert.Equal(100, image.Width);
+        Assert.Equal(66, image.Height);
+        Assert.Equal(image.Width * image.Height * 3, image.Rgb.Length);
+    }
+
+    [Fact]
+    public async Task RenderPreviewAsync_keeps_small_inputs_untouched()
+    {
+        using var workspace = new Workspace();
+        var inputPath = workspace.Write("small.ppm", CreatePortablePixmap(3, 2));
+
+        var result = await Bridge.RenderPreviewAsync(
+            inputPath,
+            512,
+            RgbColor.White,
+            CancellationToken.None);
+
+        var image = Assert.IsType<PreviewImage>(result.Image);
+        Assert.Equal(3, image.Width);
+        Assert.Equal(2, image.Height);
+    }
+
+    [Fact]
+    public async Task RenderPreviewAsync_applies_exif_orientation()
+    {
+        using var workspace = new Workspace();
+        var source = await EncodeAsync(
+            workspace,
+            "preview-source",
+            CreatePortablePixmap(3, 2),
+            ExifPolicy.Remove);
+        var inputPath = workspace.Write(
+            "preview-oriented.jpg",
+            InsertExif(source, CreateExifTiff(6, artist: null)));
+
+        var result = await Bridge.RenderPreviewAsync(
+            inputPath,
+            512,
+            RgbColor.White,
+            CancellationToken.None);
+
+        // Orientation 6 swaps the axes; the preview must be upright like the output.
+        var image = Assert.IsType<PreviewImage>(result.Image);
+        Assert.Equal(2, image.Width);
+        Assert.Equal(3, image.Height);
+    }
+
+    [Fact]
+    public async Task RenderPreviewAsync_reports_an_unreadable_input()
+    {
+        var result = await Bridge.RenderPreviewAsync(
+            Path.Combine(Path.GetTempPath(), $"missing-{Guid.NewGuid():N}.png"),
+            512,
+            RgbColor.White,
+            CancellationToken.None);
+
+        Assert.Null(result.Image);
+        Assert.NotNull(result.ErrorText);
+    }
+
+    [Fact]
+    public async Task RenderPreviewAsync_reports_cancellation()
+    {
+        using var cancellation = new CancellationTokenSource();
+        await cancellation.CancelAsync();
+
+        var result = await Bridge.RenderPreviewAsync(
+            "input.png",
+            512,
+            RgbColor.White,
+            cancellation.Token);
+
+        Assert.Null(result.Image);
+        Assert.NotNull(result.ErrorText);
+    }
+
+    [Fact]
     public async Task EncodeGuetzliAsync_calls_native_wrapper()
     {
         var result = await Bridge.EncodeGuetzliAsync(

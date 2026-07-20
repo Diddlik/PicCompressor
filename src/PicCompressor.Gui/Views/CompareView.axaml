@@ -20,23 +20,39 @@
 
       <StackPanel Spacing="14" IsVisible="{Binding HasSelection}">
 
-        <Border Height="300" MinHeight="180" CornerRadius="12" ClipToBounds="True"
-                BorderBrush="{DynamicResource PcBorder}" BorderThickness="1">
-          <Grid x:Name="CompareSurface">
-            <Border Background="{DynamicResource PcPanel2}">
-              <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="6">
-                <TextBlock Classes="mono" HorizontalAlignment="Center"
-                           Text="{l:Localize Cmp_Compressed}" />
-                <TextBlock Classes="hint" HorizontalAlignment="Center" TextAlignment="Center"
-                           Text="{l:Localize Cmp_PreviewPending}" />
-              </StackPanel>
-            </Border>
+        <Border Height="360" MinHeight="180" CornerRadius="12" ClipToBounds="True"
+                BorderBrush="{DynamicResource PcBorder}" BorderThickness="1"
+                Background="{DynamicResource PcPanel2}">
+          <!-- Fokussierbar, damit Schwenken auch ohne Zeigegerät möglich ist. -->
+          <Grid x:Name="CompareSurface" Focusable="True"
+                AutomationProperties.Name="{l:Localize Cmp_PreviewName}">
 
-            <Border x:Name="OriginalPane" Background="{DynamicResource PcAccentSoft}"
-                    HorizontalAlignment="Left" ClipToBounds="True">
-              <TextBlock Classes="mono" HorizontalAlignment="Center" VerticalAlignment="Center"
-                         Text="{l:Localize Cmp_Original}" />
-            </Border>
+            <Image x:Name="CompressedImage" Source="{Binding CompressedPreview}"
+                   Stretch="Uniform" RenderTransformOrigin="50%,50%" />
+
+            <!-- Obere Schicht: deckt die volle Fläche wie die untere, wird aber vom Regler
+                 beschnitten. Das Beschneiden sitzt am Rahmen, nicht am Bild, damit die
+                 Teilerkante beim Zoomen an ihrer Stelle bleibt. Dieselbe Transformation auf
+                 beiden Seiten hält die Ansicht synchron. -->
+            <Panel x:Name="OriginalPane">
+              <Image x:Name="OriginalImage" Source="{Binding OriginalPreview}"
+                     Stretch="Uniform" RenderTransformOrigin="50%,50%" />
+            </Panel>
+
+            <!-- Trennkante zwischen den Schichten. Sie liegt über beliebigen Bildinhalten,
+                 deshalb eine feste helle Linie mit dunklem Schein statt einer Themenfarbe:
+                 nur so bleibt sie auf hellen wie dunklen Bildern sichtbar. Sie nimmt keine
+                 Zeigereingaben an, damit das Schwenken darunter weiterläuft. -->
+            <Border x:Name="DividerLine" Width="3" HorizontalAlignment="Left"
+                    IsHitTestVisible="False" IsVisible="{Binding HasPreview}"
+                    Background="#F2FFFFFF" BoxShadow="0 0 5 0 #A6000000" />
+
+            <TextBlock Classes="hint" HorizontalAlignment="Center" VerticalAlignment="Center"
+                       TextAlignment="Center" IsVisible="{Binding IsPreviewLoading}"
+                       Text="{l:Localize Cmp_PreviewPending}" />
+            <TextBlock Classes="hint" HorizontalAlignment="Center" VerticalAlignment="Center"
+                       TextAlignment="Center" IsVisible="{Binding HasPreviewError}"
+                       Text="{Binding PreviewError}" />
 
             <Border Classes="pill" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="12"
                     Background="{DynamicResource PcPanel}">
@@ -54,6 +70,17 @@
           <Slider Minimum="0" Maximum="1" Value="{Binding DividerFraction}"
                   SmallChange="0.02" LargeChange="0.1"
                   AutomationProperties.Name="{l:Localize Cmp_Divider}" />
+        </StackPanel>
+
+        <StackPanel Orientation="Horizontal" Spacing="8">
+          <TextBlock Classes="caps" VerticalAlignment="Center" Text="{l:Localize Cmp_Zoom}" />
+          <Button Command="{Binding ZoomOutCommand}" Content="{l:Localize Cmp_ZoomOut}"
+                  AutomationProperties.Name="{l:Localize Cmp_ZoomOut}" />
+          <Button Command="{Binding ZoomInCommand}" Content="{l:Localize Cmp_ZoomIn}"
+                  AutomationProperties.Name="{l:Localize Cmp_ZoomIn}" />
+          <Button Command="{Binding ResetViewCommand}" Content="{l:Localize Cmp_ResetView}"
+                  AutomationProperties.Name="{l:Localize Cmp_ResetView}" />
+          <TextBlock Classes="mono" VerticalAlignment="Center" Text="{Binding ZoomLabel}" />
         </StackPanel>
 
         <Border Classes="card" DataContext="{Binding Selected}">

@@ -422,7 +422,28 @@
     <value>Noch kein vergleichbares Ergebnis. Ein Ergebnis wird vergleichbar, sobald seine Ausgabe validiert und veröffentlicht wurde.</value>
   </data>
   <data name="Cmp_PreviewPending" xml:space="preserve">
-    <value>Die Vorschauerzeugung ist noch nicht implementiert.</value>
+    <value>Vorschau wird erzeugt …</value>
+  </data>
+  <data name="Cmp_PreviewFailed" xml:space="preserve">
+    <value>Die Vorschau konnte nicht erzeugt werden.</value>
+  </data>
+  <data name="Cmp_PreviewName" xml:space="preserve">
+    <value>Vorher-Nachher-Vergleich</value>
+  </data>
+  <data name="Cmp_Zoom" xml:space="preserve">
+    <value>Zoom</value>
+  </data>
+  <data name="Cmp_ZoomValue" xml:space="preserve">
+    <value>{0:0.0}×</value>
+  </data>
+  <data name="Cmp_ZoomIn" xml:space="preserve">
+    <value>Vergrößern</value>
+  </data>
+  <data name="Cmp_ZoomOut" xml:space="preserve">
+    <value>Verkleinern</value>
+  </data>
+  <data name="Cmp_ResetView" xml:space="preserve">
+    <value>Ansicht zurücksetzen</value>
   </data>
   <data name="Cmp_CandidatesName" xml:space="preserve">
     <value>Vergleichbare Ergebnisse</value>

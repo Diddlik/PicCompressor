@@ -18,7 +18,7 @@
 extern "C" {
 #endif
 
-#define PC_ABI_VERSION 3u
+#define PC_ABI_VERSION 4u
 
 typedef enum pc_status {
   PC_STATUS_OK = 0,
@@ -64,6 +64,24 @@ typedef struct pc_jpegli_options {
   pc_color_profile_policy color_profile_policy;
 } pc_jpegli_options;
 
+// Downscaled, upright, sRGB preview of an input image. The wrapper owns the
+// pixel buffer until pc_preview_release is called.
+typedef struct pc_preview_options {
+  uint32_t struct_size;
+  int32_t max_edge;
+  int32_t alpha_red;
+  int32_t alpha_green;
+  int32_t alpha_blue;
+} pc_preview_options;
+
+typedef struct pc_preview {
+  uint32_t struct_size;
+  int32_t width;
+  int32_t height;
+  uint8_t* rgb;
+  size_t rgb_size;
+} pc_preview;
+
 typedef struct pc_cancel_handle pc_cancel_handle;
 
 PC_API uint32_t pc_abi_version(void);
@@ -84,6 +102,16 @@ PC_API pc_status pc_encode_jpegli(
     const pc_cancel_handle* cancel,
     char* error_utf8,
     size_t error_capacity);
+
+PC_API pc_status pc_render_preview(
+    const char* input_path_utf8,
+    const pc_preview_options* options,
+    pc_preview* preview,
+    const pc_cancel_handle* cancel,
+    char* error_utf8,
+    size_t error_capacity);
+
+PC_API void pc_preview_release(pc_preview* preview);
 
 PC_API pc_status pc_encode_guetzli(
     const char* input_path_utf8,

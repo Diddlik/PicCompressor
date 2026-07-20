@@ -32,7 +32,8 @@ public sealed class MainWindowViewModel : ObservableObject
         ICompressionService compressionService,
         IEngineCatalogService engineCatalogService,
         IHistoryService historyService,
-        IApplicationSettingsStore? settingsStore = null)
+        IApplicationSettingsStore? settingsStore = null,
+        IPreviewRenderer? previewRenderer = null)
     {
         ArgumentNullException.ThrowIfNull(compressionService);
         ArgumentNullException.ThrowIfNull(engineCatalogService);
@@ -43,7 +44,7 @@ public sealed class MainWindowViewModel : ObservableObject
         Settings = new SettingsViewModel(settingsStore);
         Dashboard = new DashboardViewModel(Settings, compressionService);
         History = new HistoryViewModel(historyService);
-        Compare = new CompareViewModel();
+        Compare = new CompareViewModel(previewRenderer);
 
         Dashboard.JobCompleted += OnJobCompleted;
         Dashboard.PropertyChanged += (_, _) => Raise(nameof(StatusSummary));

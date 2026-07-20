@@ -6,8 +6,9 @@
         x:Class="PicCompressor.Gui.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Title="{l:Localize App_Title}"
+        Icon="/Assets/PicCompressor.ico"
         WindowStartupLocation="CenterScreen"
-        Width="1280" Height="720" MinWidth="420" MinHeight="440"
+        Width="1680" Height="1220" MinWidth="420" MinHeight="440"
         Background="{DynamicResource PcBg}"
         Foreground="{DynamicResource PcText}">
 
