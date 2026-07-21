@@ -41,6 +41,8 @@ public sealed class GuetzliEngineAdapter(INativeCodecBridge nativeBridge)
             job.InputPath,
             temporaryOutputPath,
             settings.Quality,
+            job.AlphaBackground,
+            job.ColorProfilePolicy,
             cancellationToken).ConfigureAwait(false);
 
         return result.Status switch

@@ -79,6 +79,8 @@ public sealed class NativeCodecBridge(TimeProvider timeProvider) : INativeCodecB
         string inputPath,
         string outputPath,
         int quality,
+        RgbColor alphaBackground,
+        ColorProfilePolicy colorProfilePolicy,
         CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(inputPath);
@@ -96,7 +98,13 @@ public sealed class NativeCodecBridge(TimeProvider timeProvider) : INativeCodecB
         }
 
         return Task.Run(
-            () => EncodeGuetzli(inputPath, outputPath, quality, cancellationToken),
+            () => EncodeGuetzli(
+                inputPath,
+                outputPath,
+                quality,
+                alphaBackground,
+                colorProfilePolicy,
+                cancellationToken),
             CancellationToken.None);
     }
 
@@ -104,17 +112,32 @@ public sealed class NativeCodecBridge(TimeProvider timeProvider) : INativeCodecB
         string inputPath,
         string outputPath,
         int quality,
-        CancellationToken cancellationToken) =>
-        Encode(
+        RgbColor alphaBackground,
+        ColorProfilePolicy colorProfilePolicy,
+        CancellationToken cancellationToken)
+    {
+        return Encode(
             (cancelHandle, error, errorCapacity) =>
-                NativeMethods.EncodeGuetzli(
+            {
+                var options = new NativeGuetzliOptions
+                {
+                    StructSize = (uint)sizeof(NativeGuetzliOptions),
+                    Quality = quality,
+                    AlphaRed = alphaBackground.Red,
+                    AlphaGreen = alphaBackground.Green,
+                    AlphaBlue = alphaBackground.Blue,
+                    ColorProfilePolicy = ToNativeColorProfilePolicy(colorProfilePolicy)
+                };
+                return NativeMethods.EncodeGuetzli(
                     inputPath,
                     outputPath,
-                    quality,
+                    in options,
                     cancelHandle,
                     error,
-                    errorCapacity),
+                    errorCapacity);
+            },
             cancellationToken);
+    }
 
     private unsafe NativeCodecResult EncodeJpegli(
         string inputPath,

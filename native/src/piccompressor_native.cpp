@@ -24,6 +24,12 @@
 #include "lib/extras/packed_image.h"
 #endif
 
+#if defined(PC_HAVE_GUETZLI)
+#include "guetzli/processor.h"
+#include "guetzli/quality.h"
+#include "guetzli/stats.h"
+#endif
+
 struct pc_cancel_handle {
   std::atomic_bool requested{false};
 };
@@ -241,6 +247,87 @@ bool ConvertToSrgb(jpegli::extras::PackedPixelFile* ppf) {
       jpegli::extras::PackedPixelFile::kIccIsPrimary;
   return true;
 }
+
+// Decodes the input, flattens alpha onto the given background and rotates the
+// pixels upright. This preprocessing is identical for every engine; only the
+// colour-profile and metadata handling differ afterwards. The post-decode EXIF
+// bytes are returned for the caller's metadata policy.
+pc_status DecodeAndPrepare(const char* input_path, const int background[3],
+                           const pc_cancel_handle* cancel,
+                           jpegli::extras::PackedPixelFile* pixels,
+                           std::vector<uint8_t>* exif, char* error_utf8,
+                           size_t error_capacity) {
+  std::vector<uint8_t> input;
+  if (!ReadFile(input_path, &input)) {
+    CopyError("Input image could not be read.", error_utf8, error_capacity);
+    return PC_STATUS_ENCODE_FAILED;
+  }
+
+  const bool decoded =
+      IsJpeg(input)
+          ? static_cast<bool>(jpegli::extras::DecodeJpeg(
+                input, jpegli::extras::JpegDecompressParams{}, nullptr, pixels))
+          : static_cast<bool>(jpegli::extras::DecodeBytes(
+                jpegli::Bytes(input), jpegli::extras::ColorHints{}, pixels));
+  if (!decoded) {
+    CopyError("Input image could not be decoded.", error_utf8, error_capacity);
+    return PC_STATUS_ENCODE_FAILED;
+  }
+
+  const float normalized[3] = {background[0] / 255.0f, background[1] / 255.0f,
+                               background[2] / 255.0f};
+  if (!jpegli::extras::AlphaBlend(pixels, normalized)) {
+    CopyError("Input alpha channel could not be flattened.", error_utf8,
+              error_capacity);
+    return PC_STATUS_ENCODE_FAILED;
+  }
+
+  // The orientation is applied to the pixels unconditionally: the output must be
+  // upright even when the EXIF block carrying it is dropped afterwards (8.2).
+  *exif = pixels->metadata.exif;
+  if (!ApplyOrientation(pixels, pc::ReadExifOrientation(*exif))) {
+    CopyError("Input orientation could not be applied.", error_utf8,
+              error_capacity);
+    return PC_STATUS_ENCODE_FAILED;
+  }
+
+  if (pc_cancel_is_requested(cancel)) {
+    CopyError("Encoding was canceled.", error_utf8, error_capacity);
+    return PC_STATUS_CANCELED;
+  }
+  return PC_STATUS_OK;
+}
+#endif
+
+#if defined(PC_HAVE_GUETZLI)
+uint8_t ToByte(float value) {
+  const float scaled = std::clamp(value, 0.0f, 1.0f) * 255.0f + 0.5f;
+  return static_cast<uint8_t>(scaled);
+}
+
+// Produces interleaved 8-bit RGB for Guetzli, which only accepts three-channel
+// sRGB pixels. Grayscale inputs are expanded; any alpha channel has already been
+// flattened by DecodeAndPrepare.
+std::vector<uint8_t> ExtractInterleavedRgb(jpegli::extras::PackedImage& image) {
+  const size_t channels = image.format.num_channels;
+  std::vector<uint8_t> rgb(image.xsize * image.ysize * 3);
+  size_t index = 0;
+  for (size_t y = 0; y < image.ysize; ++y) {
+    for (size_t x = 0; x < image.xsize; ++x) {
+      if (channels >= 3) {
+        rgb[index++] = ToByte(image.GetPixelValue(y, x, 0));
+        rgb[index++] = ToByte(image.GetPixelValue(y, x, 1));
+        rgb[index++] = ToByte(image.GetPixelValue(y, x, 2));
+      } else {
+        const uint8_t gray = ToByte(image.GetPixelValue(y, x, 0));
+        rgb[index++] = gray;
+        rgb[index++] = gray;
+        rgb[index++] = gray;
+      }
+    }
+  }
+  return rgb;
+}
 #endif
 
 }  // namespace
@@ -256,7 +343,11 @@ int32_t pc_engine_available(pc_engine engine) {
       return 0;
 #endif
     case PC_ENGINE_GUETZLI:
+#if defined(PC_HAVE_GUETZLI)
+      return 1;
+#else
       return 0;
+#endif
     default:
       return 0;
   }
@@ -267,6 +358,12 @@ const char* pc_engine_build_version(pc_engine engine) {
     case PC_ENGINE_JPEGLI:
 #if defined(PC_HAVE_JPEGLI)
       return PC_JPEGLI_BUILD_VERSION;
+#else
+      return "";
+#endif
+    case PC_ENGINE_GUETZLI:
+#if defined(PC_HAVE_GUETZLI)
+      return PC_GUETZLI_BUILD_VERSION;
 #else
       return "";
 #endif
@@ -295,7 +392,11 @@ const char* pc_engine_unavailable_reason(pc_engine engine) {
       return kJpegliUnavailable;
 #endif
     case PC_ENGINE_GUETZLI:
+#if defined(PC_HAVE_GUETZLI)
+      return "";
+#else
       return kGuetzliUnavailable;
+#endif
     default:
       return "Unknown native engine.";
   }
@@ -348,46 +449,15 @@ pc_status pc_encode_jpegli(
   }
 
 #if defined(PC_HAVE_JPEGLI)
-  std::vector<uint8_t> input;
-  if (!ReadFile(input_path_utf8, &input)) {
-    CopyError("Input image could not be read.", error_utf8, error_capacity);
-    return PC_STATUS_ENCODE_FAILED;
-  }
-
   jpegli::extras::PackedPixelFile pixels;
-  const bool decoded =
-      IsJpeg(input)
-          ? static_cast<bool>(jpegli::extras::DecodeJpeg(
-                input, jpegli::extras::JpegDecompressParams{}, nullptr, &pixels))
-          : static_cast<bool>(jpegli::extras::DecodeBytes(
-                jpegli::Bytes(input), jpegli::extras::ColorHints{}, &pixels));
-  if (!decoded) {
-    CopyError("Input image could not be decoded.", error_utf8, error_capacity);
-    return PC_STATUS_ENCODE_FAILED;
-  }
-
-  const float background[3] = {
-      options->alpha_red / 255.0f,
-      options->alpha_green / 255.0f,
-      options->alpha_blue / 255.0f};
-  if (!jpegli::extras::AlphaBlend(&pixels, background)) {
-    CopyError("Input alpha channel could not be flattened.", error_utf8,
-              error_capacity);
-    return PC_STATUS_ENCODE_FAILED;
-  }
-
-  // The orientation is applied to the pixels unconditionally: the output must
-  // be upright even when the EXIF block carrying it is dropped afterwards.
-  std::vector<uint8_t> exif = pixels.metadata.exif;
-  if (!ApplyOrientation(&pixels, pc::ReadExifOrientation(exif))) {
-    CopyError("Input orientation could not be applied.", error_utf8,
-              error_capacity);
-    return PC_STATUS_ENCODE_FAILED;
-  }
-
-  if (pc_cancel_is_requested(cancel)) {
-    CopyError("Encoding was canceled.", error_utf8, error_capacity);
-    return PC_STATUS_CANCELED;
+  std::vector<uint8_t> exif;
+  const int background[3] = {options->alpha_red, options->alpha_green,
+                             options->alpha_blue};
+  const pc_status prepared =
+      DecodeAndPrepare(input_path_utf8, background, cancel, &pixels, &exif,
+                       error_utf8, error_capacity);
+  if (prepared != PC_STATUS_OK) {
+    return prepared;
   }
 
   switch (options->color_profile_policy) {
@@ -485,12 +555,19 @@ pc_status pc_encode_jpegli(
 pc_status pc_encode_guetzli(
     const char* input_path_utf8,
     const char* output_path_utf8,
-    int32_t quality,
+    const pc_guetzli_options* options,
     const pc_cancel_handle* cancel,
     char* error_utf8,
     size_t error_capacity) {
   if (MissingPath(input_path_utf8) || MissingPath(output_path_utf8) ||
-      quality < 1 || quality > 100) {
+      options == nullptr ||
+      options->struct_size != sizeof(pc_guetzli_options) ||
+      options->quality < 1 || options->quality > 100 ||
+      options->alpha_red < 0 || options->alpha_red > 255 ||
+      options->alpha_green < 0 || options->alpha_green > 255 ||
+      options->alpha_blue < 0 || options->alpha_blue > 255 ||
+      options->color_profile_policy < PC_COLOR_PROFILE_PRESERVE ||
+      options->color_profile_policy > PC_COLOR_PROFILE_REMOVE) {
     CopyError("Invalid Guetzli encode request.", error_utf8, error_capacity);
     return PC_STATUS_INVALID_ARGUMENT;
   }
@@ -500,6 +577,74 @@ pc_status pc_encode_guetzli(
     return PC_STATUS_CANCELED;
   }
 
+#if defined(PC_HAVE_GUETZLI) && defined(PC_HAVE_JPEGLI)
+  jpegli::extras::PackedPixelFile pixels;
+  std::vector<uint8_t> exif;
+  const int background[3] = {options->alpha_red, options->alpha_green,
+                             options->alpha_blue};
+  const pc_status prepared =
+      DecodeAndPrepare(input_path_utf8, background, cancel, &pixels, &exif,
+                       error_utf8, error_capacity);
+  if (prepared != PC_STATUS_OK) {
+    return prepared;
+  }
+  // Guetzli emits no metadata; the orientation is already baked into the pixels.
+  (void)exif;
+
+  // Guetzli ignores embedded colour profiles and assumes sRGB, so the pixels
+  // must represent sRGB before encoding (8.3). Preserve and sRGB both transform
+  // to sRGB; Remove is only valid when the input already is sRGB.
+  if (options->color_profile_policy == PC_COLOR_PROFILE_REMOVE) {
+    if (!RepresentsSrgb(pixels)) {
+      CopyError(
+          "Removing the color profile would change the colors of a "
+          "non-sRGB input.",
+          error_utf8, error_capacity);
+      return PC_STATUS_INVALID_ARGUMENT;
+    }
+  } else if (!ConvertToSrgb(&pixels)) {
+    CopyError("Input could not be transformed to sRGB.", error_utf8,
+              error_capacity);
+    return PC_STATUS_ENCODE_FAILED;
+  }
+
+  jpegli::extras::PackedImage& image = pixels.frames[0].color;
+  const int width = static_cast<int>(image.xsize);
+  const int height = static_cast<int>(image.ysize);
+  const std::vector<uint8_t> rgb = ExtractInterleavedRgb(image);
+
+  if (pc_cancel_is_requested(cancel)) {
+    CopyError("Encoding was canceled.", error_utf8, error_capacity);
+    return PC_STATUS_CANCELED;
+  }
+
+  // Guetzli offers no cooperative cancellation inside Process (10.3); the cancel
+  // handle is only honoured at the safe points before and after the call.
+  guetzli::Params params;
+  params.butteraugli_target = static_cast<float>(
+      guetzli::ButteraugliScoreForQuality(options->quality));
+  guetzli::ProcessStats stats;
+  std::string output;
+  if (!guetzli::Process(params, &stats, rgb, width, height, &output) ||
+      output.empty()) {
+    CopyError("Guetzli encoding failed.", error_utf8, error_capacity);
+    return PC_STATUS_ENCODE_FAILED;
+  }
+
+  if (pc_cancel_is_requested(cancel)) {
+    CopyError("Encoding was canceled.", error_utf8, error_capacity);
+    return PC_STATUS_CANCELED;
+  }
+
+  const std::vector<uint8_t> bytes(output.begin(), output.end());
+  if (!WriteFile(output_path_utf8, bytes)) {
+    CopyError("Encoded output could not be written.", error_utf8,
+              error_capacity);
+    return PC_STATUS_ENCODE_FAILED;
+  }
+  return PC_STATUS_OK;
+#else
   CopyError(kGuetzliUnavailable, error_utf8, error_capacity);
   return PC_STATUS_ENGINE_UNAVAILABLE;
+#endif
 }

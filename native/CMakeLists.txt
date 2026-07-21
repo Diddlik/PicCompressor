@@ -6,6 +6,7 @@ include(dependencies.lock.cmake)
 include(FetchContent)
 
 option(PC_ENABLE_JPEGLI "Fetch and link the pinned Jpegli revision." ON)
+option(PC_ENABLE_GUETZLI "Fetch and link the pinned Guetzli revision." ON)
 
 if(PC_ENABLE_JPEGLI)
     set(PC_PARENT_BUILD_TESTING ${BUILD_TESTING})
@@ -50,6 +51,43 @@ if(PC_ENABLE_JPEGLI)
     set(BUILD_TESTING ${PC_PARENT_BUILD_TESTING} CACHE BOOL "" FORCE)
 endif()
 
+if(PC_ENABLE_GUETZLI)
+    # Guetzli ships no CMake build; MakeAvailable only fetches the pinned source.
+    # The core library (guetzli/*.cc without the CLI main) plus butteraugli have no
+    # external dependencies, so they are compiled directly into a static library.
+    FetchContent_Declare(
+        guetzli
+        GIT_REPOSITORY https://github.com/google/guetzli.git
+        GIT_TAG ${PC_GUETZLI_REVISION}
+        GIT_SHALLOW FALSE
+        EXCLUDE_FROM_ALL)
+    FetchContent_MakeAvailable(guetzli)
+
+    file(GLOB PC_GUETZLI_SOURCES CONFIGURE_DEPENDS
+        ${guetzli_SOURCE_DIR}/guetzli/*.cc)
+    # guetzli.cc is the command-line front-end and pulls in libpng; it is excluded.
+    list(REMOVE_ITEM PC_GUETZLI_SOURCES ${guetzli_SOURCE_DIR}/guetzli/guetzli.cc)
+
+    add_library(guetzli_static STATIC
+        ${PC_GUETZLI_SOURCES}
+        ${guetzli_SOURCE_DIR}/third_party/butteraugli/butteraugli/butteraugli.cc)
+    # The core sources include "guetzli/..." relative to the root and
+    # "butteraugli/butteraugli.h" relative to third_party/butteraugli.
+    target_include_directories(guetzli_static PUBLIC
+        ${guetzli_SOURCE_DIR}
+        ${guetzli_SOURCE_DIR}/third_party/butteraugli)
+    target_compile_features(guetzli_static PRIVATE cxx_std_17)
+    # Upstream third-party code: silence its warnings instead of failing the build.
+    if(MSVC)
+        target_compile_options(guetzli_static PRIVATE /w /EHsc)
+        target_compile_definitions(guetzli_static PRIVATE
+            _USE_MATH_DEFINES _CRT_SECURE_NO_WARNINGS NOMINMAX)
+    else()
+        target_compile_options(guetzli_static PRIVATE -w)
+        target_compile_definitions(guetzli_static PRIVATE _USE_MATH_DEFINES)
+    endif()
+endif()
+
 add_library(piccompressor_native SHARED
     src/piccompressor_native.cpp
     src/pc_exif.cpp)
@@ -72,6 +110,15 @@ if(PC_ENABLE_JPEGLI)
     target_link_libraries(piccompressor_native PRIVATE
         jpegli_extras-internal
         jpegli_cms)
+endif()
+
+if(PC_ENABLE_GUETZLI)
+    target_compile_definitions(piccompressor_native PRIVATE
+        PC_HAVE_GUETZLI
+        PC_GUETZLI_BUILD_VERSION="${PC_GUETZLI_VERSION}")
+    target_include_directories(piccompressor_native SYSTEM PRIVATE
+        ${guetzli_SOURCE_DIR})
+    target_link_libraries(piccompressor_native PRIVATE guetzli_static)
 endif()
 
 if(MSVC)
@@ -100,6 +147,10 @@ if(BUILD_TESTING)
     if(PC_ENABLE_JPEGLI)
         target_compile_definitions(piccompressor_native_tests PRIVATE
             PC_EXPECT_JPEGLI)
+    endif()
+    if(PC_ENABLE_GUETZLI)
+        target_compile_definitions(piccompressor_native_tests PRIVATE
+            PC_EXPECT_GUETZLI)
     endif()
     target_link_libraries(piccompressor_native_tests PRIVATE piccompressor_native)
     add_test(NAME piccompressor_native_abi COMMAND piccompressor_native_tests)

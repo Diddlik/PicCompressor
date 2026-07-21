@@ -58,6 +58,7 @@ $configureArguments = @(
     "-S", (Join-Path $root "native"),
     "-B", $BuildDirectory,
     "-DPC_ENABLE_JPEGLI=ON",
+    "-DPC_ENABLE_GUETZLI=ON",
     "-DPC_OUTPUT_DIR=$($OutputDirectory.Replace('\', '/'))",
     "-DBUILD_TESTING=ON"
 )
