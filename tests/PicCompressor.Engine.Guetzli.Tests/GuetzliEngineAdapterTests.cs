@@ -35,6 +35,8 @@ public sealed class GuetzliEngineAdapterTests
         Assert.Equal(job.InputPath, bridge.InputPath);
         Assert.Equal(temporaryPath, bridge.OutputPath);
         Assert.Equal(90, bridge.Quality);
+        Assert.Equal(RgbColor.White, bridge.AlphaBackground);
+        Assert.Equal(ColorProfilePolicy.Preserve, bridge.RequestedColorProfilePolicy);
     }
 
     [Fact]
@@ -111,6 +113,8 @@ public sealed class GuetzliEngineAdapterTests
         public string? InputPath { get; private set; }
         public string? OutputPath { get; private set; }
         public int? Quality { get; private set; }
+        public RgbColor AlphaBackground { get; private set; }
+        public ColorProfilePolicy? RequestedColorProfilePolicy { get; private set; }
 
         public EngineCapability GetEngineCapability(string engineId)
         {
@@ -132,11 +136,15 @@ public sealed class GuetzliEngineAdapterTests
             string inputPath,
             string outputPath,
             int quality,
+            RgbColor alphaBackground,
+            ColorProfilePolicy colorProfilePolicy,
             CancellationToken cancellationToken)
         {
             InputPath = inputPath;
             OutputPath = outputPath;
             Quality = quality;
+            AlphaBackground = alphaBackground;
+            RequestedColorProfilePolicy = colorProfilePolicy;
             return Task.FromResult(Result);
         }
     }

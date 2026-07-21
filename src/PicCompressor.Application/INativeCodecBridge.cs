@@ -34,5 +34,7 @@ public interface INativeCodecBridge
         string inputPath,
         string outputPath,
         int quality,
+        RgbColor alphaBackground,
+        ColorProfilePolicy colorProfilePolicy,
         CancellationToken cancellationToken);
 }

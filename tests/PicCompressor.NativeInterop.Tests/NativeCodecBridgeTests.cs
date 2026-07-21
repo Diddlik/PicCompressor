@@ -26,12 +26,15 @@ public sealed class NativeCodecBridgeTests
     }
 
     [Fact]
-    public void GetEngineCapability_reports_unlinked_guetzli()
+    public void GetEngineCapability_reports_linked_guetzli()
     {
         var capability = Bridge.GetEngineCapability("guetzli");
 
-        Assert.False(capability.IsAvailable);
-        Assert.Contains("not linked", capability.UnavailableReason);
+        Assert.True(capability.IsAvailable);
+        Assert.Equal("1.0.1", capability.BuildVersion);
+        Assert.Equal(
+            "a0f47a297f802630f937a3091964838eaf3b87d8",
+            capability.SourceRevision);
     }
 
     [Fact]
@@ -536,16 +539,25 @@ public sealed class NativeCodecBridgeTests
     }
 
     [Fact]
-    public async Task EncodeGuetzliAsync_calls_native_wrapper()
+    public async Task EncodeGuetzliAsync_encodes_a_valid_jpeg()
     {
+        using var workspace = new Workspace();
+        var inputPath = workspace.Write("input.ppm", CreatePortablePixmap(32, 32));
+        var outputPath = Path.Combine(workspace.Directory, "output.jpg");
+
         var result = await Bridge.EncodeGuetzliAsync(
-            "input.png",
-            "output.jpg",
-            90,
+            inputPath,
+            outputPath,
+            95,
+            RgbColor.White,
+            ColorProfilePolicy.Preserve,
             CancellationToken.None);
 
-        Assert.Equal(NativeCodecStatus.EngineUnavailable, result.Status);
-        Assert.Contains("not linked", result.ErrorText);
+        Assert.Equal(NativeCodecStatus.Succeeded, result.Status);
+        var output = await File.ReadAllBytesAsync(outputPath);
+        Assert.True(output.Length > 2);
+        Assert.Equal(0xff, output[0]);
+        Assert.Equal(0xd8, output[1]);
     }
 
     private static string FindNativeLibrary()

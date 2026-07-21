@@ -28,7 +28,9 @@ public sealed class SqliteCompressionHistoryStoreTests : IDisposable
         Assert.Equal(1, stored.Id);
         var persisted = Assert.Single(records);
         Assert.Equal(stored.Id, persisted.Id);
-        Assert.Equal(record, persisted);
+        // Der gelesene Eintrag entspricht dem zurueckgelieferten (samt vergebener Id);
+        // `record` traegt noch Id 0 und darf hier nicht direkt verglichen werden.
+        Assert.Equal(stored, persisted);
     }
 
     [Fact]

@@ -18,7 +18,7 @@
 extern "C" {
 #endif
 
-#define PC_ABI_VERSION 6u
+#define PC_ABI_VERSION 7u
 
 typedef enum pc_status {
   PC_STATUS_OK = 0,
@@ -63,6 +63,18 @@ typedef struct pc_jpegli_options {
   pc_exif_policy exif_policy;
   pc_color_profile_policy color_profile_policy;
 } pc_jpegli_options;
+
+// Guetzli discards image metadata, so it carries no EXIF policy: the EXIF
+// orientation is baked into the pixels during decoding and the output holds no
+// metadata. Alpha background and colour-profile policy match the Jpegli path.
+typedef struct pc_guetzli_options {
+  uint32_t struct_size;
+  int32_t quality;
+  int32_t alpha_red;
+  int32_t alpha_green;
+  int32_t alpha_blue;
+  pc_color_profile_policy color_profile_policy;
+} pc_guetzli_options;
 
 // Downscaled, upright, sRGB preview of an input image. The wrapper owns the
 // pixel buffer until pc_preview_release is called.
@@ -134,7 +146,7 @@ PC_API void pc_preview_release(pc_preview* preview);
 PC_API pc_status pc_encode_guetzli(
     const char* input_path_utf8,
     const char* output_path_utf8,
-    int32_t quality,
+    const pc_guetzli_options* options,
     const pc_cancel_handle* cancel,
     char* error_utf8,
     size_t error_capacity);
