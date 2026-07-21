@@ -8,13 +8,13 @@ namespace PicCompressor.Gui.Services;
 public static class EngineIds
 {
     public const string Jpegli = JpegliSettings.JpegliEngineId;
-    public const string Guetzli = "guetzli";
+    public const string Guetzli = GuetzliSettings.GuetzliEngineId;
 
     /// <summary>
     /// Untergrenze der offiziellen Guetzli-Revision (Abschnitt 5.2). Sobald der Engine-Katalog
     /// eine reale Capability liefert, ersetzt deren Wert diese Annahme.
     /// </summary>
-    public const int GuetzliMinimumQuality = 84;
+    public const int GuetzliMinimumQuality = GuetzliSettings.MinimumQuality;
 
     /// <summary>Anzeigename; Eigenname und daher unübersetzt.</summary>
     public static string DisplayName(string engineId) =>

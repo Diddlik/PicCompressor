@@ -1,6 +1,7 @@
 using Avalonia;
 using PicCompressor.Application;
 using PicCompressor.Domain;
+using PicCompressor.Engine.Guetzli;
 using PicCompressor.Engine.Jpegli;
 using PicCompressor.Gui;
 using PicCompressor.Gui.Services;
@@ -23,11 +24,9 @@ internal static class Program
         var inspector = new PhysicalInputImageInspector();
         var bridge = new NativeCodecBridge(TimeProvider.System);
         var jpegli = new JpegliEngineAdapter(bridge);
-        var unavailableGuetzli = new UnavailableEngine(
-            EngineIds.Guetzli,
-            "Guetzli is not packaged for this runtime.");
+        var guetzli = new GuetzliEngineAdapter(bridge);
         var executor = new CompressionExecutor(
-            jpegli,
+            [jpegli, guetzli],
             new SafeOutputPublisher(fileSystem, inspector));
         var log = new JsonLinesDiagnosticLog(ApplicationDataPaths.DiagnosticLogPath);
         var settingsStore = new JsonApplicationSettingsStore(
@@ -63,7 +62,7 @@ internal static class Program
                     new InputValidationLimits(500 * 1024 * 1024, 250_000_000),
                     TimeProvider.System),
                 executor),
-            new ApplicationEngineCatalogService(new EngineCatalog([jpegli, unavailableGuetzli])),
+            new ApplicationEngineCatalogService(new EngineCatalog([jpegli, guetzli])),
             new PersistentHistoryService(historyStore),
             settingsStore);
 
@@ -71,23 +70,5 @@ internal static class Program
             .UsePlatformDetect()
             .LogToTrace()
             .StartWithClassicDesktopLifetime(args);
-    }
-
-    private sealed class UnavailableEngine(string engineId, string reason) : ICompressionEngine
-    {
-        public string EngineId { get; } = engineId;
-
-        public Task<EngineCapability> DetectCapabilityAsync(CancellationToken cancellationToken) =>
-            Task.FromResult(EngineCapability.Unavailable(EngineId, reason));
-
-        public Task<EngineEncodingResult> EncodeAsync(
-            CompressionJob job,
-            string temporaryOutputPath,
-            CancellationToken cancellationToken) =>
-            Task.FromResult(
-                EngineEncodingResult.Failed(
-                    CompressionErrorCategory.EngineUnavailable,
-                    reason,
-                    TimeSpan.Zero));
     }
 }

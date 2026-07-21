@@ -134,7 +134,7 @@ public sealed class DashboardViewModelTests : IDisposable
     }
 
     [Fact]
-    public async Task Guetzli_is_reported_unavailable_instead_of_being_run()
+    public async Task Guetzli_jobs_are_submitted_with_guetzli_settings()
     {
         var service = FakeCompressionService.Succeeding();
         var dashboard = Create(service);
@@ -143,9 +143,11 @@ public sealed class DashboardViewModelTests : IDisposable
 
         await RunAsync(dashboard);
 
-        var item = Assert.Single(dashboard.Queue);
-        Assert.Equal(CompressionErrorCategory.EngineUnavailable, item.ErrorCategory);
-        Assert.Empty(service.Requests);
+        // Guetzli ist eine echte Engine mit Domain-Modell; die Oberfläche reicht den Job ein.
+        // Ob die Engine ausführbar ist, entscheidet die Engine-Capability im Executor
+        // (Abschnitt 4.2), nicht das ViewModel.
+        var request = Assert.Single(service.Requests);
+        Assert.IsType<GuetzliSettings>(request.EngineSettings);
     }
 
     [Fact]
