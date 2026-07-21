@@ -5,9 +5,19 @@ using PicCompressor.Gui.Services;
 
 namespace PicCompressor.Gui.ViewModels;
 
-public sealed class HistoryEntryViewModel(HistoryRecord record) : ObservableObject
+public sealed class HistoryEntryViewModel : ObservableObject
 {
-    public HistoryRecord Record { get; } = record;
+    public HistoryEntryViewModel(HistoryRecord record, Func<HistoryEntryViewModel, Task>? onDelete = null)
+    {
+        Record = record;
+        DeleteCommand = new AsyncRelayCommand(
+            () => onDelete?.Invoke(this) ?? Task.CompletedTask,
+            () => onDelete is not null);
+    }
+
+    public HistoryRecord Record { get; }
+
+    public AsyncRelayCommand DeleteCommand { get; }
 
     public string FileName => Record.FileName;
 
@@ -48,6 +58,10 @@ public sealed class HistoryEntryViewModel(HistoryRecord record) : ObservableObje
         $"{Before} → {After}",
         Savings,
         StatusLabel);
+
+    /// <summary>Zugänglicher Name des Lösch-Buttons; nennt die betroffene Datei.</summary>
+    public string DeleteAccessibleName =>
+        Localizer.Instance.Format("Hist_DeleteEntry", FileName);
 }
 
 public sealed class HistoryViewModel : ObservableObject
@@ -115,7 +129,7 @@ public sealed class HistoryViewModel : ObservableObject
         Entries.Clear();
         foreach (var record in records)
         {
-            Entries.Add(new HistoryEntryViewModel(record));
+            Entries.Add(CreateEntry(record));
         }
 
         RaiseAll();
@@ -124,8 +138,20 @@ public sealed class HistoryViewModel : ObservableObject
     public async Task AppendAsync(HistoryRecord record, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(record);
-        await historyService.AppendAsync(record, cancellationToken).ConfigureAwait(true);
-        Entries.Insert(0, new HistoryEntryViewModel(record));
+        var stored = await historyService.AppendAsync(record, cancellationToken).ConfigureAwait(true);
+        Entries.Insert(0, CreateEntry(stored));
+        RaiseAll();
+    }
+
+    /// <summary>
+    /// Löscht einen einzelnen Eintrag (Abschnitt 13.1). Die Zeile verschwindet erst,
+    /// wenn der Speicher den Löschvorgang bestätigt hat.
+    /// </summary>
+    public async Task DeleteAsync(HistoryEntryViewModel entry, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(entry);
+        await historyService.DeleteAsync(entry.Record.Id, cancellationToken).ConfigureAwait(true);
+        Entries.Remove(entry);
         RaiseAll();
     }
 
@@ -139,6 +165,9 @@ public sealed class HistoryViewModel : ObservableObject
         Entries.Clear();
         RaiseAll();
     }
+
+    private HistoryEntryViewModel CreateEntry(HistoryRecord record) =>
+        new(record, entry => DeleteAsync(entry, CancellationToken.None));
 
     private void RaiseAll()
     {

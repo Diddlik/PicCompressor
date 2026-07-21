@@ -13,8 +13,10 @@ public sealed class PersistentHistoryService(ICompressionHistoryStore store) : I
         .Select(Map)
         .ToArray();
 
-    public Task AppendAsync(HistoryRecord record, CancellationToken cancellationToken) =>
-        store.AppendAsync(
+    public async Task<HistoryRecord> AppendAsync(
+        HistoryRecord record,
+        CancellationToken cancellationToken) =>
+        Map(await store.AppendAsync(
             new(
                 record.CompletedAt,
                 record.FileName,
@@ -23,7 +25,10 @@ public sealed class PersistentHistoryService(ICompressionHistoryStore store) : I
                 record.OutputSizeBytes,
                 record.Status,
                 record.ErrorCategory),
-            cancellationToken);
+            cancellationToken).ConfigureAwait(false));
+
+    public Task DeleteAsync(long id, CancellationToken cancellationToken) =>
+        store.DeleteAsync(id, cancellationToken);
 
     public Task ClearAsync(CancellationToken cancellationToken) =>
         store.ClearAsync(cancellationToken);
@@ -36,5 +41,8 @@ public sealed class PersistentHistoryService(ICompressionHistoryStore store) : I
             entry.InputSizeBytes,
             entry.OutputSizeBytes,
             entry.Status,
-            entry.ErrorCategory);
+            entry.ErrorCategory)
+        {
+            Id = entry.Id
+        };
 }

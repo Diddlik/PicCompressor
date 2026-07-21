@@ -183,6 +183,27 @@ public sealed class MainWindowViewModelTests
         Assert.False(history.ClearCommand.CanExecute(null));
     }
 
+    [Fact]
+    public async Task Deleting_an_entry_removes_only_it_from_store_and_view()
+    {
+        var service = new RecordingHistoryService();
+        var history = new HistoryViewModel(service);
+        await history.AppendAsync(Record("a.jpg"), CancellationToken.None);
+        await history.AppendAsync(Record("b.jpg"), CancellationToken.None);
+
+        var target = history.Entries.Single(entry => entry.FileName == "a.jpg");
+        Assert.True(target.DeleteCommand.CanExecute(null));
+
+        await history.DeleteAsync(target, CancellationToken.None);
+
+        var remaining = Assert.Single(history.Entries);
+        Assert.Equal("b.jpg", remaining.FileName);
+        Assert.Equal("b.jpg", Assert.Single(service.Records).FileName);
+    }
+
+    private static HistoryRecord Record(string fileName) =>
+        new(DateTimeOffset.UtcNow, fileName, EngineIds.Jpegli, 10, 5, JobStatus.Succeeded, null);
+
     private static MainWindowViewModel Create() =>
         new(
             new UnconfiguredCompressionService(),

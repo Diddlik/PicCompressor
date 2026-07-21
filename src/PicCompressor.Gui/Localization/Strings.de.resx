@@ -265,6 +265,15 @@
   <data name="Set_ParallelJobsHint" xml:space="preserve">
     <value>Die Queue berücksichtigt zusätzlich den geschätzten Speicherbedarf je Engine.</value>
   </data>
+  <data name="Set_History" xml:space="preserve">
+    <value>Verlauf</value>
+  </data>
+  <data name="Set_HistoryRetention" xml:space="preserve">
+    <value>Einträge aufbewahren (Tage)</value>
+  </data>
+  <data name="Set_HistoryRetentionHint" xml:space="preserve">
+    <value>Ältere Einträge werden beim nächsten Start entfernt.</value>
+  </data>
   <data name="Set_Appearance" xml:space="preserve">
     <value>Sprache und Darstellung</value>
   </data>
@@ -300,6 +309,9 @@
   </data>
   <data name="Hist_Clear" xml:space="preserve">
     <value>Verlauf löschen</value>
+  </data>
+  <data name="Hist_DeleteEntry" xml:space="preserve">
+    <value>Verlaufseintrag für {0} löschen</value>
   </data>
   <data name="Hist_Search" xml:space="preserve">
     <value>Dateiname suchen…</value>

@@ -247,6 +247,23 @@
       </StackPanel>
     </Border>
 
+    <!-- Verlauf -->
+    <Border Classes="card">
+      <StackPanel Spacing="13">
+        <TextBlock Classes="h2" Text="{l:Localize Set_History}" />
+        <Grid ColumnDefinitions="*,Auto">
+          <StackPanel Spacing="2">
+            <TextBlock Text="{l:Localize Set_HistoryRetention}" FontSize="12.5" FontWeight="Medium" />
+            <TextBlock Classes="hint" Text="{l:Localize Set_HistoryRetentionHint}" />
+          </StackPanel>
+          <NumericUpDown Grid.Column="1" Width="140" Minimum="1" Maximum="3650" Increment="1"
+                         FormatString="0" VerticalAlignment="Center"
+                         Value="{Binding HistoryRetentionDays}"
+                         AutomationProperties.Name="{l:Localize Set_HistoryRetention}" />
+        </Grid>
+      </StackPanel>
+    </Border>
+
     </StackPanel>
   </ScrollViewer>
 </UserControl>

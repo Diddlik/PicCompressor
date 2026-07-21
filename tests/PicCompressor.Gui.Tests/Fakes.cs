@@ -102,6 +102,8 @@ internal sealed class ThrowingEngineCatalogService : IEngineCatalogService
 
 internal sealed class RecordingHistoryService : IHistoryService
 {
+    private long nextId;
+
     public List<HistoryRecord> Records { get; } = [];
 
     public bool IsAvailable => true;
@@ -109,9 +111,16 @@ internal sealed class RecordingHistoryService : IHistoryService
     public Task<IReadOnlyList<HistoryRecord>> GetAsync(CancellationToken cancellationToken) =>
         Task.FromResult<IReadOnlyList<HistoryRecord>>([.. Records]);
 
-    public Task AppendAsync(HistoryRecord record, CancellationToken cancellationToken)
+    public Task<HistoryRecord> AppendAsync(HistoryRecord record, CancellationToken cancellationToken)
     {
-        Records.Insert(0, record);
+        var stored = record with { Id = ++nextId };
+        Records.Insert(0, stored);
+        return Task.FromResult(stored);
+    }
+
+    public Task DeleteAsync(long id, CancellationToken cancellationToken)
+    {
+        Records.RemoveAll(record => record.Id == id);
         return Task.CompletedTask;
     }
 
