@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using PicCompressor.Application;
 using PicCompressor.Domain;
+using PicCompressor.Engine.Guetzli;
 using PicCompressor.Engine.Jpegli;
 using PicCompressor.Infrastructure;
 using PicCompressor.NativeInterop;
@@ -14,6 +15,7 @@ internal static class CliApplication
     private const string Usage =
         """
         Usage: piccompressor <input> [<input> ...] [options]
+          --engine <jpegli|guetzli>     Engine (default: jpegli; guetzli needs quality >= 84)
           --quality <1-100>             JPEG quality (default: 80)
           --output-dir <path>           Output directory
           --suffix <text>               Output suffix (default: _compressed)
@@ -205,10 +207,7 @@ internal static class CliApplication
             var plans = new CompressionBatchPlanner(jobFactory).Plan(
                 discoveredInputs,
                 new CompressionBatchSettings(
-                    new JpegliSettings(
-                        options.Quality,
-                        JpegliChromaSubsampling.Subsampling420,
-                        2),
+                    BuildEngineSettings(options),
                     options.ExifPolicy,
                     options.ColorProfilePolicy,
                     RgbColor.White,
@@ -223,8 +222,9 @@ internal static class CliApplication
                 return MapBatchExitCode(plans, []);
             }
 
+            var bridge = new NativeCodecBridge(TimeProvider.System);
             var executor = new CompressionExecutor(
-                new JpegliEngineAdapter(new NativeCodecBridge(TimeProvider.System)),
+                [new JpegliEngineAdapter(bridge), new GuetzliEngineAdapter(bridge)],
                 new SafeOutputPublisher(fileSystem, inspector));
             var jobs = plans
                 .Where(plan => plan.Job is not null)
@@ -372,6 +372,17 @@ internal static class CliApplication
             CompressionErrorCategory.Unexpected => 1,
             _ => 5
         };
+
+    // Guetzli only exposes quality; Jpegli carries the chroma and progressive
+    // defaults. The quality has already been validated against the engine floor
+    // during option parsing.
+    private static CompressionEngineSettings BuildEngineSettings(CliOptions options) =>
+        options.EngineId == GuetzliSettings.GuetzliEngineId
+            ? new GuetzliSettings(options.Quality)
+            : new JpegliSettings(
+                options.Quality,
+                JpegliChromaSubsampling.Subsampling420,
+                2);
 
     private static int MapBatchExitCode(
         IReadOnlyList<CompressionJobPlan> plans,

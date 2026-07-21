@@ -4,6 +4,7 @@ namespace PicCompressor.Cli;
 
 internal sealed record CliOptions(
     IReadOnlyList<string> InputPaths,
+    string EngineId,
     int Quality,
     string? OutputDirectory,
     string Suffix,
@@ -22,8 +23,10 @@ internal sealed record CliOptions(
     {
         ArgumentNullException.ThrowIfNull(args);
         var inputPaths = new List<string>();
+        var engineId = JpegliSettings.JpegliEngineId;
         string? outputDirectory = null;
         var quality = 80;
+        var qualityExplicit = false;
         var suffix = "_compressed";
         var collisionPolicy = CollisionPolicy.Skip;
         var largerOutputPolicy = LargerOutputPolicy.Discard;
@@ -58,8 +61,12 @@ internal sealed record CliOptions(
                 case "--parallelism":
                     parallelism = ParseParallelism(NextValue(args, ref index, "--parallelism"));
                     break;
+                case "--engine":
+                    engineId = ParseEngine(NextValue(args, ref index, "--engine"));
+                    break;
                 case "--quality":
                     quality = ParseQuality(NextValue(args, ref index, "--quality"));
+                    qualityExplicit = true;
                     break;
                 case "--output-dir":
                     outputDirectory = NextValue(args, ref index, "--output-dir");
@@ -98,10 +105,27 @@ internal sealed record CliOptions(
             }
         }
 
+        // Guetzli's effective quality floor follows its revision (Abschnitt 5.2). An
+        // unset quality defaults up to the floor; an explicit value below it is a
+        // usage error rather than a silent change.
+        if (engineId == GuetzliSettings.GuetzliEngineId)
+        {
+            if (!qualityExplicit)
+            {
+                quality = GuetzliSettings.MinimumQuality;
+            }
+            else if (quality < GuetzliSettings.MinimumQuality)
+            {
+                throw new CliUsageException(
+                    $"--engine guetzli requires --quality {GuetzliSettings.MinimumQuality} or higher.");
+            }
+        }
+
         return new(
             inputPaths.Count > 0
                 ? inputPaths
                 : throw new CliUsageException("At least one input path is required."),
+            engineId,
             quality,
             outputDirectory,
             suffix,
@@ -115,6 +139,16 @@ internal sealed record CliOptions(
             json,
             noHistory,
             logPath);
+    }
+
+    private static string ParseEngine(string value)
+    {
+        var normalized = value.ToLowerInvariant();
+        return normalized == JpegliSettings.JpegliEngineId
+            || normalized == GuetzliSettings.GuetzliEngineId
+            ? normalized
+            : throw new CliUsageException(
+                $"--engine must be {JpegliSettings.JpegliEngineId} or {GuetzliSettings.GuetzliEngineId}.");
     }
 
     private static int ParseQuality(string value) =>

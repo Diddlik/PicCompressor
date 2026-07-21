@@ -3,6 +3,7 @@
   <ItemGroup>
     <ProjectReference Include="..\PicCompressor.Application\PicCompressor.Application.csproj" />
     <ProjectReference Include="..\PicCompressor.Domain\PicCompressor.Domain.csproj" />
+    <ProjectReference Include="..\PicCompressor.Engine.Guetzli\PicCompressor.Engine.Guetzli.csproj" />
     <ProjectReference Include="..\PicCompressor.Engine.Jpegli\PicCompressor.Engine.Jpegli.csproj" />
     <ProjectReference Include="..\PicCompressor.Infrastructure\PicCompressor.Infrastructure.csproj" />
     <ProjectReference Include="..\PicCompressor.NativeInterop\PicCompressor.NativeInterop.csproj" />
