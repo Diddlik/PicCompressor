@@ -22,6 +22,10 @@ The desktop application and CLI share the same compression pipeline and safety r
 - Collision protection and explicit overwrite behavior
 - Human-readable and versioned JSON CLI output
 
+<img width="1684" height="1253" alt="image" src="https://github.com/user-attachments/assets/a66121d3-ade5-4a2f-a171-caa7504c44c0" />
+<img width="1687" height="971" alt="image" src="https://github.com/user-attachments/assets/58e77b90-d1cf-48f8-91c4-4046a76a3117" />
+
+
 ## Current status
 
 PicCompressor is in alpha development. Windows x64 is currently verified. macOS, Linux, and additional architectures are planned but not yet verified.

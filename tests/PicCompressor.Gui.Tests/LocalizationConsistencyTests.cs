@@ -99,7 +99,9 @@ public sealed class LocalizationConsistencyTests
             "App_Title", "Engine_Jpegli", "Engine_Guetzli", "Common_Engine",
             "Set_Exif", "Set_LanguageSystem", "Set_ThemeSystem",
             "Hist_ColEngine", "Hist_ColStatus", "Cmp_Original",
-            "Status_EnginesAvailable", "Set_EngineHeading"
+            "Status_EnginesAvailable", "Set_EngineHeading",
+            // "Zoom" ist im Deutschen dasselbe Wort; der Zoomwert ist ein reines Zahlenformat.
+            "Cmp_Zoom", "Cmp_ZoomValue"
         ];
 
         var identical = English

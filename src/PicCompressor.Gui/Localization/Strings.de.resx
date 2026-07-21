@@ -265,6 +265,15 @@
   <data name="Set_ParallelJobsHint" xml:space="preserve">
     <value>Die Queue berücksichtigt zusätzlich den geschätzten Speicherbedarf je Engine.</value>
   </data>
+  <data name="Set_History" xml:space="preserve">
+    <value>Verlauf</value>
+  </data>
+  <data name="Set_HistoryRetention" xml:space="preserve">
+    <value>Einträge aufbewahren (Tage)</value>
+  </data>
+  <data name="Set_HistoryRetentionHint" xml:space="preserve">
+    <value>Ältere Einträge werden beim nächsten Start entfernt.</value>
+  </data>
   <data name="Set_Appearance" xml:space="preserve">
     <value>Sprache und Darstellung</value>
   </data>
@@ -300,6 +309,9 @@
   </data>
   <data name="Hist_Clear" xml:space="preserve">
     <value>Verlauf löschen</value>
+  </data>
+  <data name="Hist_DeleteEntry" xml:space="preserve">
+    <value>Verlaufseintrag für {0} löschen</value>
   </data>
   <data name="Hist_Search" xml:space="preserve">
     <value>Dateiname suchen…</value>
@@ -422,7 +434,40 @@
     <value>Noch kein vergleichbares Ergebnis. Ein Ergebnis wird vergleichbar, sobald seine Ausgabe validiert und veröffentlicht wurde.</value>
   </data>
   <data name="Cmp_PreviewPending" xml:space="preserve">
-    <value>Die Vorschauerzeugung ist noch nicht implementiert.</value>
+    <value>Vorschau wird erzeugt …</value>
+  </data>
+  <data name="Cmp_PreviewFailed" xml:space="preserve">
+    <value>Die Vorschau konnte nicht erzeugt werden.</value>
+  </data>
+  <data name="Cmp_PreviewName" xml:space="preserve">
+    <value>Vorher-Nachher-Vergleich</value>
+  </data>
+  <data name="Cmp_Zoom" xml:space="preserve">
+    <value>Zoom</value>
+  </data>
+  <data name="Cmp_ZoomValue" xml:space="preserve">
+    <value>{0:P0}</value>
+  </data>
+  <data name="Cmp_ZoomIn" xml:space="preserve">
+    <value>Vergrößern</value>
+  </data>
+  <data name="Cmp_ZoomOut" xml:space="preserve">
+    <value>Verkleinern</value>
+  </data>
+  <data name="Cmp_ActualSize" xml:space="preserve">
+    <value>Originalgröße</value>
+  </data>
+  <data name="Cmp_PreviewDownscaled" xml:space="preserve">
+    <value>Vorschau verkleinert; gezeigte Bildpunkte sind hochgerechnet.</value>
+  </data>
+  <data name="Cmp_EstimatedSize" xml:space="preserve">
+    <value>{0} → {1} ({2}, geschätzt)</value>
+  </data>
+  <data name="Cmp_PreviewUnsupportedEngine" xml:space="preserve">
+    <value>Die gewählte Engine kann noch keine Vorschau erzeugen.</value>
+  </data>
+  <data name="Cmp_ResetView" xml:space="preserve">
+    <value>Ansicht zurücksetzen</value>
   </data>
   <data name="Cmp_CandidatesName" xml:space="preserve">
     <value>Vergleichbare Ergebnisse</value>

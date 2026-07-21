@@ -122,28 +122,40 @@ public sealed class MainWindowViewModelTests
     }
 
     [Fact]
-    public void Completed_jobs_reach_history_and_only_publishable_ones_reach_compare()
+    public void Workspace_settings_and_compare_share_one_instance()
     {
-        var history = new RecordingHistoryService();
         var main = new MainWindowViewModel(
             new UnconfiguredCompressionService(),
             new UnconfiguredEngineCatalogService(),
-            history);
+            new RecordingHistoryService());
 
-        var failed = new QueueItemViewModel("a.jpg", EngineIds.Jpegli, 10);
-        failed.ApplyOutcome(
-            CompressionOutcome.Failed("a.jpg", 10, CompressionErrorCategory.EngineFailed, "x"));
+        // Die Schnelleinstellungen des Arbeitsbereichs sind dieselben Einstellungen, mit denen
+        // der Vergleich probeweise komprimiert. Zwei Instanzen zeigten sonst verschiedene
+        // Ergebnisse für dieselbe Datei.
+        Assert.Same(main.Settings, main.Dashboard.Settings);
+    }
 
+    [Fact]
+    public void Every_queued_file_can_be_compared_without_being_converted_first()
+    {
+        var main = new MainWindowViewModel(
+            new UnconfiguredCompressionService(),
+            new UnconfiguredEngineCatalogService(),
+            new RecordingHistoryService());
+
+        var queued = new QueueItemViewModel("a.jpg", EngineIds.Jpegli, 10);
         var succeeded = new QueueItemViewModel("b.jpg", EngineIds.Jpegli, 10);
         succeeded.ApplyOutcome(
             new CompressionOutcome(
                 JobStatus.Succeeded, "b.jpg", "b.out.jpg", 10, 5, true, null, null, null));
 
-        main.Compare.Offer(failed);
-        main.Compare.Offer(succeeded);
+        main.Dashboard.Queue.Add(queued);
+        main.Dashboard.Queue.Add(succeeded);
 
-        Assert.Single(main.Compare.Candidates);
-        Assert.Same(succeeded, main.Compare.Selected);
+        // Auch die noch nicht komprimierte Datei ist vergleichbar; ihr Ergebnis entsteht bei
+        // Bedarf im Speicher.
+        Assert.Equal(2, main.Compare.Candidates.Count);
+        Assert.Same(queued, main.Compare.Selected);
     }
 
     [Fact]
@@ -170,6 +182,27 @@ public sealed class MainWindowViewModelTests
         // Ein leerer Verlauf lässt sich nicht erneut löschen.
         Assert.False(history.ClearCommand.CanExecute(null));
     }
+
+    [Fact]
+    public async Task Deleting_an_entry_removes_only_it_from_store_and_view()
+    {
+        var service = new RecordingHistoryService();
+        var history = new HistoryViewModel(service);
+        await history.AppendAsync(Record("a.jpg"), CancellationToken.None);
+        await history.AppendAsync(Record("b.jpg"), CancellationToken.None);
+
+        var target = history.Entries.Single(entry => entry.FileName == "a.jpg");
+        Assert.True(target.DeleteCommand.CanExecute(null));
+
+        await history.DeleteAsync(target, CancellationToken.None);
+
+        var remaining = Assert.Single(history.Entries);
+        Assert.Equal("b.jpg", remaining.FileName);
+        Assert.Equal("b.jpg", Assert.Single(service.Records).FileName);
+    }
+
+    private static HistoryRecord Record(string fileName) =>
+        new(DateTimeOffset.UtcNow, fileName, EngineIds.Jpegli, 10, 5, JobStatus.Succeeded, null);
 
     private static MainWindowViewModel Create() =>
         new(

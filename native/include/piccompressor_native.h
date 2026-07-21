@@ -18,7 +18,7 @@
 extern "C" {
 #endif
 
-#define PC_ABI_VERSION 4u
+#define PC_ABI_VERSION 7u
 
 typedef enum pc_status {
   PC_STATUS_OK = 0,
@@ -76,6 +76,28 @@ typedef struct pc_guetzli_options {
   pc_color_profile_policy color_profile_policy;
 } pc_guetzli_options;
 
+// Downscaled, upright, sRGB preview of an input image. The wrapper owns the
+// pixel buffer until pc_preview_release is called.
+typedef struct pc_preview_options {
+  uint32_t struct_size;
+  int32_t max_edge;
+  int32_t alpha_red;
+  int32_t alpha_green;
+  int32_t alpha_blue;
+} pc_preview_options;
+
+typedef struct pc_preview {
+  uint32_t struct_size;
+  int32_t width;
+  int32_t height;
+  uint8_t* rgb;
+  size_t rgb_size;
+  // Maße des aufrecht gedrehten Originals vor dem Verkleinern. Nur damit kann der
+  // Aufrufer die tatsächliche Anzeigeskalierung bestimmen.
+  int32_t source_width;
+  int32_t source_height;
+} pc_preview;
+
 typedef struct pc_cancel_handle pc_cancel_handle;
 
 PC_API uint32_t pc_abi_version(void);
@@ -96,6 +118,30 @@ PC_API pc_status pc_encode_jpegli(
     const pc_cancel_handle* cancel,
     char* error_utf8,
     size_t error_capacity);
+
+PC_API pc_status pc_render_preview(
+    const char* input_path_utf8,
+    const pc_preview_options* options,
+    pc_preview* preview,
+    const pc_cancel_handle* cancel,
+    char* error_utf8,
+    size_t error_capacity);
+
+// Kodiert die Eingabe mit den angegebenen Optionen ausschliesslich im Speicher und
+// liefert die Vorschau des Ergebnisses samt seiner Groesse in Bytes. Es wird keine
+// Datei geschrieben: die Vorschau eines noch nicht komprimierten Bildes darf nichts
+// veroeffentlichen.
+PC_API pc_status pc_render_encoded_preview(
+    const char* input_path_utf8,
+    const pc_jpegli_options* options,
+    const pc_preview_options* preview_options,
+    pc_preview* preview,
+    int64_t* encoded_size,
+    const pc_cancel_handle* cancel,
+    char* error_utf8,
+    size_t error_capacity);
+
+PC_API void pc_preview_release(pc_preview* preview);
 
 PC_API pc_status pc_encode_guetzli(
     const char* input_path_utf8,

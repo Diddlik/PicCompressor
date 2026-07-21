@@ -5,7 +5,8 @@ using PicCompressor.Domain;
 
 namespace PicCompressor.NativeInterop;
 
-public sealed class NativeCodecBridge(TimeProvider timeProvider) : INativeCodecBridge
+public sealed class NativeCodecBridge(TimeProvider timeProvider)
+    : INativeCodecBridge, IPreviewRenderer
 {
     private const int ErrorCapacity = 1024;
 
@@ -106,6 +107,192 @@ public sealed class NativeCodecBridge(TimeProvider timeProvider) : INativeCodecB
                 colorProfilePolicy,
                 cancellationToken),
             CancellationToken.None);
+    }
+
+    public Task<PreviewResult> RenderPreviewAsync(
+        string inputPath,
+        int maxEdge,
+        RgbColor alphaBackground,
+        CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(inputPath);
+        ArgumentOutOfRangeException.ThrowIfLessThan(maxEdge, 1);
+
+        if (cancellationToken.IsCancellationRequested)
+        {
+            return Task.FromResult(PreviewResult.Failed("Preview rendering was canceled."));
+        }
+
+        return Task.Run(
+            () => RenderPreview(inputPath, maxEdge, alphaBackground, cancellationToken),
+            CancellationToken.None);
+    }
+
+    public Task<EncodedPreviewResult> RenderEncodedPreviewAsync(
+        string inputPath,
+        int maxEdge,
+        JpegliSettings settings,
+        RgbColor alphaBackground,
+        ExifPolicy exifPolicy,
+        ColorProfilePolicy colorProfilePolicy,
+        CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(inputPath);
+        ArgumentOutOfRangeException.ThrowIfLessThan(maxEdge, 1);
+        ArgumentNullException.ThrowIfNull(settings);
+
+        if (cancellationToken.IsCancellationRequested)
+        {
+            return Task.FromResult(
+                EncodedPreviewResult.Failed("Preview rendering was canceled."));
+        }
+
+        return Task.Run(
+            () => RenderEncodedPreview(
+                inputPath,
+                maxEdge,
+                settings,
+                alphaBackground,
+                exifPolicy,
+                colorProfilePolicy,
+                cancellationToken),
+            CancellationToken.None);
+    }
+
+    private unsafe EncodedPreviewResult RenderEncodedPreview(
+        string inputPath,
+        int maxEdge,
+        JpegliSettings settings,
+        RgbColor alphaBackground,
+        ExifPolicy exifPolicy,
+        ColorProfilePolicy colorProfilePolicy,
+        CancellationToken cancellationToken)
+    {
+        var preview = new NativePreview { StructSize = (uint)sizeof(NativePreview) };
+        PreviewImage? image = null;
+        long encodedSize = 0;
+
+        var result = Encode(
+            (cancelHandle, error, errorCapacity) =>
+            {
+                var options = new NativeJpegliOptions
+                {
+                    StructSize = (uint)sizeof(NativeJpegliOptions),
+                    Quality = settings.Quality,
+                    ChromaSubsampling = (int)settings.ChromaSubsampling,
+                    ProgressiveLevel = settings.ProgressiveLevel,
+                    AlphaRed = alphaBackground.Red,
+                    AlphaGreen = alphaBackground.Green,
+                    AlphaBlue = alphaBackground.Blue,
+                    ExifPolicy = ToNativeExifPolicy(exifPolicy),
+                    ColorProfilePolicy = ToNativeColorProfilePolicy(colorProfilePolicy)
+                };
+                var previewOptions = new NativePreviewOptions
+                {
+                    StructSize = (uint)sizeof(NativePreviewOptions),
+                    MaxEdge = maxEdge,
+                    AlphaRed = alphaBackground.Red,
+                    AlphaGreen = alphaBackground.Green,
+                    AlphaBlue = alphaBackground.Blue
+                };
+
+                var status = NativeMethods.RenderEncodedPreview(
+                    inputPath,
+                    in options,
+                    in previewOptions,
+                    ref preview,
+                    out encodedSize,
+                    cancelHandle,
+                    error,
+                    errorCapacity);
+                if (status is not NativeStatus.Ok)
+                {
+                    return status;
+                }
+
+                try
+                {
+                    image = ReadPreview(in preview);
+                }
+                finally
+                {
+                    NativeMethods.ReleasePreview(ref preview);
+                }
+
+                return status;
+            },
+            cancellationToken);
+
+        return image is null
+            ? EncodedPreviewResult.Failed(result.ErrorText ?? "Preview rendering failed.")
+            : new EncodedPreviewResult(image, encodedSize, null);
+    }
+
+    private static PreviewImage ReadPreview(in NativePreview preview)
+    {
+        var rgb = new byte[preview.RgbSize];
+        Marshal.Copy(preview.Rgb, rgb, 0, rgb.Length);
+        return new PreviewImage(
+            preview.Width,
+            preview.Height,
+            rgb,
+            preview.SourceWidth,
+            preview.SourceHeight);
+    }
+
+    /// <summary>
+    /// Kopiert die nativen Pixel sofort in verwalteten Speicher und gibt den nativen Puffer
+    /// wieder frei; der Aufrufer hält nie einen nativen Zeiger.
+    /// </summary>
+    private unsafe PreviewResult RenderPreview(
+        string inputPath,
+        int maxEdge,
+        RgbColor alphaBackground,
+        CancellationToken cancellationToken)
+    {
+        var preview = new NativePreview { StructSize = (uint)sizeof(NativePreview) };
+        PreviewImage? image = null;
+
+        var result = Encode(
+            (cancelHandle, error, errorCapacity) =>
+            {
+                var options = new NativePreviewOptions
+                {
+                    StructSize = (uint)sizeof(NativePreviewOptions),
+                    MaxEdge = maxEdge,
+                    AlphaRed = alphaBackground.Red,
+                    AlphaGreen = alphaBackground.Green,
+                    AlphaBlue = alphaBackground.Blue
+                };
+
+                var status = NativeMethods.RenderPreview(
+                    inputPath,
+                    in options,
+                    ref preview,
+                    cancelHandle,
+                    error,
+                    errorCapacity);
+                if (status is not NativeStatus.Ok)
+                {
+                    return status;
+                }
+
+                try
+                {
+                    image = ReadPreview(in preview);
+                }
+                finally
+                {
+                    NativeMethods.ReleasePreview(ref preview);
+                }
+
+                return status;
+            },
+            cancellationToken);
+
+        return image is null
+            ? PreviewResult.Failed(result.ErrorText ?? "Preview rendering failed.")
+            : new PreviewResult(image, null);
     }
 
     private unsafe NativeCodecResult EncodeGuetzli(

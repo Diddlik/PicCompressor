@@ -248,10 +248,220 @@ bool ConvertToSrgb(jpegli::extras::PackedPixelFile* ppf) {
   return true;
 }
 
+// Averages the source pixels of each target cell into an 8-bit RGB buffer. Box
+// averaging keeps the preview memory bounded by max_edge instead of the source
+// resolution (requirement 11) and avoids the aliasing of nearest sampling.
+void DownscaleToRgb(const jpegli::extras::PackedImage& image, size_t width,
+                    size_t height, uint8_t* rgb) {
+  const size_t channels = image.format.num_channels;
+  const size_t color_channels = channels >= 3 ? 3 : 1;
+  for (size_t y = 0; y < height; ++y) {
+    const size_t y0 = y * image.ysize / height;
+    const size_t y1 = std::max(y0 + 1, (y + 1) * image.ysize / height);
+    for (size_t x = 0; x < width; ++x) {
+      const size_t x0 = x * image.xsize / width;
+      const size_t x1 = std::max(x0 + 1, (x + 1) * image.xsize / width);
+      float sums[3] = {0.0f, 0.0f, 0.0f};
+      for (size_t sy = y0; sy < y1; ++sy) {
+        for (size_t sx = x0; sx < x1; ++sx) {
+          for (size_t c = 0; c < color_channels; ++c) {
+            sums[c] += image.GetPixelValue(sy, sx, c);
+          }
+        }
+      }
+
+      const float count = static_cast<float>((y1 - y0) * (x1 - x0));
+      uint8_t* target = rgb + (y * width + x) * 3;
+      for (size_t c = 0; c < 3; ++c) {
+        const float value = sums[color_channels == 1 ? 0 : c] / count;
+        target[c] = static_cast<uint8_t>(
+            std::clamp(value * 255.0f + 0.5f, 0.0f, 255.0f));
+      }
+    }
+  }
+}
+// Verkleinert die dekodierten Pixel auf die gewuenschte Kantenlaenge und uebergibt
+// sie als Vorschau. Eingabe- und Ergebnisvorschau nehmen denselben Weg.
+pc_status FillPreview(
+    const jpegli::extras::PackedPixelFile& pixels,
+    int32_t max_edge_option,
+    pc_preview* preview,
+    char* error_utf8,
+    size_t error_capacity) {
+  const jpegli::extras::PackedImage& image = pixels.frames[0].color;
+  if (image.xsize == 0 || image.ysize == 0) {
+    CopyError("Input image is empty.", error_utf8, error_capacity);
+    return PC_STATUS_ENCODE_FAILED;
+  }
+
+  const size_t max_edge = static_cast<size_t>(max_edge_option);
+  const size_t source_edge = std::max(image.xsize, image.ysize);
+  size_t width = image.xsize;
+  size_t height = image.ysize;
+  if (source_edge > max_edge) {
+    width = std::max<size_t>(1, image.xsize * max_edge / source_edge);
+    height = std::max<size_t>(1, image.ysize * max_edge / source_edge);
+  }
+
+  const size_t rgb_size = width * height * 3;
+  uint8_t* rgb = new (std::nothrow) uint8_t[rgb_size];
+  if (rgb == nullptr) {
+    CopyError("Preview buffer could not be allocated.", error_utf8,
+              error_capacity);
+    return PC_STATUS_ENCODE_FAILED;
+  }
+
+  DownscaleToRgb(image, width, height, rgb);
+
+  preview->width = static_cast<int32_t>(width);
+  preview->height = static_cast<int32_t>(height);
+  preview->rgb = rgb;
+  preview->rgb_size = rgb_size;
+  preview->source_width = static_cast<int32_t>(image.xsize);
+  preview->source_height = static_cast<int32_t>(image.ysize);
+  return PC_STATUS_OK;
+}
+
+// Führt die vollständige Jpegli-Kodierung bis in einen Puffer aus. Die Ausgabe in
+// eine Datei und die Vorschau des Ergebnisses teilen sich damit exakt denselben
+// Pfad — eine Vorschau kann sonst etwas anderes zeigen als die spätere Datei.
+pc_status EncodeJpegliToBuffer(
+    const char* input_path_utf8,
+    const pc_jpegli_options* options,
+    const pc_cancel_handle* cancel,
+    std::vector<uint8_t>* encoded,
+    char* error_utf8,
+    size_t error_capacity) {
+  std::vector<uint8_t> input;
+  if (!ReadFile(input_path_utf8, &input)) {
+    CopyError("Input image could not be read.", error_utf8, error_capacity);
+    return PC_STATUS_ENCODE_FAILED;
+  }
+
+  jpegli::extras::PackedPixelFile pixels;
+  const bool decoded =
+      IsJpeg(input)
+          ? static_cast<bool>(jpegli::extras::DecodeJpeg(
+                input, jpegli::extras::JpegDecompressParams{}, nullptr, &pixels))
+          : static_cast<bool>(jpegli::extras::DecodeBytes(
+                jpegli::Bytes(input), jpegli::extras::ColorHints{}, &pixels));
+  if (!decoded) {
+    CopyError("Input image could not be decoded.", error_utf8, error_capacity);
+    return PC_STATUS_ENCODE_FAILED;
+  }
+
+  const float background[3] = {
+      options->alpha_red / 255.0f,
+      options->alpha_green / 255.0f,
+      options->alpha_blue / 255.0f};
+  if (!jpegli::extras::AlphaBlend(&pixels, background)) {
+    CopyError("Input alpha channel could not be flattened.", error_utf8,
+              error_capacity);
+    return PC_STATUS_ENCODE_FAILED;
+  }
+
+  // The orientation is applied to the pixels unconditionally: the output must
+  // be upright even when the EXIF block carrying it is dropped afterwards.
+  std::vector<uint8_t> exif = pixels.metadata.exif;
+  if (!ApplyOrientation(&pixels, pc::ReadExifOrientation(exif))) {
+    CopyError("Input orientation could not be applied.", error_utf8,
+              error_capacity);
+    return PC_STATUS_ENCODE_FAILED;
+  }
+
+  if (pc_cancel_is_requested(cancel)) {
+    CopyError("Encoding was canceled.", error_utf8, error_capacity);
+    return PC_STATUS_CANCELED;
+  }
+
+  switch (options->color_profile_policy) {
+    case PC_COLOR_PROFILE_PRESERVE:
+      break;
+    case PC_COLOR_PROFILE_SRGB:
+      if (!ConvertToSrgb(&pixels)) {
+        CopyError("Input could not be transformed to sRGB.", error_utf8,
+                  error_capacity);
+        return PC_STATUS_ENCODE_FAILED;
+      }
+      break;
+    case PC_COLOR_PROFILE_REMOVE:
+      if (!RepresentsSrgb(pixels)) {
+        CopyError(
+            "Removing the color profile would change the colors of a "
+            "non-sRGB input.",
+            error_utf8, error_capacity);
+        return PC_STATUS_INVALID_ARGUMENT;
+      }
+      pixels.icc.clear();
+      pixels.primary_color_representation =
+          jpegli::extras::PackedPixelFile::kColorEncodingIsPrimary;
+      break;
+  }
+
+  switch (options->exif_policy) {
+    case PC_EXIF_KEEP:
+      pc::ResetExifOrientation(exif);
+      break;
+    case PC_EXIF_PRIVATE:
+      if (!pc::SanitizeExif(exif)) {
+        CopyError("Input metadata could not be sanitized.", error_utf8,
+                  error_capacity);
+        return PC_STATUS_ENCODE_FAILED;
+      }
+      pc::ResetExifOrientation(exif);
+      break;
+    case PC_EXIF_REMOVE:
+      exif.clear();
+      break;
+  }
+
+  if (pc_cancel_is_requested(cancel)) {
+    CopyError("Encoding was canceled.", error_utf8, error_capacity);
+    return PC_STATUS_CANCELED;
+  }
+
+  jpegli::extras::JpegSettings settings;
+  settings.quality = static_cast<float>(options->quality);
+  settings.chroma_subsampling =
+      ChromaSubsampling(options->chroma_subsampling);
+  settings.progressive_level = options->progressive_level;
+
+  // Jpegli writes the ICC profile itself only while app_data is empty. As soon
+  // as any APP segment is supplied, it writes exactly those, so the profile has
+  // to be carried explicitly.
+  const std::vector<uint8_t> exif_segment = pc::BuildExifApp1(exif);
+  const bool needs_explicit_icc =
+      !exif_segment.empty() ||
+      options->color_profile_policy == PC_COLOR_PROFILE_SRGB;
+  if (!exif_segment.empty()) {
+    settings.app_data.insert(settings.app_data.end(), exif_segment.begin(),
+                             exif_segment.end());
+  }
+  if (needs_explicit_icc) {
+    const std::vector<uint8_t> icc_segments = pc::BuildIccApp2(pixels.icc);
+    settings.app_data.insert(settings.app_data.end(), icc_segments.begin(),
+                             icc_segments.end());
+  }
+
+  if (!jpegli::extras::EncodeJpeg(pixels, settings, nullptr, encoded)) {
+    CopyError("Jpegli encoding failed.", error_utf8, error_capacity);
+    return PC_STATUS_ENCODE_FAILED;
+  }
+
+  if (pc_cancel_is_requested(cancel)) {
+    CopyError("Encoding was canceled.", error_utf8, error_capacity);
+    return PC_STATUS_CANCELED;
+  }
+
+  return PC_STATUS_OK;
+}
+#endif
+
+#if defined(PC_HAVE_GUETZLI) && defined(PC_HAVE_JPEGLI)
 // Decodes the input, flattens alpha onto the given background and rotates the
-// pixels upright. This preprocessing is identical for every engine; only the
-// colour-profile and metadata handling differ afterwards. The post-decode EXIF
-// bytes are returned for the caller's metadata policy.
+// pixels upright. Mirrors the Jpegli preprocessing; Guetzli reuses it and then
+// extracts sRGB RGB. The post-decode EXIF bytes are returned but unused, as
+// Guetzli emits no metadata.
 pc_status DecodeAndPrepare(const char* input_path, const int background[3],
                            const pc_cancel_handle* cancel,
                            jpegli::extras::PackedPixelFile* pixels,
@@ -282,8 +492,6 @@ pc_status DecodeAndPrepare(const char* input_path, const int background[3],
     return PC_STATUS_ENCODE_FAILED;
   }
 
-  // The orientation is applied to the pixels unconditionally: the output must be
-  // upright even when the EXIF block carrying it is dropped afterwards (8.2).
   *exif = pixels->metadata.exif;
   if (!ApplyOrientation(pixels, pc::ReadExifOrientation(*exif))) {
     CopyError("Input orientation could not be applied.", error_utf8,
@@ -297,9 +505,7 @@ pc_status DecodeAndPrepare(const char* input_path, const int background[3],
   }
   return PC_STATUS_OK;
 }
-#endif
 
-#if defined(PC_HAVE_GUETZLI)
 uint8_t ToByte(float value) {
   const float scaled = std::clamp(value, 0.0f, 1.0f) * 255.0f + 0.5f;
   return static_cast<uint8_t>(scaled);
@@ -449,95 +655,11 @@ pc_status pc_encode_jpegli(
   }
 
 #if defined(PC_HAVE_JPEGLI)
-  jpegli::extras::PackedPixelFile pixels;
-  std::vector<uint8_t> exif;
-  const int background[3] = {options->alpha_red, options->alpha_green,
-                             options->alpha_blue};
-  const pc_status prepared =
-      DecodeAndPrepare(input_path_utf8, background, cancel, &pixels, &exif,
-                       error_utf8, error_capacity);
-  if (prepared != PC_STATUS_OK) {
-    return prepared;
-  }
-
-  switch (options->color_profile_policy) {
-    case PC_COLOR_PROFILE_PRESERVE:
-      break;
-    case PC_COLOR_PROFILE_SRGB:
-      if (!ConvertToSrgb(&pixels)) {
-        CopyError("Input could not be transformed to sRGB.", error_utf8,
-                  error_capacity);
-        return PC_STATUS_ENCODE_FAILED;
-      }
-      break;
-    case PC_COLOR_PROFILE_REMOVE:
-      if (!RepresentsSrgb(pixels)) {
-        CopyError(
-            "Removing the color profile would change the colors of a "
-            "non-sRGB input.",
-            error_utf8, error_capacity);
-        return PC_STATUS_INVALID_ARGUMENT;
-      }
-      pixels.icc.clear();
-      pixels.primary_color_representation =
-          jpegli::extras::PackedPixelFile::kColorEncodingIsPrimary;
-      break;
-  }
-
-  switch (options->exif_policy) {
-    case PC_EXIF_KEEP:
-      pc::ResetExifOrientation(exif);
-      break;
-    case PC_EXIF_PRIVATE:
-      if (!pc::SanitizeExif(exif)) {
-        CopyError("Input metadata could not be sanitized.", error_utf8,
-                  error_capacity);
-        return PC_STATUS_ENCODE_FAILED;
-      }
-      pc::ResetExifOrientation(exif);
-      break;
-    case PC_EXIF_REMOVE:
-      exif.clear();
-      break;
-  }
-
-  if (pc_cancel_is_requested(cancel)) {
-    CopyError("Encoding was canceled.", error_utf8, error_capacity);
-    return PC_STATUS_CANCELED;
-  }
-
-  jpegli::extras::JpegSettings settings;
-  settings.quality = static_cast<float>(options->quality);
-  settings.chroma_subsampling =
-      ChromaSubsampling(options->chroma_subsampling);
-  settings.progressive_level = options->progressive_level;
-
-  // Jpegli writes the ICC profile itself only while app_data is empty. As soon
-  // as any APP segment is supplied, it writes exactly those, so the profile has
-  // to be carried explicitly.
-  const std::vector<uint8_t> exif_segment = pc::BuildExifApp1(exif);
-  const bool needs_explicit_icc =
-      !exif_segment.empty() ||
-      options->color_profile_policy == PC_COLOR_PROFILE_SRGB;
-  if (!exif_segment.empty()) {
-    settings.app_data.insert(settings.app_data.end(), exif_segment.begin(),
-                             exif_segment.end());
-  }
-  if (needs_explicit_icc) {
-    const std::vector<uint8_t> icc_segments = pc::BuildIccApp2(pixels.icc);
-    settings.app_data.insert(settings.app_data.end(), icc_segments.begin(),
-                             icc_segments.end());
-  }
-
   std::vector<uint8_t> output;
-  if (!jpegli::extras::EncodeJpeg(pixels, settings, nullptr, &output)) {
-    CopyError("Jpegli encoding failed.", error_utf8, error_capacity);
-    return PC_STATUS_ENCODE_FAILED;
-  }
-
-  if (pc_cancel_is_requested(cancel)) {
-    CopyError("Encoding was canceled.", error_utf8, error_capacity);
-    return PC_STATUS_CANCELED;
+  const pc_status status = EncodeJpegliToBuffer(
+      input_path_utf8, options, cancel, &output, error_utf8, error_capacity);
+  if (status != PC_STATUS_OK) {
+    return status;
   }
 
   if (!WriteFile(output_path_utf8, output)) {
@@ -550,6 +672,176 @@ pc_status pc_encode_jpegli(
   CopyError(kJpegliUnavailable, error_utf8, error_capacity);
   return PC_STATUS_ENGINE_UNAVAILABLE;
 #endif
+}
+
+pc_status pc_render_preview(
+    const char* input_path_utf8,
+    const pc_preview_options* options,
+    pc_preview* preview,
+    const pc_cancel_handle* cancel,
+    char* error_utf8,
+    size_t error_capacity) {
+  if (MissingPath(input_path_utf8) || options == nullptr ||
+      options->struct_size != sizeof(pc_preview_options) ||
+      options->max_edge < 1 || options->max_edge > 8192 ||
+      options->alpha_red < 0 || options->alpha_red > 255 ||
+      options->alpha_green < 0 || options->alpha_green > 255 ||
+      options->alpha_blue < 0 || options->alpha_blue > 255 ||
+      preview == nullptr || preview->struct_size != sizeof(pc_preview)) {
+    CopyError("Invalid preview request.", error_utf8, error_capacity);
+    return PC_STATUS_INVALID_ARGUMENT;
+  }
+
+  preview->width = 0;
+  preview->height = 0;
+  preview->rgb = nullptr;
+  preview->rgb_size = 0;
+  preview->source_width = 0;
+  preview->source_height = 0;
+
+  if (pc_cancel_is_requested(cancel)) {
+    CopyError("Preview rendering was canceled.", error_utf8, error_capacity);
+    return PC_STATUS_CANCELED;
+  }
+
+#if defined(PC_HAVE_JPEGLI)
+  std::vector<uint8_t> input;
+  if (!ReadFile(input_path_utf8, &input)) {
+    CopyError("Input image could not be read.", error_utf8, error_capacity);
+    return PC_STATUS_ENCODE_FAILED;
+  }
+
+  jpegli::extras::PackedPixelFile pixels;
+  const bool decoded =
+      IsJpeg(input)
+          ? static_cast<bool>(jpegli::extras::DecodeJpeg(
+                input, jpegli::extras::JpegDecompressParams{}, nullptr, &pixels))
+          : static_cast<bool>(jpegli::extras::DecodeBytes(
+                jpegli::Bytes(input), jpegli::extras::ColorHints{}, &pixels));
+  if (!decoded || pixels.frames.size() != 1) {
+    CopyError("Input image could not be decoded.", error_utf8, error_capacity);
+    return PC_STATUS_ENCODE_FAILED;
+  }
+
+  const float background[3] = {
+      options->alpha_red / 255.0f,
+      options->alpha_green / 255.0f,
+      options->alpha_blue / 255.0f};
+  if (!jpegli::extras::AlphaBlend(&pixels, background)) {
+    CopyError("Input alpha channel could not be flattened.", error_utf8,
+              error_capacity);
+    return PC_STATUS_ENCODE_FAILED;
+  }
+
+  // The preview must show what the encoder sees: upright pixels in sRGB.
+  if (!ApplyOrientation(&pixels, pc::ReadExifOrientation(pixels.metadata.exif))) {
+    CopyError("Input orientation could not be applied.", error_utf8,
+              error_capacity);
+    return PC_STATUS_ENCODE_FAILED;
+  }
+
+  if (!ConvertToSrgb(&pixels)) {
+    CopyError("Input could not be transformed to sRGB.", error_utf8,
+              error_capacity);
+    return PC_STATUS_ENCODE_FAILED;
+  }
+
+  if (pc_cancel_is_requested(cancel)) {
+    CopyError("Preview rendering was canceled.", error_utf8, error_capacity);
+    return PC_STATUS_CANCELED;
+  }
+
+  return FillPreview(pixels, options->max_edge, preview, error_utf8,
+                     error_capacity);
+#else
+  CopyError(kJpegliUnavailable, error_utf8, error_capacity);
+  return PC_STATUS_ENGINE_UNAVAILABLE;
+#endif
+}
+
+pc_status pc_render_encoded_preview(
+    const char* input_path_utf8,
+    const pc_jpegli_options* options,
+    const pc_preview_options* preview_options,
+    pc_preview* preview,
+    int64_t* encoded_size,
+    const pc_cancel_handle* cancel,
+    char* error_utf8,
+    size_t error_capacity) {
+  if (preview_options == nullptr ||
+      preview_options->struct_size != sizeof(pc_preview_options) ||
+      preview_options->max_edge < 1 || preview_options->max_edge > 8192 ||
+      preview == nullptr || preview->struct_size != sizeof(pc_preview) ||
+      encoded_size == nullptr) {
+    CopyError("Invalid encoded preview request.", error_utf8, error_capacity);
+    return PC_STATUS_INVALID_ARGUMENT;
+  }
+
+  preview->width = 0;
+  preview->height = 0;
+  preview->rgb = nullptr;
+  preview->rgb_size = 0;
+  preview->source_width = 0;
+  preview->source_height = 0;
+  *encoded_size = 0;
+
+#if defined(PC_HAVE_JPEGLI)
+  // Genau derselbe Kodierpfad wie beim Schreiben einer Datei, nur ohne Datei.
+  std::vector<uint8_t> encoded;
+  const pc_status status = EncodeJpegliToBuffer(
+      input_path_utf8, options, cancel, &encoded, error_utf8, error_capacity);
+  if (status != PC_STATUS_OK) {
+    return status;
+  }
+
+  *encoded_size = static_cast<int64_t>(encoded.size());
+
+  jpegli::extras::PackedPixelFile pixels;
+  if (!jpegli::extras::DecodeJpeg(encoded,
+                                  jpegli::extras::JpegDecompressParams{},
+                                  nullptr, &pixels) ||
+      pixels.frames.size() != 1) {
+    CopyError("Encoded result could not be decoded for the preview.",
+              error_utf8, error_capacity);
+    return PC_STATUS_ENCODE_FAILED;
+  }
+
+  // Das Ergebnis steht bereits aufrecht und ohne Alphakanal; nur die Farben
+  // müssen wie bei der Eingabevorschau nach sRGB.
+  if (!ConvertToSrgb(&pixels)) {
+    CopyError("Encoded result could not be transformed to sRGB.", error_utf8,
+              error_capacity);
+    return PC_STATUS_ENCODE_FAILED;
+  }
+
+  if (pc_cancel_is_requested(cancel)) {
+    CopyError("Preview rendering was canceled.", error_utf8, error_capacity);
+    return PC_STATUS_CANCELED;
+  }
+
+  return FillPreview(pixels, preview_options->max_edge, preview, error_utf8,
+                     error_capacity);
+#else
+  (void)input_path_utf8;
+  (void)options;
+  (void)cancel;
+  CopyError(kJpegliUnavailable, error_utf8, error_capacity);
+  return PC_STATUS_ENGINE_UNAVAILABLE;
+#endif
+}
+
+void pc_preview_release(pc_preview* preview) {
+  if (preview == nullptr) {
+    return;
+  }
+
+  delete[] preview->rgb;
+  preview->rgb = nullptr;
+  preview->rgb_size = 0;
+  preview->width = 0;
+  preview->height = 0;
+  preview->source_width = 0;
+  preview->source_height = 0;
 }
 
 pc_status pc_encode_guetzli(

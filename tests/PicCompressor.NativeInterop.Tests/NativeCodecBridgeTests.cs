@@ -350,6 +350,195 @@ public sealed class NativeCodecBridgeTests
     }
 
     [Fact]
+    public async Task RenderPreviewAsync_downscales_to_the_requested_edge()
+    {
+        using var workspace = new Workspace();
+        var inputPath = workspace.Write("large.ppm", CreatePortablePixmap(300, 200));
+
+        var result = await Bridge.RenderPreviewAsync(
+            inputPath,
+            100,
+            RgbColor.White,
+            CancellationToken.None);
+
+        Assert.Null(result.ErrorText);
+        var image = Assert.IsType<PreviewImage>(result.Image);
+        Assert.Equal(100, image.Width);
+        Assert.Equal(66, image.Height);
+        Assert.Equal(image.Width * image.Height * 3, image.Rgb.Length);
+
+        // Die Maße des Originals müssen mitkommen, sonst lässt sich der Anzeigemaßstab
+        // nicht bestimmen.
+        Assert.Equal(300, image.SourceWidth);
+        Assert.Equal(200, image.SourceHeight);
+        Assert.Equal(1.0 / 3, image.ScaleFromSource, 6);
+    }
+
+    [Fact]
+    public async Task RenderPreviewAsync_reports_the_upright_source_size()
+    {
+        using var workspace = new Workspace();
+        var source = await EncodeAsync(
+            workspace,
+            "upright-source",
+            CreatePortablePixmap(3, 2),
+            ExifPolicy.Remove);
+        var inputPath = workspace.Write(
+            "upright.jpg",
+            InsertExif(source, CreateExifTiff(6, artist: null)));
+
+        var result = await Bridge.RenderPreviewAsync(
+            inputPath,
+            512,
+            RgbColor.White,
+            CancellationToken.None);
+
+        // Orientierung 6 vertauscht die Achsen; gemeldet werden die aufrechten Maße.
+        var image = Assert.IsType<PreviewImage>(result.Image);
+        Assert.Equal(2, image.SourceWidth);
+        Assert.Equal(3, image.SourceHeight);
+        Assert.Equal(1, image.ScaleFromSource);
+    }
+
+    [Fact]
+    public async Task RenderPreviewAsync_keeps_small_inputs_untouched()
+    {
+        using var workspace = new Workspace();
+        var inputPath = workspace.Write("small.ppm", CreatePortablePixmap(3, 2));
+
+        var result = await Bridge.RenderPreviewAsync(
+            inputPath,
+            512,
+            RgbColor.White,
+            CancellationToken.None);
+
+        var image = Assert.IsType<PreviewImage>(result.Image);
+        Assert.Equal(3, image.Width);
+        Assert.Equal(2, image.Height);
+    }
+
+    [Fact]
+    public async Task RenderPreviewAsync_applies_exif_orientation()
+    {
+        using var workspace = new Workspace();
+        var source = await EncodeAsync(
+            workspace,
+            "preview-source",
+            CreatePortablePixmap(3, 2),
+            ExifPolicy.Remove);
+        var inputPath = workspace.Write(
+            "preview-oriented.jpg",
+            InsertExif(source, CreateExifTiff(6, artist: null)));
+
+        var result = await Bridge.RenderPreviewAsync(
+            inputPath,
+            512,
+            RgbColor.White,
+            CancellationToken.None);
+
+        // Orientation 6 swaps the axes; the preview must be upright like the output.
+        var image = Assert.IsType<PreviewImage>(result.Image);
+        Assert.Equal(2, image.Width);
+        Assert.Equal(3, image.Height);
+    }
+
+    [Fact]
+    public async Task RenderEncodedPreviewAsync_compresses_without_writing_a_file()
+    {
+        using var workspace = new Workspace();
+        var inputPath = workspace.Write("live.ppm", CreatePortablePixmap(120, 90));
+        var before = Directory.GetFiles(workspace.Directory);
+
+        var result = await Bridge.RenderEncodedPreviewAsync(
+            inputPath,
+            512,
+            new JpegliSettings(80, JpegliChromaSubsampling.Subsampling420, 0),
+            RgbColor.White,
+            ExifPolicy.Remove,
+            ColorProfilePolicy.Preserve,
+            CancellationToken.None);
+
+        Assert.Null(result.ErrorText);
+        var image = Assert.IsType<PreviewImage>(result.Image);
+        Assert.Equal(120, image.SourceWidth);
+        Assert.Equal(90, image.SourceHeight);
+        Assert.True(result.EncodedSizeBytes > 0);
+        // Eine Vorschau darf nichts veröffentlichen (Abschnitt 7.2).
+        Assert.Equal(before, Directory.GetFiles(workspace.Directory));
+    }
+
+    [Fact]
+    public async Task RenderEncodedPreviewAsync_reports_the_size_the_quality_produces()
+    {
+        using var workspace = new Workspace();
+        var inputPath = workspace.Write("quality.ppm", CreatePortablePixmap(160, 120));
+
+        var low = await RenderEncodedAsync(inputPath, 30);
+        var high = await RenderEncodedAsync(inputPath, 95);
+
+        // Die gemeldete Grösse muss der Einstellung folgen, sonst wäre die Schätzung wertlos.
+        Assert.True(
+            low.EncodedSizeBytes < high.EncodedSizeBytes,
+            $"quality 30 produced {low.EncodedSizeBytes}, quality 95 produced {high.EncodedSizeBytes}");
+    }
+
+    [Fact]
+    public async Task RenderEncodedPreviewAsync_reports_an_unreadable_input()
+    {
+        var result = await Bridge.RenderEncodedPreviewAsync(
+            Path.Combine(Path.GetTempPath(), $"missing-{Guid.NewGuid():N}.png"),
+            512,
+            new JpegliSettings(80, JpegliChromaSubsampling.Subsampling420, 0),
+            RgbColor.White,
+            ExifPolicy.Remove,
+            ColorProfilePolicy.Preserve,
+            CancellationToken.None);
+
+        Assert.Null(result.Image);
+        Assert.Equal(0, result.EncodedSizeBytes);
+        Assert.NotNull(result.ErrorText);
+    }
+
+    private static Task<EncodedPreviewResult> RenderEncodedAsync(string inputPath, int quality) =>
+        Bridge.RenderEncodedPreviewAsync(
+            inputPath,
+            512,
+            new JpegliSettings(quality, JpegliChromaSubsampling.Subsampling420, 0),
+            RgbColor.White,
+            ExifPolicy.Remove,
+            ColorProfilePolicy.Preserve,
+            CancellationToken.None);
+
+    [Fact]
+    public async Task RenderPreviewAsync_reports_an_unreadable_input()
+    {
+        var result = await Bridge.RenderPreviewAsync(
+            Path.Combine(Path.GetTempPath(), $"missing-{Guid.NewGuid():N}.png"),
+            512,
+            RgbColor.White,
+            CancellationToken.None);
+
+        Assert.Null(result.Image);
+        Assert.NotNull(result.ErrorText);
+    }
+
+    [Fact]
+    public async Task RenderPreviewAsync_reports_cancellation()
+    {
+        using var cancellation = new CancellationTokenSource();
+        await cancellation.CancelAsync();
+
+        var result = await Bridge.RenderPreviewAsync(
+            "input.png",
+            512,
+            RgbColor.White,
+            cancellation.Token);
+
+        Assert.Null(result.Image);
+        Assert.NotNull(result.ErrorText);
+    }
+
+    [Fact]
     public async Task EncodeGuetzliAsync_encodes_a_valid_jpeg()
     {
         using var workspace = new Workspace();

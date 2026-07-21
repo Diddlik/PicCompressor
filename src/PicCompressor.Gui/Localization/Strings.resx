@@ -265,6 +265,15 @@
   <data name="Set_ParallelJobsHint" xml:space="preserve">
     <value>The queue additionally accounts for the estimated memory demand per engine.</value>
   </data>
+  <data name="Set_History" xml:space="preserve">
+    <value>History</value>
+  </data>
+  <data name="Set_HistoryRetention" xml:space="preserve">
+    <value>Keep entries for (days)</value>
+  </data>
+  <data name="Set_HistoryRetentionHint" xml:space="preserve">
+    <value>Older entries are removed on the next start.</value>
+  </data>
   <data name="Set_Appearance" xml:space="preserve">
     <value>Language and appearance</value>
   </data>
@@ -300,6 +309,9 @@
   </data>
   <data name="Hist_Clear" xml:space="preserve">
     <value>Clear history</value>
+  </data>
+  <data name="Hist_DeleteEntry" xml:space="preserve">
+    <value>Delete history entry for {0}</value>
   </data>
   <data name="Hist_Search" xml:space="preserve">
     <value>Search file name…</value>
@@ -422,7 +434,40 @@
     <value>No comparable result yet. A result becomes comparable once its output has been validated and published.</value>
   </data>
   <data name="Cmp_PreviewPending" xml:space="preserve">
-    <value>Preview rendering is not implemented yet.</value>
+    <value>Rendering preview…</value>
+  </data>
+  <data name="Cmp_PreviewFailed" xml:space="preserve">
+    <value>The preview could not be rendered.</value>
+  </data>
+  <data name="Cmp_PreviewName" xml:space="preserve">
+    <value>Before and after comparison</value>
+  </data>
+  <data name="Cmp_Zoom" xml:space="preserve">
+    <value>Zoom</value>
+  </data>
+  <data name="Cmp_ZoomValue" xml:space="preserve">
+    <value>{0:P0}</value>
+  </data>
+  <data name="Cmp_ZoomIn" xml:space="preserve">
+    <value>Zoom in</value>
+  </data>
+  <data name="Cmp_ZoomOut" xml:space="preserve">
+    <value>Zoom out</value>
+  </data>
+  <data name="Cmp_ActualSize" xml:space="preserve">
+    <value>Actual size</value>
+  </data>
+  <data name="Cmp_PreviewDownscaled" xml:space="preserve">
+    <value>Preview reduced; shown pixels are interpolated.</value>
+  </data>
+  <data name="Cmp_EstimatedSize" xml:space="preserve">
+    <value>{0} → {1} ({2}, estimated)</value>
+  </data>
+  <data name="Cmp_PreviewUnsupportedEngine" xml:space="preserve">
+    <value>The selected engine cannot produce a preview yet.</value>
+  </data>
+  <data name="Cmp_ResetView" xml:space="preserve">
+    <value>Reset view</value>
   </data>
   <data name="Cmp_CandidatesName" xml:space="preserve">
     <value>Comparable results</value>

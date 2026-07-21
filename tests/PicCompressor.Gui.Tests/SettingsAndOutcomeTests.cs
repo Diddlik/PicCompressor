@@ -52,6 +52,25 @@ public sealed class SettingsViewModelTests
         Assert.Equal(expected, settings.ProgressiveLevel);
     }
 
+    [Theory]
+    [InlineData(0, 1)]
+    [InlineData(5000, 3650)]
+    public void History_retention_days_is_clamped(int requested, int expected)
+    {
+        var settings = new SettingsViewModel { HistoryRetentionDays = requested };
+
+        Assert.Equal(expected, settings.HistoryRetentionDays);
+    }
+
+    [Fact]
+    public void History_retention_survives_a_restart()
+    {
+        var store = new PicCompressor.Application.InMemoryApplicationSettingsStore();
+        _ = new SettingsViewModel(store) { HistoryRetentionDays = 30 };
+
+        Assert.Equal(30, new SettingsViewModel(store).HistoryRetentionDays);
+    }
+
     [Fact]
     public void Jpegli_settings_carry_the_selected_values()
     {

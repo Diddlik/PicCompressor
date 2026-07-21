@@ -18,6 +18,7 @@
     <Project Path="tests/PicCompressor.Engine.Guetzli.Tests/PicCompressor.Engine.Guetzli.Tests.csproj" />
     <Project Path="tests/PicCompressor.Engine.Jpegli.Tests/PicCompressor.Engine.Jpegli.Tests.csproj" />
     <Project Path="tests/PicCompressor.Gui.Tests/PicCompressor.Gui.Tests.csproj" />
+    <Project Path="tests/PicCompressor.Gui.ViewTests/PicCompressor.Gui.ViewTests.csproj" />
     <Project Path="tests/PicCompressor.Infrastructure.Tests/PicCompressor.Infrastructure.Tests.csproj" />
     <Project Path="tests/PicCompressor.NativeInterop.Tests/PicCompressor.NativeInterop.Tests.csproj" />
   </Folder>

@@ -27,6 +27,7 @@ public sealed class SettingsViewModel : ObservableObject
     private ColorProfilePolicy colorProfilePolicy = ColorProfilePolicy.Preserve;
     private RgbColor alphaBackground = RgbColor.White;
     private int parallelJobs = Math.Max(1, Environment.ProcessorCount / 2);
+    private int historyRetentionDays = 90;
 
     private readonly IApplicationSettingsStore settingsStore;
     private ApplicationSettings stored;
@@ -310,6 +311,17 @@ public sealed class SettingsViewModel : ObservableObject
 
     public int MaxParallelJobs => Environment.ProcessorCount;
 
+    /// <summary>
+    /// Aufbewahrungsdauer des Verlaufs in Tagen (Abschnitt 13.1). Die Änderung wird
+    /// gespeichert und beim nächsten Start des Desktop Hosts angewendet. Untergrenze 1,
+    /// damit ein versehentlicher Nullwert nicht den gesamten Verlauf verwirft.
+    /// </summary>
+    public int HistoryRetentionDays
+    {
+        get => historyRetentionDays;
+        set => SetProperty(ref historyRetentionDays, Math.Clamp(value, 1, 3650));
+    }
+
     public AppearanceViewModel Appearance { get; } = new();
 
     /// <summary>
@@ -336,6 +348,7 @@ public sealed class SettingsViewModel : ObservableObject
                 ? OutputTarget.SuffixNextToInput
                 : OutputTarget.CustomDirectory;
             ParallelJobs = settings.ParallelJobs;
+            HistoryRetentionDays = settings.HistoryRetentionDays;
             Appearance.Language = Parse(settings.Language, AppLanguage.System);
             Appearance.Theme = Parse(settings.Theme, AppTheme.System);
         }
@@ -353,8 +366,7 @@ public sealed class SettingsViewModel : ObservableObject
         }
 
         // Aus dem geladenen Datensatz fortschreiben statt neu aufzubauen: Felder ohne
-        // Entsprechung in der Oberfläche, etwa die Aufbewahrungsdauer des Verlaufs,
-        // bleiben so erhalten.
+        // Entsprechung in der Oberfläche bleiben so erhalten.
         stored = stored with
         {
             Language = Appearance.Language.ToString(),
@@ -371,7 +383,8 @@ public sealed class SettingsViewModel : ObservableObject
             OutputDirectory = OutputTarget is OutputTarget.CustomDirectory
                 ? OutputDirectory
                 : null,
-            ParallelJobs = ParallelJobs
+            ParallelJobs = ParallelJobs,
+            HistoryRetentionDays = HistoryRetentionDays
         };
         settingsStore.Save(stored);
     }
