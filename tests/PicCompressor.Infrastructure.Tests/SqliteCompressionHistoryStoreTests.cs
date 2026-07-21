@@ -19,12 +19,28 @@ public sealed class SqliteCompressionHistoryStoreTests : IDisposable
             JobStatus.Succeeded,
             null);
 
-        await new SqliteCompressionHistoryStore(databasePath)
+        var stored = await new SqliteCompressionHistoryStore(databasePath)
             .AppendAsync(record, CancellationToken.None);
         var records = await new SqliteCompressionHistoryStore(databasePath)
             .GetAsync(CancellationToken.None);
 
-        Assert.Equal(record, Assert.Single(records));
+        // Der Speicher vergibt die Kennung; auf einer frischen Datenbank ist das die 1.
+        Assert.Equal(1, stored.Id);
+        Assert.Equal(record with { Id = 1 }, Assert.Single(records));
+    }
+
+    [Fact]
+    public async Task DeleteAsync_removes_only_the_named_entry()
+    {
+        var store = CreateStore();
+        var kept = await store.AppendAsync(Entry("keep.png", Days(-2)), CancellationToken.None);
+        var removed = await store.AppendAsync(Entry("drop.png", Days(-1)), CancellationToken.None);
+
+        await store.DeleteAsync(removed.Id, CancellationToken.None);
+
+        var remaining = Assert.Single(await store.GetAsync(CancellationToken.None));
+        Assert.Equal(kept.Id, remaining.Id);
+        Assert.Equal("keep.png", remaining.FileName);
     }
 
     [Fact]

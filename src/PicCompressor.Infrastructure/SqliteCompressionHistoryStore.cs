@@ -56,7 +56,7 @@ public sealed class SqliteCompressionHistoryStore : ICompressionHistoryStore
             using var command = connection.CreateCommand();
             command.CommandText =
                 """
-                SELECT completed_at, file_name, engine_id, input_size_bytes,
+                SELECT id, completed_at, file_name, engine_id, input_size_bytes,
                        output_size_bytes, status, error_category
                 FROM compression_history
                 ORDER BY completed_at DESC, id DESC;
@@ -69,16 +69,19 @@ public sealed class SqliteCompressionHistoryStore : ICompressionHistoryStore
                 entries.Add(
                     new(
                         DateTimeOffset.Parse(
-                            reader.GetString(0),
+                            reader.GetString(1),
                             System.Globalization.CultureInfo.InvariantCulture),
-                        reader.GetString(1),
                         reader.GetString(2),
-                        reader.GetInt64(3),
-                        reader.IsDBNull(4) ? null : reader.GetInt64(4),
-                        (JobStatus)reader.GetInt32(5),
-                        reader.IsDBNull(6)
+                        reader.GetString(3),
+                        reader.GetInt64(4),
+                        reader.IsDBNull(5) ? null : reader.GetInt64(5),
+                        (JobStatus)reader.GetInt32(6),
+                        reader.IsDBNull(7)
                             ? null
-                            : (CompressionErrorCategory)reader.GetInt32(6)));
+                            : (CompressionErrorCategory)reader.GetInt32(7))
+                    {
+                        Id = reader.GetInt64(0)
+                    });
             }
 
             return entries;
@@ -89,7 +92,7 @@ public sealed class SqliteCompressionHistoryStore : ICompressionHistoryStore
         }
     }
 
-    public async Task AppendAsync(
+    public async Task<CompressionHistoryEntry> AppendAsync(
         CompressionHistoryEntry entry,
         CancellationToken cancellationToken)
     {
@@ -134,6 +137,34 @@ public sealed class SqliteCompressionHistoryStore : ICompressionHistoryStore
                 entry.ErrorCategory is CompressionErrorCategory category
                     ? (int)category
                     : DBNull.Value);
+            command.ExecuteNonQuery();
+
+            using var idCommand = connection.CreateCommand();
+            idCommand.Transaction = transaction;
+            idCommand.CommandText = "SELECT last_insert_rowid();";
+            var id = (long)idCommand.ExecuteScalar()!;
+
+            transaction.Commit();
+            return entry with { Id = id };
+        }
+        finally
+        {
+            gate.Release();
+        }
+    }
+
+    public async Task DeleteAsync(long id, CancellationToken cancellationToken)
+    {
+        await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            EnsureInitialized(cancellationToken);
+            using var connection = OpenConnection();
+            using var transaction = connection.BeginTransaction();
+            using var command = connection.CreateCommand();
+            command.Transaction = transaction;
+            command.CommandText = "DELETE FROM compression_history WHERE id = $id;";
+            command.Parameters.AddWithValue("$id", id);
             command.ExecuteNonQuery();
             transaction.Commit();
         }

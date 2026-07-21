@@ -10,7 +10,11 @@ public sealed record HistoryRecord(
     long InputSizeBytes,
     long? OutputSizeBytes,
     JobStatus Status,
-    CompressionErrorCategory? ErrorCategory);
+    CompressionErrorCategory? ErrorCategory)
+{
+    /// <summary>Stabile Kennung des Eintrags; vom Speicher vergeben, beim Anhängen unerheblich (0).</summary>
+    public long Id { get; init; }
+}
 
 public interface IHistoryService
 {
@@ -22,7 +26,11 @@ public interface IHistoryService
 
     Task<IReadOnlyList<HistoryRecord>> GetAsync(CancellationToken cancellationToken);
 
-    Task AppendAsync(HistoryRecord record, CancellationToken cancellationToken);
+    /// <summary>Speichert den Eintrag und liefert ihn mit der vergebenen <see cref="HistoryRecord.Id"/> zurück.</summary>
+    Task<HistoryRecord> AppendAsync(HistoryRecord record, CancellationToken cancellationToken);
+
+    /// <summary>Löscht den Eintrag mit der angegebenen Kennung (Abschnitt 13.1).</summary>
+    Task DeleteAsync(long id, CancellationToken cancellationToken);
 
     /// <summary>Löscht den gesamten Verlauf (Abschnitt 13.1).</summary>
     Task ClearAsync(CancellationToken cancellationToken);
@@ -35,6 +43,7 @@ public interface IHistoryService
 public sealed class InMemoryHistoryService : IHistoryService
 {
     private readonly List<HistoryRecord> records = [];
+    private long nextId;
 
     public bool IsAvailable => false;
 
@@ -47,13 +56,24 @@ public sealed class InMemoryHistoryService : IHistoryService
         }
     }
 
-    public Task AppendAsync(HistoryRecord record, CancellationToken cancellationToken)
+    public Task<HistoryRecord> AppendAsync(HistoryRecord record, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(record);
         cancellationToken.ThrowIfCancellationRequested();
         lock (records)
         {
-            records.Insert(0, record);
+            var stored = record with { Id = ++nextId };
+            records.Insert(0, stored);
+            return Task.FromResult(stored);
+        }
+    }
+
+    public Task DeleteAsync(long id, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        lock (records)
+        {
+            records.RemoveAll(record => record.Id == id);
         }
 
         return Task.CompletedTask;

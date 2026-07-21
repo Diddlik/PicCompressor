@@ -45,7 +45,7 @@
             <Border DockPanel.Dock="Top" Background="{DynamicResource PcPanel2}"
                     BorderBrush="{DynamicResource PcBorder}" BorderThickness="0,0,0,1"
                     Padding="14,11">
-              <Grid ColumnDefinitions="150,*,90,96,96,110,130">
+              <Grid ColumnDefinitions="150,*,90,96,96,110,130,44">
                 <TextBlock Classes="caps" Grid.Column="0" Text="{l:Localize Hist_ColTimestamp}" />
                 <TextBlock Classes="caps" Grid.Column="1" Text="{l:Localize Hist_ColFile}" />
                 <TextBlock Classes="caps" Grid.Column="2" Text="{l:Localize Hist_ColEngine}" />
@@ -65,7 +65,7 @@
                     <Border BorderBrush="{DynamicResource PcBorderSoft}" BorderThickness="0,0,0,1"
                             Padding="14,11"
                             AutomationProperties.Name="{Binding AccessibleSummary}">
-                      <Grid ColumnDefinitions="150,*,90,96,96,110,130">
+                      <Grid ColumnDefinitions="150,*,90,96,96,110,130,44">
                         <TextBlock Classes="mono" Grid.Column="0" Text="{Binding Timestamp}" />
                         <TextBlock Grid.Column="1" FontSize="12" FontWeight="Medium"
                                    Foreground="{DynamicResource PcText}"
@@ -79,6 +79,15 @@
                         <TextBlock Grid.Column="6" FontSize="11.5" FontWeight="SemiBold"
                                    TextAlignment="Right" TextTrimming="CharacterEllipsis"
                                    Foreground="{DynamicResource PcDim}" Text="{Binding StatusLabel}" />
+                        <Button Grid.Column="7" Classes="secondary" Padding="0" Width="30" Height="26"
+                                VerticalAlignment="Center" HorizontalAlignment="Right"
+                                Command="{Binding DeleteCommand}"
+                                ToolTip.Tip="{Binding DeleteAccessibleName}"
+                                AutomationProperties.Name="{Binding DeleteAccessibleName}">
+                          <Path Width="11" Height="11" Stretch="Uniform"
+                                Stroke="{DynamicResource PcDim}" StrokeThickness="1.4"
+                                Data="M2,2 L9,9 M9,2 L2,9" />
+                        </Button>
                       </Grid>
                     </Border>
                   </DataTemplate>

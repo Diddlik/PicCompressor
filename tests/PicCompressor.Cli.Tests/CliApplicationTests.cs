@@ -156,11 +156,18 @@ public sealed class CliApplicationTests : IDisposable
             Task.FromResult<IReadOnlyList<PicCompressor.Application.CompressionHistoryEntry>>(
                 Entries);
 
-        public Task AppendAsync(
+        public Task<PicCompressor.Application.CompressionHistoryEntry> AppendAsync(
             PicCompressor.Application.CompressionHistoryEntry entry,
             CancellationToken cancellationToken)
         {
-            Entries.Add(entry);
+            var stored = entry with { Id = Entries.Count + 1 };
+            Entries.Add(stored);
+            return Task.FromResult(stored);
+        }
+
+        public Task DeleteAsync(long id, CancellationToken cancellationToken)
+        {
+            Entries.RemoveAll(entry => entry.Id == id);
             return Task.CompletedTask;
         }
 
@@ -182,9 +189,12 @@ public sealed class CliApplicationTests : IDisposable
             CancellationToken cancellationToken) =>
             throw new IOException("history is unavailable");
 
-        public Task AppendAsync(
+        public Task<PicCompressor.Application.CompressionHistoryEntry> AppendAsync(
             PicCompressor.Application.CompressionHistoryEntry entry,
             CancellationToken cancellationToken) =>
+            throw new IOException("history is unavailable");
+
+        public Task DeleteAsync(long id, CancellationToken cancellationToken) =>
             throw new IOException("history is unavailable");
 
         public Task ClearAsync(CancellationToken cancellationToken) =>
