@@ -26,7 +26,9 @@ public sealed class SqliteCompressionHistoryStoreTests : IDisposable
 
         // Der Speicher vergibt die Kennung; auf einer frischen Datenbank ist das die 1.
         Assert.Equal(1, stored.Id);
-        Assert.Equal(record with { Id = 1 }, Assert.Single(records));
+        var persisted = Assert.Single(records);
+        Assert.Equal(stored.Id, persisted.Id);
+        Assert.Equal(record, persisted);
     }
 
     [Fact]
