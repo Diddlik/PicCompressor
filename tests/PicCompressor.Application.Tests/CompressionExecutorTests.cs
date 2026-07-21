@@ -68,12 +68,61 @@ public sealed class CompressionExecutorTests
         Assert.False(fileSystem.FileExists(fileSystem.TemporaryPath));
     }
 
+    [Fact]
+    public async Task ExecuteAsync_routes_to_the_engine_matching_the_job_settings()
+    {
+        var fileSystem = new StubFileSystem();
+        var jpegli = new StubEngine(EngineEncodingResult.Succeeded(TimeSpan.Zero));
+        var guetzli = new StubEngine(
+            EngineEncodingResult.Succeeded(TimeSpan.Zero),
+            GuetzliSettings.GuetzliEngineId);
+        var executor = new CompressionExecutor(
+            [jpegli, guetzli],
+            new SafeOutputPublisher(fileSystem, fileSystem));
+
+        var result = await executor.ExecuteAsync(CreateGuetzliJob(), CancellationToken.None);
+
+        Assert.Equal(JobStatus.Succeeded, result.Status);
+        Assert.Equal(GuetzliSettings.GuetzliEngineId, result.EngineId);
+        Assert.True(guetzli.WasInvoked);
+        Assert.False(jpegli.WasInvoked);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_fails_when_the_requested_engine_is_not_configured()
+    {
+        var fileSystem = new StubFileSystem();
+        var executor = new CompressionExecutor(
+            new StubEngine(EngineEncodingResult.Succeeded(TimeSpan.Zero)),
+            new SafeOutputPublisher(fileSystem, fileSystem));
+
+        var result = await executor.ExecuteAsync(CreateGuetzliJob(), CancellationToken.None);
+
+        Assert.Equal(JobStatus.Failed, result.Status);
+        Assert.Equal(CompressionErrorCategory.EngineUnavailable, result.ErrorCategory);
+        Assert.Equal(GuetzliSettings.GuetzliEngineId, result.EngineId);
+    }
+
     private static CompressionExecutor CreateExecutor(
         StubFileSystem fileSystem,
         EngineEncodingResult encodingResult) =>
         new(
             new StubEngine(encodingResult),
             new SafeOutputPublisher(fileSystem, fileSystem));
+
+    private static CompressionJob CreateGuetzliJob() =>
+        new(
+            Guid.NewGuid(),
+            Path.GetFullPath("input.png"),
+            Path.GetFullPath("output.jpg"),
+            new GuetzliSettings(90),
+            ExifPolicy.Remove,
+            ColorProfilePolicy.Preserve,
+            RgbColor.White,
+            CollisionPolicy.Skip,
+            LargerOutputPolicy.Discard,
+            DateTimeOffset.UtcNow,
+            new InputImageInfo(InputImageFormat.Png, 10, 10, 100));
 
     private static CompressionJob CreateJob() =>
         new(
@@ -89,9 +138,13 @@ public sealed class CompressionExecutorTests
             DateTimeOffset.UtcNow,
             new InputImageInfo(InputImageFormat.Png, 10, 10, 100));
 
-    private sealed class StubEngine(EngineEncodingResult result) : ICompressionEngine
+    private sealed class StubEngine(
+        EngineEncodingResult result,
+        string engineId = JpegliSettings.JpegliEngineId) : ICompressionEngine
     {
-        public string EngineId => JpegliSettings.JpegliEngineId;
+        public string EngineId => engineId;
+
+        public bool WasInvoked { get; private set; }
 
         public Task<EngineCapability> DetectCapabilityAsync(CancellationToken cancellationToken) =>
             Task.FromResult(EngineCapability.Available(EngineId, "test", "test"));
@@ -99,8 +152,11 @@ public sealed class CompressionExecutorTests
         public Task<EngineEncodingResult> EncodeAsync(
             CompressionJob job,
             string temporaryOutputPath,
-            CancellationToken cancellationToken) =>
-            Task.FromResult(result);
+            CancellationToken cancellationToken)
+        {
+            WasInvoked = true;
+            return Task.FromResult(result);
+        }
     }
 
     private sealed class StubFileSystem(long outputSize = 50)

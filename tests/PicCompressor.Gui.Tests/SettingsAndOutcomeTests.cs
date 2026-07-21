@@ -88,11 +88,13 @@ public sealed class SettingsViewModelTests
     }
 
     [Fact]
-    public void Engines_without_a_domain_model_yield_no_settings()
+    public void Guetzli_settings_carry_the_clamped_quality()
     {
         var settings = new SettingsViewModel { IsGuetzli = true };
 
-        Assert.Null(settings.TryBuildEngineSettings());
+        var built = Assert.IsType<GuetzliSettings>(settings.TryBuildEngineSettings());
+        Assert.True(built.Quality >= GuetzliSettings.MinimumQuality);
+        Assert.Equal(GuetzliSettings.GuetzliEngineId, built.EngineId);
     }
 
     [Fact]

@@ -425,10 +425,18 @@ public sealed class SettingsViewModel : ObservableObject
     /// Baut die enginespezifischen Einstellungen. Für Engines, die das Domain-Modell noch nicht
     /// abbildet, liefert die Methode <c>null</c>; der Aufrufer meldet das als
     /// <see cref="CompressionErrorCategory.EngineUnavailable"/> und behauptet keinen Erfolg.
+    /// Die Verfügbarkeit der Engine prüft nicht diese Methode, sondern die Engine-Capability
+    /// (Abschnitt 4.2): auch für eine nicht eingebundene Engine entstehen gültige Einstellungen.
     /// </summary>
-    public CompressionEngineSettings? TryBuildEngineSettings() => IsJpegli
-        ? new JpegliSettings(Quality, ChromaSubsampling, ProgressiveLevel)
-        : null;
+    public CompressionEngineSettings? TryBuildEngineSettings()
+    {
+        if (IsJpegli)
+        {
+            return new JpegliSettings(Quality, ChromaSubsampling, ProgressiveLevel);
+        }
+
+        return IsGuetzli ? new GuetzliSettings(Quality) : null;
+    }
 }
 
 public enum OutputTarget

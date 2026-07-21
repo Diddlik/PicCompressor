@@ -4,6 +4,7 @@
     <Project Path="src/PicCompressor.Cli/PicCompressor.Cli.csproj" />
     <Project Path="src/PicCompressor.Domain/PicCompressor.Domain.csproj" />
     <Project Path="src/PicCompressor.Desktop/PicCompressor.Desktop.csproj" />
+    <Project Path="src/PicCompressor.Engine.Guetzli/PicCompressor.Engine.Guetzli.csproj" />
     <Project Path="src/PicCompressor.Engine.Jpegli/PicCompressor.Engine.Jpegli.csproj" />
     <Project Path="src/PicCompressor.Gui/PicCompressor.Gui.csproj" />
     <Project Path="src/PicCompressor.Infrastructure/PicCompressor.Infrastructure.csproj" />
@@ -14,6 +15,7 @@
     <Project Path="tests/PicCompressor.Cli.Tests/PicCompressor.Cli.Tests.csproj" />
     <Project Path="tests/PicCompressor.Domain.Tests/PicCompressor.Domain.Tests.csproj" />
     <Project Path="tests/PicCompressor.Desktop.Tests/PicCompressor.Desktop.Tests.csproj" />
+    <Project Path="tests/PicCompressor.Engine.Guetzli.Tests/PicCompressor.Engine.Guetzli.Tests.csproj" />
     <Project Path="tests/PicCompressor.Engine.Jpegli.Tests/PicCompressor.Engine.Jpegli.Tests.csproj" />
     <Project Path="tests/PicCompressor.Gui.Tests/PicCompressor.Gui.Tests.csproj" />
     <Project Path="tests/PicCompressor.Gui.ViewTests/PicCompressor.Gui.ViewTests.csproj" />

@@ -37,13 +37,56 @@ public interface ICompressionJobExecutor
         CancellationToken cancellationToken);
 }
 
-public sealed class CompressionExecutor(
-    ICompressionEngine engine,
-    SafeOutputPublisher outputPublisher,
-    TimeProvider? timeProvider = null)
-    : ICompressionJobExecutor
+public sealed class CompressionExecutor : ICompressionJobExecutor
 {
-    private readonly TimeProvider clock = timeProvider ?? TimeProvider.System;
+    private readonly IReadOnlyDictionary<string, ICompressionEngine> engines;
+    private readonly SafeOutputPublisher outputPublisher;
+    private readonly TimeProvider clock;
+
+    /// <summary>Bequemlichkeit für einen einzelnen Encoder; delegiert an die Mehr-Engine-Variante.</summary>
+    public CompressionExecutor(
+        ICompressionEngine engine,
+        SafeOutputPublisher outputPublisher,
+        TimeProvider? timeProvider = null)
+        : this([engine], outputPublisher, timeProvider)
+    {
+    }
+
+    /// <summary>
+    /// Wählt pro Job die Engine anhand von <see cref="CompressionEngineSettings.EngineId"/>.
+    /// Ein Job für eine nicht verdrahtete Engine schlägt als
+    /// <see cref="CompressionErrorCategory.EngineUnavailable"/> fehl statt still auf eine andere
+    /// Engine auszuweichen (Abschnitt 4.2).
+    /// </summary>
+    public CompressionExecutor(
+        IEnumerable<ICompressionEngine> engines,
+        SafeOutputPublisher outputPublisher,
+        TimeProvider? timeProvider = null)
+    {
+        ArgumentNullException.ThrowIfNull(engines);
+        ArgumentNullException.ThrowIfNull(outputPublisher);
+        this.outputPublisher = outputPublisher;
+        clock = timeProvider ?? TimeProvider.System;
+
+        var map = new Dictionary<string, ICompressionEngine>(StringComparer.Ordinal);
+        foreach (var engine in engines)
+        {
+            ArgumentNullException.ThrowIfNull(engine);
+            if (!map.TryAdd(engine.EngineId, engine))
+            {
+                throw new ArgumentException(
+                    $"Duplicate engine ID: {engine.EngineId}",
+                    nameof(engines));
+            }
+        }
+
+        if (map.Count == 0)
+        {
+            throw new ArgumentException("At least one engine is required.", nameof(engines));
+        }
+
+        this.engines = map;
+    }
 
     public async Task<CompressionExecutionResult> ExecuteAsync(
         CompressionJob job,
@@ -51,14 +94,15 @@ public sealed class CompressionExecutor(
     {
         ArgumentNullException.ThrowIfNull(job);
         var startedAt = clock.GetUtcNow();
+        var engineId = job.EngineSettings.EngineId;
 
-        if (!StringComparer.Ordinal.Equals(engine.EngineId, job.EngineSettings.EngineId))
+        if (!engines.TryGetValue(engineId, out var engine))
         {
             return Failure(
                 job,
                 startedAt,
                 CompressionErrorCategory.EngineUnavailable,
-                $"Engine '{job.EngineSettings.EngineId}' is not configured.");
+                $"Engine '{engineId}' is not configured.");
         }
 
         EngineCapability capability;
@@ -217,7 +261,7 @@ public sealed class CompressionExecutor(
             job.Id,
             job.InputPath,
             job.OutputPath,
-            engine.EngineId,
+            job.EngineSettings.EngineId,
             job.InputImageInfo.FileSizeBytes,
             startedAt,
             category,
@@ -260,7 +304,7 @@ public sealed class CompressionExecutor(
             JobStatus.Canceled,
             job.InputPath,
             job.OutputPath,
-            engine.EngineId,
+            job.EngineSettings.EngineId,
             engineVersion,
             job.InputImageInfo.FileSizeBytes,
             null,
