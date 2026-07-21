@@ -89,6 +89,57 @@ public sealed class CliApplicationTests : IDisposable
     }
 
     [Fact]
+    public async Task RunAsync_uses_the_guetzli_engine_when_selected()
+    {
+        using var output = new StringWriter();
+        using var error = new StringWriter();
+        var store = new RecordingHistoryStore();
+
+        var exitCode = await CliApplication.RunAsync(
+            [
+                Path.Combine(directory, "input.png"),
+                "--engine", "guetzli",
+                "--output-dir", Path.Combine(directory, "out")
+            ],
+            output,
+            error,
+            store);
+
+        Assert.Equal(0, exitCode);
+        var entry = Assert.Single(store.Entries);
+        Assert.Equal("guetzli", entry.EngineId);
+        Assert.Equal(PicCompressor.Domain.JobStatus.Succeeded, entry.Status);
+    }
+
+    [Fact]
+    public async Task RunAsync_rejects_guetzli_below_its_quality_floor()
+    {
+        using var output = new StringWriter();
+        using var error = new StringWriter();
+
+        var exitCode = await CliApplication.RunAsync(
+            [Path.Combine(directory, "input.png"), "--engine", "guetzli", "--quality", "50"],
+            output,
+            error);
+
+        Assert.Equal(2, exitCode);
+    }
+
+    [Fact]
+    public async Task RunAsync_rejects_an_unknown_engine()
+    {
+        using var output = new StringWriter();
+        using var error = new StringWriter();
+
+        var exitCode = await CliApplication.RunAsync(
+            [Path.Combine(directory, "input.png"), "--engine", "webp"],
+            output,
+            error);
+
+        Assert.Equal(2, exitCode);
+    }
+
+    [Fact]
     public async Task RunAsync_reports_a_history_failure_without_failing_the_job()
     {
         using var output = new StringWriter();
