@@ -234,6 +234,55 @@ public sealed class CompareViewModelTests
         Assert.Equal(new RgbColor(10, 20, 30), renderer.LastBackground);
     }
 
+    [Fact]
+    public void The_comparison_table_reflects_a_published_result()
+    {
+        var renderer = new FakePreviewRenderer(PreviewResult.Failed("stop"));
+        var compare = new CompareViewModel(renderer, new SettingsViewModel())
+        {
+            // Published aus dem Helfer: Eingabe 100 B, Ausgabe 50 B.
+            Selected = Published("photo.jpg", "photo_compressed.jpg")
+        };
+
+        Assert.True(compare.HasComparison);
+        Assert.False(compare.IsEstimate);
+        Assert.Equal("JPEG", compare.BeforeFormat);
+        Assert.Equal("JPEG", compare.AfterFormat);
+        Assert.False(string.IsNullOrEmpty(compare.BeforeSize));
+        Assert.False(string.IsNullOrEmpty(compare.AfterSize));
+        Assert.False(string.IsNullOrEmpty(compare.SavingsText));
+    }
+
+    [Fact]
+    public void A_png_input_is_reported_as_png_before_and_jpeg_after()
+    {
+        var renderer = new FakePreviewRenderer(PreviewResult.Failed("stop"));
+        var compare = new CompareViewModel(renderer, new SettingsViewModel())
+        {
+            Selected = Published("image.PNG", "image_compressed.jpg")
+        };
+
+        Assert.Equal("PNG", compare.BeforeFormat);
+        Assert.Equal("JPEG", compare.AfterFormat);
+    }
+
+    [Fact]
+    public void An_unpublished_selection_is_flagged_as_an_estimate()
+    {
+        var renderer = new FakePreviewRenderer(PreviewResult.Failed("stop"));
+        var compare = new CompareViewModel(renderer, new SettingsViewModel())
+        {
+            Selected = new QueueItemViewModel("a.jpg", EngineIds.Jpegli, 1000)
+        };
+
+        Assert.True(compare.HasComparison);
+        Assert.True(compare.IsEstimate);
+        // Ohne veroeffentlichte Ausgabe und ohne erfolgreiche Probekompression bleibt die
+        // Nachher-Groesse offen; die Vorher-Groesse steht aber fest.
+        Assert.False(string.IsNullOrEmpty(compare.BeforeSize));
+        Assert.Null(compare.AfterSize);
+    }
+
     /// <summary>
     /// ViewModel mit bekannten Bild- und Flaechenmassen. Der Massstab braucht beides; ohne
     /// Vorschau kennt das ViewModel die Bildgroesse nicht.
