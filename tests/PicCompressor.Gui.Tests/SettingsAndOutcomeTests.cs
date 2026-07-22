@@ -102,6 +102,33 @@ public sealed class SettingsViewModelTests
         Assert.Equal(3, restarted.LogRetainedFiles);
     }
 
+    [Theory]
+    [InlineData(-5, 0)]
+    [InlineData(120, 120)]
+    [InlineData(999999, 86400)]
+    public void Encoder_timeout_seconds_are_clamped(int requested, int expected)
+    {
+        var settings = new SettingsViewModel
+        {
+            JpegliTimeoutSeconds = requested,
+            GuetzliTimeoutSeconds = requested
+        };
+
+        Assert.Equal(expected, settings.JpegliTimeoutSeconds);
+        Assert.Equal(expected, settings.GuetzliTimeoutSeconds);
+    }
+
+    [Fact]
+    public void Encoder_timeout_survives_a_restart()
+    {
+        var store = new PicCompressor.Application.InMemoryApplicationSettingsStore();
+        _ = new SettingsViewModel(store) { JpegliTimeoutSeconds = 90, GuetzliTimeoutSeconds = 300 };
+
+        var restarted = new SettingsViewModel(store);
+        Assert.Equal(90, restarted.JpegliTimeoutSeconds);
+        Assert.Equal(300, restarted.GuetzliTimeoutSeconds);
+    }
+
     [Fact]
     public void Jpegli_settings_carry_the_selected_values()
     {

@@ -289,6 +289,18 @@
   <data name="Set_LogRetainedFilesHint" xml:space="preserve">
     <value>Older log files beyond this count are removed.</value>
   </data>
+  <data name="Set_Timeout" xml:space="preserve">
+    <value>Encoder time limit</value>
+  </data>
+  <data name="Set_TimeoutJpegli" xml:space="preserve">
+    <value>Jpegli time limit (seconds)</value>
+  </data>
+  <data name="Set_TimeoutGuetzli" xml:space="preserve">
+    <value>Guetzli time limit (seconds)</value>
+  </data>
+  <data name="Set_TimeoutHint" xml:space="preserve">
+    <value>0 disables the limit; applied on the next start.</value>
+  </data>
   <data name="Update_Section" xml:space="preserve">
     <value>Updates</value>
   </data>

@@ -17,7 +17,8 @@ internal sealed record CliOptions(
     int Parallelism,
     bool Json,
     bool NoHistory,
-    string? LogPath)
+    string? LogPath,
+    int TimeoutSeconds)
 {
     internal static CliOptions Parse(string[] args)
     {
@@ -38,6 +39,7 @@ internal sealed record CliOptions(
         var json = false;
         var noHistory = false;
         string? logPath = null;
+        var timeoutSeconds = 0;
 
         for (var index = 0; index < args.Length; index++)
         {
@@ -60,6 +62,9 @@ internal sealed record CliOptions(
                     break;
                 case "--parallelism":
                     parallelism = ParseParallelism(NextValue(args, ref index, "--parallelism"));
+                    break;
+                case "--timeout":
+                    timeoutSeconds = ParseTimeout(NextValue(args, ref index, "--timeout"));
                     break;
                 case "--engine":
                     engineId = ParseEngine(NextValue(args, ref index, "--engine"));
@@ -138,7 +143,8 @@ internal sealed record CliOptions(
             parallelism,
             json,
             noHistory,
-            logPath);
+            logPath,
+            timeoutSeconds);
     }
 
     private static string ParseEngine(string value)
@@ -160,6 +166,12 @@ internal sealed record CliOptions(
         int.TryParse(value, out var parallelism) && parallelism is >= 1 and <= 256
             ? parallelism
             : throw new CliUsageException("--parallelism must be an integer from 1 to 256.");
+
+    // 0 = kein Zeitlimit (MP-004); Obergrenze 24 Stunden.
+    private static int ParseTimeout(string value) =>
+        int.TryParse(value, out var seconds) && seconds is >= 0 and <= 86_400
+            ? seconds
+            : throw new CliUsageException("--timeout must be an integer from 0 to 86400 seconds (0 = no limit).");
 
     private static T ParseEnum<T>(string value, string option)
         where T : struct, Enum =>

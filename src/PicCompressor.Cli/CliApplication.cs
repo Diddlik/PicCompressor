@@ -26,6 +26,7 @@ internal static class CliApplication
           --recursive                   Scan input directories recursively
           --dry-run                     Validate and plan without writing
           --parallelism <1-256>         Maximum concurrent jobs (default: 1)
+          --timeout <0-86400>           Encoder time limit in seconds (default: 0 = no limit)
           --json                        Emit schema-versioned JSON
           --no-history                  Do not record results in the local history
           --log <path>                  Write the JSONL log to this path
@@ -223,9 +224,13 @@ internal static class CliApplication
             }
 
             var bridge = new NativeCodecBridge(TimeProvider.System);
+            // Enginespezifisches Zeitlimit (MP-004): --timeout gilt für die gewählte Engine;
+            // 0 bedeutet kein Limit.
             var executor = new CompressionExecutor(
                 [new JpegliEngineAdapter(bridge), new GuetzliEngineAdapter(bridge)],
-                new SafeOutputPublisher(fileSystem, inspector));
+                new SafeOutputPublisher(fileSystem, inspector),
+                TimeProvider.System,
+                EngineRuntimeLimits.FromSeconds((options.EngineId, options.TimeoutSeconds)));
             var jobs = plans
                 .Where(plan => plan.Job is not null)
                 .Select(plan => plan.Job!)

@@ -25,9 +25,6 @@ internal static class Program
         var bridge = new NativeCodecBridge(TimeProvider.System);
         var jpegli = new JpegliEngineAdapter(bridge);
         var guetzli = new GuetzliEngineAdapter(bridge);
-        var executor = new CompressionExecutor(
-            [jpegli, guetzli],
-            new SafeOutputPublisher(fileSystem, inspector));
         // Vorablesen der Rotationsgrenzen: der Log braucht sie schon bei der Konstruktion,
         // bevor der Speicher mit ihm Korrekturen melden kann. Diese Sondierung meldet nichts.
         var logPreferences = new JsonApplicationSettingsStore(
@@ -41,6 +38,14 @@ internal static class Program
             ApplicationDataPaths.SettingsFilePath,
             log);
         var settings = settingsStore.Load();
+        // Enginespezifisches Zeitlimit (MP-004, Abschnitt 7.1); 0 = kein Limit.
+        var executor = new CompressionExecutor(
+            [jpegli, guetzli],
+            new SafeOutputPublisher(fileSystem, inspector),
+            TimeProvider.System,
+            EngineRuntimeLimits.FromSeconds(
+                (JpegliSettings.JpegliEngineId, settings.JpegliTimeoutSeconds),
+                (GuetzliSettings.GuetzliEngineId, settings.GuetzliTimeoutSeconds)));
         var historyStore = new SqliteCompressionHistoryStore(
             ApplicationDataPaths.HistoryDatabasePath);
 

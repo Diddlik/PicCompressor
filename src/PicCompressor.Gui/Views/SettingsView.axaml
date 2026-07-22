@@ -247,6 +247,33 @@
       </StackPanel>
     </Border>
 
+    <!-- Encoder-Zeitlimit (MP-004) -->
+    <Border Classes="card">
+      <StackPanel Spacing="13">
+        <TextBlock Classes="h2" Text="{l:Localize Set_Timeout}" />
+        <Grid ColumnDefinitions="*,Auto">
+          <StackPanel Spacing="2">
+            <TextBlock Text="{l:Localize Set_TimeoutJpegli}" FontSize="12.5" FontWeight="Medium" />
+            <TextBlock Classes="hint" Text="{l:Localize Set_TimeoutHint}" />
+          </StackPanel>
+          <NumericUpDown Grid.Column="1" Width="140" Minimum="0" Maximum="86400" Increment="10"
+                         FormatString="0" VerticalAlignment="Center"
+                         Value="{Binding JpegliTimeoutSeconds}"
+                         AutomationProperties.Name="{l:Localize Set_TimeoutJpegli}" />
+        </Grid>
+        <Grid ColumnDefinitions="*,Auto">
+          <StackPanel Spacing="2">
+            <TextBlock Text="{l:Localize Set_TimeoutGuetzli}" FontSize="12.5" FontWeight="Medium" />
+            <TextBlock Classes="hint" Text="{l:Localize Set_TimeoutHint}" />
+          </StackPanel>
+          <NumericUpDown Grid.Column="1" Width="140" Minimum="0" Maximum="86400" Increment="10"
+                         FormatString="0" VerticalAlignment="Center"
+                         Value="{Binding GuetzliTimeoutSeconds}"
+                         AutomationProperties.Name="{l:Localize Set_TimeoutGuetzli}" />
+        </Grid>
+      </StackPanel>
+    </Border>
+
     <!-- Verlauf -->
     <Border Classes="card">
       <StackPanel Spacing="13">

@@ -118,6 +118,13 @@ public sealed class JsonApplicationSettingsStore(
         var logFiles = InRange(
             stored.LogRetainedFiles, 1, 100, defaults.LogRetainedFiles,
             "LogRetainedFiles", corrections);
+        // 0 = kein Limit; Obergrenze 24 Stunden (MP-004).
+        var jpegliTimeout = InRange(
+            stored.JpegliTimeoutSeconds, 0, 86_400, defaults.JpegliTimeoutSeconds,
+            "JpegliTimeoutSeconds", corrections);
+        var guetzliTimeout = InRange(
+            stored.GuetzliTimeoutSeconds, 0, 86_400, defaults.GuetzliTimeoutSeconds,
+            "GuetzliTimeoutSeconds", corrections);
 
         var sanitized = stored with
         {
@@ -128,6 +135,8 @@ public sealed class JsonApplicationSettingsStore(
             HistoryRetentionDays = retention,
             LogMaxFileMegabytes = logSize,
             LogRetainedFiles = logFiles,
+            JpegliTimeoutSeconds = jpegliTimeout,
+            GuetzliTimeoutSeconds = guetzliTimeout,
             EngineId = string.IsNullOrWhiteSpace(stored.EngineId)
                 ? Corrected(defaults.EngineId, "EngineId", corrections)
                 : stored.EngineId,
