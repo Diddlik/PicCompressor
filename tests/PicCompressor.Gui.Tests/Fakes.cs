@@ -1,7 +1,84 @@
+using PicCompressor.Application;
 using PicCompressor.Domain;
 using PicCompressor.Gui.Services;
 
 namespace PicCompressor.Gui.Tests;
+
+/// <summary>
+/// Discovery-Doppel für ViewModel-Tests: filtert unterstützte Endungen und kann für
+/// Abbruch-Tests bis zum Abbruch blockieren. Die echte Enumeration prüft
+/// <see cref="PicCompressor.Infrastructure.PhysicalInputDiscovery"/> gesondert.
+/// </summary>
+internal sealed class FakeInputDiscovery : IInputDiscovery
+{
+    private static readonly HashSet<string> Supported =
+        new(StringComparer.OrdinalIgnoreCase) { ".jpg", ".jpeg", ".png" };
+
+    public bool BlockUntilCancelled { get; init; }
+
+    public IReadOnlyList<DiscoveredInput> Discover(
+        IEnumerable<string> inputPaths, bool recursive, string? excludedDirectory) =>
+        Collect(inputPaths, recursive);
+
+    public async Task<IReadOnlyList<DiscoveredInput>> DiscoverAsync(
+        IReadOnlyList<string> inputPaths,
+        bool recursive,
+        string? excludedDirectory,
+        IProgress<int>? progress,
+        CancellationToken cancellationToken)
+    {
+        if (BlockUntilCancelled)
+        {
+            await Task.Delay(Timeout.Infinite, cancellationToken).ConfigureAwait(false);
+        }
+
+        var result = Collect(inputPaths, recursive);
+        progress?.Report(result.Count);
+        return result;
+    }
+
+    private static IReadOnlyList<DiscoveredInput> Collect(IEnumerable<string> paths, bool recursive)
+    {
+        var results = new List<DiscoveredInput>();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var path in paths)
+        {
+            if (File.Exists(path))
+            {
+                Add(path, results, seen);
+            }
+            else if (Directory.Exists(path))
+            {
+                var option = recursive ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly;
+                foreach (var file in Directory.EnumerateFiles(path, "*", option))
+                {
+                    Add(file, results, seen);
+                }
+            }
+        }
+
+        return results;
+    }
+
+    private static void Add(string path, List<DiscoveredInput> results, HashSet<string> seen)
+    {
+        var full = Path.GetFullPath(path);
+        if (Supported.Contains(Path.GetExtension(full)) && seen.Add(full))
+        {
+            long size;
+            try
+            {
+                size = new FileInfo(full).Length;
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+            {
+                size = 0;
+            }
+
+            results.Add(new(full, "", size));
+        }
+    }
+}
 
 internal sealed class FakeCompressionService(
     Func<CompressionRequest, IProgress<CompressionProgress>?, CancellationToken, Task<CompressionOutcome>> handler)

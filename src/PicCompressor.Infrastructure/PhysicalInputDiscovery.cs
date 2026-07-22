@@ -13,6 +13,32 @@ public sealed class PhysicalInputDiscovery(StringComparer pathComparer) : IInput
         string? excludedDirectory)
     {
         ArgumentNullException.ThrowIfNull(inputPaths);
+        return DiscoverCore(
+            inputPaths.ToList(), recursive, excludedDirectory, progress: null, CancellationToken.None);
+    }
+
+    public Task<IReadOnlyList<DiscoveredInput>> DiscoverAsync(
+        IReadOnlyList<string> inputPaths,
+        bool recursive,
+        string? excludedDirectory,
+        IProgress<int>? progress,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(inputPaths);
+        // Die Enumeration ist blockierendes Datei-I/O; sie läuft abseits des UI-Threads
+        // (Abschnitt 17.3), bleibt aber kooperativ abbrechbar.
+        return Task.Run(
+            () => DiscoverCore(inputPaths, recursive, excludedDirectory, progress, cancellationToken),
+            cancellationToken);
+    }
+
+    private IReadOnlyList<DiscoveredInput> DiscoverCore(
+        IReadOnlyList<string> inputPaths,
+        bool recursive,
+        string? excludedDirectory,
+        IProgress<int>? progress,
+        CancellationToken cancellationToken)
+    {
         var results = new List<DiscoveredInput>();
         var seen = new HashSet<string>(pathComparer);
         var excludedPath = excludedDirectory is null
@@ -21,10 +47,11 @@ public sealed class PhysicalInputDiscovery(StringComparer pathComparer) : IInput
 
         foreach (var inputPath in inputPaths)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var canonicalPath = Path.GetFullPath(inputPath);
             if (File.Exists(canonicalPath))
             {
-                Add(canonicalPath, "", results, seen);
+                Add(canonicalPath, "", results, seen, progress);
                 continue;
             }
 
@@ -37,6 +64,7 @@ public sealed class PhysicalInputDiscovery(StringComparer pathComparer) : IInput
             pending.Push(canonicalPath);
             while (pending.TryPop(out var currentDirectory))
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 if (IsExcluded(currentDirectory, excludedPath))
                 {
                     continue;
@@ -50,7 +78,8 @@ public sealed class PhysicalInputDiscovery(StringComparer pathComparer) : IInput
 
                 foreach (var file in Directory.EnumerateFiles(currentDirectory))
                 {
-                    Add(file, relativeDirectory, results, seen);
+                    cancellationToken.ThrowIfCancellationRequested();
+                    Add(file, relativeDirectory, results, seen, progress);
                 }
 
                 if (!recursive)
@@ -89,13 +118,27 @@ public sealed class PhysicalInputDiscovery(StringComparer pathComparer) : IInput
         string path,
         string relativeDirectory,
         ICollection<DiscoveredInput> results,
-        ISet<string> seen)
+        ISet<string> seen,
+        IProgress<int>? progress)
     {
         var canonicalPath = Path.GetFullPath(path);
-        if (SupportedExtensions.Contains(Path.GetExtension(canonicalPath))
-            && seen.Add(canonicalPath))
+        if (!SupportedExtensions.Contains(Path.GetExtension(canonicalPath)) || !seen.Add(canonicalPath))
         {
-            results.Add(new(canonicalPath, relativeDirectory));
+            return;
         }
+
+        long size;
+        try
+        {
+            size = new FileInfo(canonicalPath).Length;
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            // Die belastbare Prüfung folgt beim Ausführen; die Größe ist hier nur für die Anzeige.
+            size = 0;
+        }
+
+        results.Add(new(canonicalPath, relativeDirectory, size));
+        progress?.Report(results.Count);
     }
 }

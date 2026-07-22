@@ -33,6 +33,7 @@ public sealed class MainWindowViewModel : ObservableObject
         IEngineCatalogService engineCatalogService,
         IHistoryService historyService,
         IApplicationSettingsStore? settingsStore = null,
+        IInputDiscovery? inputDiscovery = null,
         IPreviewRenderer? previewRenderer = null,
         IUpdateService? updateService = null)
     {
@@ -43,7 +44,7 @@ public sealed class MainWindowViewModel : ObservableObject
         this.engineCatalogService = engineCatalogService;
 
         Settings = new SettingsViewModel(settingsStore, updateService);
-        Dashboard = new DashboardViewModel(Settings, compressionService);
+        Dashboard = new DashboardViewModel(Settings, compressionService, inputDiscovery);
         History = new HistoryViewModel(historyService);
         Compare = new CompareViewModel(previewRenderer, Settings);
         Compare.AttachQueue(Dashboard.Queue);

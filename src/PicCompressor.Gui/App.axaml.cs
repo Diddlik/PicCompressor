@@ -16,6 +16,7 @@ public sealed class App : Avalonia.Application
             new UnconfiguredEngineCatalogService(),
             new InMemoryHistoryService(),
             new InMemoryApplicationSettingsStore(),
+            new UnconfiguredInputDiscovery(),
             null,
             new UnconfiguredUpdateService());
 
@@ -26,6 +27,7 @@ public sealed class App : Avalonia.Application
         IEngineCatalogService engineCatalogService,
         IHistoryService historyService,
         IApplicationSettingsStore settingsStore,
+        IInputDiscovery inputDiscovery,
         IPreviewRenderer? previewRenderer = null,
         IUpdateService? updateService = null)
     {
@@ -33,12 +35,14 @@ public sealed class App : Avalonia.Application
         ArgumentNullException.ThrowIfNull(engineCatalogService);
         ArgumentNullException.ThrowIfNull(historyService);
         ArgumentNullException.ThrowIfNull(settingsStore);
+        ArgumentNullException.ThrowIfNull(inputDiscovery);
         serviceFactory = () =>
             new(
                 compressionService,
                 engineCatalogService,
                 historyService,
                 settingsStore,
+                inputDiscovery,
                 previewRenderer,
                 updateService ?? new UnconfiguredUpdateService());
     }
@@ -54,6 +58,7 @@ public sealed class App : Avalonia.Application
                 services.EngineCatalogService,
                 services.HistoryService,
                 services.SettingsStore,
+                services.InputDiscovery,
                 services.PreviewRenderer,
                 services.UpdateService);
 
@@ -72,6 +77,7 @@ public sealed class App : Avalonia.Application
         IEngineCatalogService EngineCatalogService,
         IHistoryService HistoryService,
         IApplicationSettingsStore SettingsStore,
+        IInputDiscovery InputDiscovery,
         IPreviewRenderer? PreviewRenderer,
         IUpdateService UpdateService);
 }

@@ -82,6 +82,21 @@
   <data name="Dash_AddFiles" xml:space="preserve">
     <value>Add files…</value>
   </data>
+  <data name="Dash_AddFolder" xml:space="preserve">
+    <value>Add folder…</value>
+  </data>
+  <data name="Dash_Discovering" xml:space="preserve">
+    <value>Scanning… {0} found</value>
+  </data>
+  <data name="Dash_DiscoveryCanceled" xml:space="preserve">
+    <value>Folder scan canceled.</value>
+  </data>
+  <data name="Dash_CancelDiscovery" xml:space="preserve">
+    <value>Cancel scan</value>
+  </data>
+  <data name="Dash_FolderPickerTitle" xml:space="preserve">
+    <value>Choose a folder</value>
+  </data>
   <data name="Dash_DropHere" xml:space="preserve">
     <value>Drag images or folders here</value>
   </data>
