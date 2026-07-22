@@ -10,31 +10,50 @@ public sealed class CompressionBatchExecutor(
 {
     private readonly TimeProvider clock = timeProvider ?? TimeProvider.System;
 
-    public async Task<IReadOnlyList<CompressionExecutionResult>> ExecuteAsync(
+    public Task<IReadOnlyList<CompressionExecutionResult>> ExecuteAsync(
         IReadOnlyList<CompressionJob> jobs,
         int maxParallelism,
         CancellationToken cancellationToken) =>
-        await ExecuteAsync(jobs, maxParallelism, null, cancellationToken).ConfigureAwait(false);
+        ExecuteAsync(jobs, maxParallelism, null, cancellationToken);
+
+    public Task<IReadOnlyList<CompressionExecutionResult>> ExecuteAsync(
+        IReadOnlyList<CompressionJob> jobs,
+        int maxParallelism,
+        IProgress<CompressionJobProgress>? progress,
+        CancellationToken cancellationToken) =>
+        ExecuteAsync(jobs, CompressionResourceLimits.CpuOnly(maxParallelism), progress, cancellationToken);
+
+    public Task<IReadOnlyList<CompressionExecutionResult>> ExecuteAsync(
+        IReadOnlyList<CompressionJob> jobs,
+        CompressionResourceLimits limits,
+        CancellationToken cancellationToken) =>
+        ExecuteAsync(jobs, limits, null, cancellationToken);
 
     public async Task<IReadOnlyList<CompressionExecutionResult>> ExecuteAsync(
         IReadOnlyList<CompressionJob> jobs,
-        int maxParallelism,
+        CompressionResourceLimits limits,
         IProgress<CompressionJobProgress>? progress,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(jobs);
-        ArgumentOutOfRangeException.ThrowIfLessThan(maxParallelism, 1);
+        ArgumentNullException.ThrowIfNull(limits);
 
-        using var semaphore = new SemaphoreSlim(maxParallelism, maxParallelism);
+        var gate = new CompressionResourceGate(limits);
         var tasks = jobs.Select(ExecuteJobAsync).ToArray();
         return await Task.WhenAll(tasks).ConfigureAwait(false);
 
         async Task<CompressionExecutionResult> ExecuteJobAsync(CompressionJob job)
         {
+            var guetzli = string.Equals(
+                job.EngineSettings.EngineId,
+                GuetzliSettings.GuetzliEngineId,
+                StringComparison.Ordinal);
+            var memory = guetzli ? job.InputImageInfo.PixelCount * limits.GuetzliBytesPerPixel : 0;
+
             progress?.Report(new(job.Id, JobStatus.WaitingForResources));
             try
             {
-                await semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+                await gate.AcquireAsync(guetzli, memory, cancellationToken).ConfigureAwait(false);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
@@ -68,7 +87,7 @@ public sealed class CompressionBatchExecutor(
             }
             finally
             {
-                semaphore.Release();
+                gate.Release(guetzli, memory);
             }
         }
     }

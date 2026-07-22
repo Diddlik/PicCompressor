@@ -230,8 +230,13 @@ internal static class CliApplication
                 .Where(plan => plan.Job is not null)
                 .Select(plan => plan.Job!)
                 .ToArray();
+            // CPU- und speichergewichtete Budgets (Abschnitt 10.1); der verfügbare Speicher
+            // stammt aus der Laufzeitinformation des Hosts.
+            var limits = CompressionResourceLimits.Default(
+                options.Parallelism,
+                GC.GetGCMemoryInfo().TotalAvailableMemoryBytes);
             var results = await new CompressionBatchExecutor(executor)
-                .ExecuteAsync(jobs, options.Parallelism, cancellationSource.Token)
+                .ExecuteAsync(jobs, limits, cancellationSource.Token)
                 .ConfigureAwait(false);
             var exitCode = MapBatchExitCode(plans, results);
             var historyWarning = options.NoHistory
