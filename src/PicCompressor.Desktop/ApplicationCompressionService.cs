@@ -125,8 +125,13 @@ public sealed class ApplicationCompressionService(
                             new(jobIndexes[update.JobId], new(update.Status)));
                     }
                 });
+        // CPU- und speichergewichtete Budgets (Abschnitt 10.1): der verfügbare Speicher stammt
+        // aus der Laufzeitinformation des Hosts, nicht aus der reinen Application-Schicht.
+        var limits = CompressionResourceLimits.Default(
+            maxParallelism,
+            GC.GetGCMemoryInfo().TotalAvailableMemoryBytes);
         var results = await new CompressionBatchExecutor(jobExecutor)
-            .ExecuteAsync(jobs, maxParallelism, batchProgress, cancellationToken)
+            .ExecuteAsync(jobs, limits, batchProgress, cancellationToken)
             .ConfigureAwait(false);
         for (var index = 0; index < results.Count; index++)
         {
