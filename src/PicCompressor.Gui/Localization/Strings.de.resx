@@ -352,6 +352,21 @@
   <data name="Update_Install" xml:space="preserve">
     <value>Herunterladen und neu starten</value>
   </data>
+  <data name="About_Section" xml:space="preserve">
+    <value>Über PicCompressor</value>
+  </data>
+  <data name="About_Version" xml:space="preserve">
+    <value>Version {0}</value>
+  </data>
+  <data name="About_Description" xml:space="preserve">
+    <value>Lokale, hochwertige JPEG-Komprimierung aus JPEG- und PNG-Quellen.</value>
+  </data>
+  <data name="About_Credits" xml:space="preserve">
+    <value>Gebündelte Komponenten</value>
+  </data>
+  <data name="About_CreditsHint" xml:space="preserve">
+    <value>Die vollständigen Lizenztexte liegen im Ordner „licenses“ des Pakets.</value>
+  </data>
   <data name="Update_StatusIdle" xml:space="preserve">
     <value>Noch nicht geprüft.</value>
   </data>

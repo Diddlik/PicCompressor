@@ -353,6 +353,36 @@
       </StackPanel>
     </Border>
 
+    <!-- Über PicCompressor: Version und Bibliotheks-Credits (Issue #2) -->
+    <Border Classes="card">
+      <StackPanel Spacing="13">
+        <TextBlock Classes="h2" Text="{l:Localize About_Section}" />
+        <TextBlock Text="{Binding About.VersionLabel}" Classes="mono" />
+        <TextBlock Classes="hint" Text="{l:Localize About_Description}" TextWrapping="Wrap" />
+
+        <TextBlock Text="{l:Localize About_Credits}" FontSize="12.5" FontWeight="Medium"
+                   Margin="0,4,0,0" />
+        <TextBlock Classes="hint" Text="{l:Localize About_CreditsHint}" TextWrapping="Wrap" />
+        <ItemsControl ItemsSource="{Binding About.Components}"
+                      AutomationProperties.Name="{l:Localize About_Credits}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:CreditEntry">
+              <Grid ColumnDefinitions="Auto,12,*,Auto" Margin="0,0,0,4">
+                <TextBlock Grid.Column="0" Text="{Binding Name}" FontWeight="Medium"
+                           Foreground="{DynamicResource PcText}" FontSize="12" MinWidth="150" />
+                <TextBlock Grid.Column="2" Text="{Binding Role}" Classes="hint"
+                           VerticalAlignment="Center" />
+                <Border Grid.Column="3" Classes="pill" Background="{DynamicResource PcPanel}">
+                  <TextBlock Text="{Binding License}" FontSize="10.5" FontWeight="SemiBold"
+                             Foreground="{DynamicResource PcDim}" />
+                </Border>
+              </Grid>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+    </Border>
+
     </StackPanel>
   </ScrollViewer>
 </UserControl>

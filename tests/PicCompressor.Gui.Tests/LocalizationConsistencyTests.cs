@@ -104,6 +104,8 @@ public sealed class LocalizationConsistencyTests
             "Cmp_Zoom", "Cmp_ZoomValue",
             // "Updates" ist im Deutschen als Lehnwort identisch.
             "Update_Section",
+            // "Version {0}" ist in beiden Sprachen gleich; die Zahl ist ein Platzhalter.
+            "About_Version",
             // "Format" ist in beiden Sprachen dasselbe Wort.
             "Cmp_TblFormat"
         ];
