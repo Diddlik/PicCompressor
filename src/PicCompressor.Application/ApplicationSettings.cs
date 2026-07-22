@@ -71,6 +71,12 @@ public sealed record ApplicationSettings
 
     /// <summary>Encoder-Zeitlimit für Guetzli in Sekunden; <c>0</c> = kein Limit (MP-004).</summary>
     public int GuetzliTimeoutSeconds { get; init; }
+
+    /// <summary>
+    /// Geforderte Mindesteinsparung in Prozent (MP-004). <c>0</c> = keine Mindestgrenze;
+    /// ein Ergebnis mit geringerer Einsparung wird verworfen statt veröffentlicht.
+    /// </summary>
+    public int MinimumSavingsPercent { get; init; }
 }
 
 public interface IApplicationSettingsStore

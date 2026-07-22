@@ -5,7 +5,8 @@ namespace PicCompressor.Application;
 public enum OutputPublicationDisposition
 {
     Published,
-    DiscardedNotSmaller
+    DiscardedNotSmaller,
+    DiscardedBelowMinimumSavings
 }
 
 public sealed record OutputPublicationResult(
@@ -70,6 +71,24 @@ public sealed class SafeOutputPublisher(
                 CompressionErrorCategory.OutputValidationFailed,
                 "Temporary output is not a JPEG with the expected dimensions.",
                 canonicalTemporaryPath);
+        }
+
+        // Mindesteinsparung (MP-004): ein Ergebnis unterhalb der geforderten Prozentgrenze wird
+        // verworfen. Nur aktiv bei einem positiven Wert, damit der Standard 0 das bisherige
+        // Verhalten (nur die Nicht-kleiner-Richtlinie greift) unverändert lässt.
+        if (job.MinimumSavingsPercent > 0)
+        {
+            var inputSize = job.InputImageInfo.FileSizeBytes;
+            var savedPercent = inputSize > 0
+                ? (inputSize - outputInfo.FileSizeBytes) * 100d / inputSize
+                : 0d;
+            if (savedPercent < job.MinimumSavingsPercent)
+            {
+                DeleteRequired(canonicalTemporaryPath);
+                return new(
+                    OutputPublicationDisposition.DiscardedBelowMinimumSavings,
+                    outputInfo.FileSizeBytes);
+            }
         }
 
         if (outputInfo.FileSizeBytes >= job.InputImageInfo.FileSizeBytes

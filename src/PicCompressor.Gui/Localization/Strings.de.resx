@@ -301,6 +301,12 @@
   <data name="Set_TimeoutHint" xml:space="preserve">
     <value>0 deaktiviert das Limit; wirkt beim nächsten Start.</value>
   </data>
+  <data name="Set_MinSavings" xml:space="preserve">
+    <value>Mindesteinsparung (%)</value>
+  </data>
+  <data name="Set_MinSavingsHint" xml:space="preserve">
+    <value>0 deaktiviert sie; eine geringere Einsparung wird als erfolgreicher Job ohne Datei verworfen.</value>
+  </data>
   <data name="Update_Section" xml:space="preserve">
     <value>Updates</value>
   </data>

@@ -213,8 +213,15 @@ public sealed class CompressionExecutor : ICompressionJobExecutor
         try
         {
             var publication = outputPublisher.Publish(job, temporaryOutput);
-            var discarded = publication.Disposition
-                is OutputPublicationDisposition.DiscardedNotSmaller;
+            var published = publication.Disposition is OutputPublicationDisposition.Published;
+            var warning = publication.Disposition switch
+            {
+                OutputPublicationDisposition.DiscardedNotSmaller =>
+                    "Encoded output was not smaller and was discarded.",
+                OutputPublicationDisposition.DiscardedBelowMinimumSavings =>
+                    $"Encoded output saved less than the required {job.MinimumSavingsPercent}% and was discarded.",
+                _ => null
+            };
             return new(
                 job.Id,
                 JobStatus.Succeeded,
@@ -227,8 +234,8 @@ public sealed class CompressionExecutor : ICompressionJobExecutor
                 startedAt,
                 clock.GetUtcNow(),
                 true,
-                !discarded,
-                discarded ? "Encoded output was not smaller and was discarded." : null,
+                published,
+                warning,
                 null,
                 null);
         }

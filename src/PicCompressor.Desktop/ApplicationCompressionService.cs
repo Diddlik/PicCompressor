@@ -31,7 +31,8 @@ public sealed class ApplicationCompressionService(
                     request.LargerOutputPolicy,
                     request.OutputDirectory,
                     request.Suffix,
-                    PredecessorJobId: request.PredecessorJobId));
+                    PredecessorJobId: request.PredecessorJobId,
+                    MinimumSavingsPercent: request.MinimumSavingsPercent));
         }
         catch (JobCreationException exception)
         {

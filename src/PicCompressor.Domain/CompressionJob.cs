@@ -15,7 +15,8 @@ public sealed class CompressionJob
         DateTimeOffset createdAt,
         InputImageInfo inputImageInfo,
         string? profileName = null,
-        Guid? predecessorJobId = null)
+        Guid? predecessorJobId = null,
+        int minimumSavingsPercent = 0)
     {
         if (id == Guid.Empty)
         {
@@ -26,6 +27,8 @@ public sealed class CompressionJob
         ArgumentException.ThrowIfNullOrWhiteSpace(outputPath);
         ArgumentNullException.ThrowIfNull(engineSettings);
         ArgumentNullException.ThrowIfNull(inputImageInfo);
+        ArgumentOutOfRangeException.ThrowIfNegative(minimumSavingsPercent);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(minimumSavingsPercent, 99);
 
         if (!Path.IsPathFullyQualified(inputPath))
         {
@@ -50,6 +53,7 @@ public sealed class CompressionJob
         InputImageInfo = inputImageInfo;
         ProfileName = profileName;
         PredecessorJobId = predecessorJobId;
+        MinimumSavingsPercent = minimumSavingsPercent;
     }
 
     public Guid Id { get; }
@@ -66,4 +70,10 @@ public sealed class CompressionJob
     public InputImageInfo InputImageInfo { get; }
     public string? ProfileName { get; }
     public Guid? PredecessorJobId { get; }
+
+    /// <summary>
+    /// Geforderte Mindesteinsparung in Prozent (MP-004). <c>0</c> = keine Mindestgrenze; ein
+    /// Ergebnis mit geringerer Einsparung wird verworfen statt veröffentlicht.
+    /// </summary>
+    public int MinimumSavingsPercent { get; }
 }

@@ -27,6 +27,7 @@ internal static class CliApplication
           --dry-run                     Validate and plan without writing
           --parallelism <1-256>         Maximum concurrent jobs (default: 1)
           --timeout <0-86400>           Encoder time limit in seconds (default: 0 = no limit)
+          --min-savings <0-99>          Discard output saving less than this percent (default: 0)
           --json                        Emit schema-versioned JSON
           --no-history                  Do not record results in the local history
           --log <path>                  Write the JSONL log to this path
@@ -215,7 +216,8 @@ internal static class CliApplication
                     options.CollisionPolicy,
                     options.LargerOutputPolicy,
                     options.OutputDirectory,
-                    options.Suffix));
+                    options.Suffix,
+                    options.MinimumSavingsPercent));
             if (options.DryRun)
             {
                 await WriteDryRunAsync(standardOutput, standardError, options.Json, plans)

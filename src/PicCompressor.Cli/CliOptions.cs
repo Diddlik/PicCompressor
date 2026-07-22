@@ -18,7 +18,8 @@ internal sealed record CliOptions(
     bool Json,
     bool NoHistory,
     string? LogPath,
-    int TimeoutSeconds)
+    int TimeoutSeconds,
+    int MinimumSavingsPercent)
 {
     internal static CliOptions Parse(string[] args)
     {
@@ -40,6 +41,7 @@ internal sealed record CliOptions(
         var noHistory = false;
         string? logPath = null;
         var timeoutSeconds = 0;
+        var minimumSavingsPercent = 0;
 
         for (var index = 0; index < args.Length; index++)
         {
@@ -65,6 +67,10 @@ internal sealed record CliOptions(
                     break;
                 case "--timeout":
                     timeoutSeconds = ParseTimeout(NextValue(args, ref index, "--timeout"));
+                    break;
+                case "--min-savings":
+                    minimumSavingsPercent = ParseMinimumSavings(
+                        NextValue(args, ref index, "--min-savings"));
                     break;
                 case "--engine":
                     engineId = ParseEngine(NextValue(args, ref index, "--engine"));
@@ -144,7 +150,8 @@ internal sealed record CliOptions(
             json,
             noHistory,
             logPath,
-            timeoutSeconds);
+            timeoutSeconds,
+            minimumSavingsPercent);
     }
 
     private static string ParseEngine(string value)
@@ -172,6 +179,12 @@ internal sealed record CliOptions(
         int.TryParse(value, out var seconds) && seconds is >= 0 and <= 86_400
             ? seconds
             : throw new CliUsageException("--timeout must be an integer from 0 to 86400 seconds (0 = no limit).");
+
+    // 0 = keine Mindesteinsparung (MP-004); ein Ergebnis darunter wird verworfen.
+    private static int ParseMinimumSavings(string value) =>
+        int.TryParse(value, out var percent) && percent is >= 0 and <= 99
+            ? percent
+            : throw new CliUsageException("--min-savings must be an integer from 0 to 99 (0 = no minimum).");
 
     private static T ParseEnum<T>(string value, string option)
         where T : struct, Enum =>

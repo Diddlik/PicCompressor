@@ -32,6 +32,7 @@ public sealed class SettingsViewModel : ObservableObject
     private int logRetainedFiles = 5;
     private int jpegliTimeoutSeconds;
     private int guetzliTimeoutSeconds;
+    private int minimumSavingsPercent;
 
     private readonly IApplicationSettingsStore settingsStore;
     private ApplicationSettings stored;
@@ -366,6 +367,16 @@ public sealed class SettingsViewModel : ObservableObject
         set => SetProperty(ref guetzliTimeoutSeconds, Math.Clamp(value, 0, 86_400));
     }
 
+    /// <summary>
+    /// Geforderte Mindesteinsparung in Prozent (MP-004); <c>0</c> = keine Mindestgrenze. Ein
+    /// Ergebnis darunter wird verworfen und als erfolgreicher Job ohne Ausgabe mit Warnung gemeldet.
+    /// </summary>
+    public int MinimumSavingsPercent
+    {
+        get => minimumSavingsPercent;
+        set => SetProperty(ref minimumSavingsPercent, Math.Clamp(value, 0, 99));
+    }
+
     public AppearanceViewModel Appearance { get; } = new();
 
     /// <summary>
@@ -397,6 +408,7 @@ public sealed class SettingsViewModel : ObservableObject
             LogRetainedFiles = settings.LogRetainedFiles;
             JpegliTimeoutSeconds = settings.JpegliTimeoutSeconds;
             GuetzliTimeoutSeconds = settings.GuetzliTimeoutSeconds;
+            MinimumSavingsPercent = settings.MinimumSavingsPercent;
             Appearance.Language = Parse(settings.Language, AppLanguage.System);
             Appearance.Theme = Parse(settings.Theme, AppTheme.System);
         }
@@ -436,7 +448,8 @@ public sealed class SettingsViewModel : ObservableObject
             LogMaxFileMegabytes = LogMaxFileMegabytes,
             LogRetainedFiles = LogRetainedFiles,
             JpegliTimeoutSeconds = JpegliTimeoutSeconds,
-            GuetzliTimeoutSeconds = GuetzliTimeoutSeconds
+            GuetzliTimeoutSeconds = GuetzliTimeoutSeconds,
+            MinimumSavingsPercent = MinimumSavingsPercent
         };
         settingsStore.Save(stored);
     }

@@ -156,6 +156,51 @@ public sealed class CompressionExecutorTests
         Assert.True(result.OutputPublished);
     }
 
+    [Fact]
+    public async Task ExecuteAsync_discards_output_below_the_minimum_savings_with_a_warning()
+    {
+        // 100-Byte-Eingabe, 50-Byte-Ausgabe = 50 % Einsparung; die Mindestgrenze fordert 80 %.
+        var fileSystem = new StubFileSystem(outputSize: 50);
+        var executor = CreateExecutor(fileSystem, EngineEncodingResult.Succeeded(TimeSpan.Zero));
+
+        var result = await executor.ExecuteAsync(
+            CreateJobWithMinimumSavings(80), CancellationToken.None);
+
+        Assert.Equal(JobStatus.Succeeded, result.Status);
+        Assert.False(result.OutputPublished);
+        Assert.NotNull(result.Warning);
+        Assert.False(fileSystem.FileExists(fileSystem.TemporaryPath));
+        Assert.False(fileSystem.FileExists(Path.GetFullPath("output.jpg")));
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_publishes_output_meeting_the_minimum_savings()
+    {
+        var fileSystem = new StubFileSystem(outputSize: 50);
+        var executor = CreateExecutor(fileSystem, EngineEncodingResult.Succeeded(TimeSpan.Zero));
+
+        var result = await executor.ExecuteAsync(
+            CreateJobWithMinimumSavings(40), CancellationToken.None);
+
+        Assert.Equal(JobStatus.Succeeded, result.Status);
+        Assert.True(result.OutputPublished);
+    }
+
+    private static CompressionJob CreateJobWithMinimumSavings(int minimumSavingsPercent) =>
+        new(
+            Guid.NewGuid(),
+            Path.GetFullPath("input.png"),
+            Path.GetFullPath("output.jpg"),
+            new JpegliSettings(80, JpegliChromaSubsampling.Subsampling420, 2),
+            ExifPolicy.Private,
+            ColorProfilePolicy.Preserve,
+            RgbColor.White,
+            CollisionPolicy.Skip,
+            LargerOutputPolicy.Discard,
+            DateTimeOffset.UtcNow,
+            new InputImageInfo(InputImageFormat.Png, 10, 10, 100),
+            minimumSavingsPercent: minimumSavingsPercent);
+
     private static EngineRuntimeLimits RuntimeLimit(TimeSpan limit) =>
         new(new Dictionary<string, TimeSpan> { [JpegliSettings.JpegliEngineId] = limit });
 

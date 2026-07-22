@@ -129,6 +129,26 @@ public sealed class SettingsViewModelTests
         Assert.Equal(300, restarted.GuetzliTimeoutSeconds);
     }
 
+    [Theory]
+    [InlineData(-1, 0)]
+    [InlineData(15, 15)]
+    [InlineData(200, 99)]
+    public void Minimum_savings_percent_is_clamped(int requested, int expected)
+    {
+        var settings = new SettingsViewModel { MinimumSavingsPercent = requested };
+
+        Assert.Equal(expected, settings.MinimumSavingsPercent);
+    }
+
+    [Fact]
+    public void Minimum_savings_survives_a_restart()
+    {
+        var store = new PicCompressor.Application.InMemoryApplicationSettingsStore();
+        _ = new SettingsViewModel(store) { MinimumSavingsPercent = 20 };
+
+        Assert.Equal(20, new SettingsViewModel(store).MinimumSavingsPercent);
+    }
+
     [Fact]
     public void Jpegli_settings_carry_the_selected_values()
     {
