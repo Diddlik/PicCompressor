@@ -103,7 +103,9 @@ public sealed class LocalizationConsistencyTests
             // "Zoom" ist im Deutschen dasselbe Wort; der Zoomwert ist ein reines Zahlenformat.
             "Cmp_Zoom", "Cmp_ZoomValue",
             // "Updates" ist im Deutschen als Lehnwort identisch.
-            "Update_Section"
+            "Update_Section",
+            // "Format" ist in beiden Sprachen dasselbe Wort.
+            "Cmp_TblFormat"
         ];
 
         var identical = English

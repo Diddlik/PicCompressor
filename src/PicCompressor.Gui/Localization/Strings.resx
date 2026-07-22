@@ -457,6 +457,30 @@
   <data name="Cmp_Compressed" xml:space="preserve">
     <value>Compressed</value>
   </data>
+  <data name="Cmp_TblAttribute" xml:space="preserve">
+    <value>Attribute</value>
+  </data>
+  <data name="Cmp_TblBefore" xml:space="preserve">
+    <value>Before</value>
+  </data>
+  <data name="Cmp_TblAfter" xml:space="preserve">
+    <value>After</value>
+  </data>
+  <data name="Cmp_TblFormat" xml:space="preserve">
+    <value>Format</value>
+  </data>
+  <data name="Cmp_TblSize" xml:space="preserve">
+    <value>File size</value>
+  </data>
+  <data name="Cmp_TblDimensions" xml:space="preserve">
+    <value>Dimensions</value>
+  </data>
+  <data name="Cmp_TblSavings" xml:space="preserve">
+    <value>Saving</value>
+  </data>
+  <data name="Cmp_TblEstimate" xml:space="preserve">
+    <value>(estimate, no file written)</value>
+  </data>
   <data name="Cmp_Divider" xml:space="preserve">
     <value>COMPARISON SLIDER</value>
   </data>
