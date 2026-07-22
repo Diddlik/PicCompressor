@@ -56,6 +56,12 @@ public sealed record ApplicationSettings
 
     /// <summary>Aufbewahrungsdauer des Verlaufs in Tagen (Abschnitt 13.1).</summary>
     public int HistoryRetentionDays { get; init; } = 90;
+
+    /// <summary>Maximale Größe einer Logdatei in MB vor der Rotation (Abschnitt 13.3).</summary>
+    public int LogMaxFileMegabytes { get; init; } = 5;
+
+    /// <summary>Anzahl aufbewahrter Loggenerationen (Abschnitt 13.3).</summary>
+    public int LogRetainedFiles { get; init; } = 5;
 }
 
 public interface IApplicationSettingsStore

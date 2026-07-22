@@ -264,6 +264,33 @@
       </StackPanel>
     </Border>
 
+    <!-- Diagnoseprotokoll -->
+    <Border Classes="card">
+      <StackPanel Spacing="13">
+        <TextBlock Classes="h2" Text="{l:Localize Set_Logging}" />
+        <Grid ColumnDefinitions="*,Auto">
+          <StackPanel Spacing="2">
+            <TextBlock Text="{l:Localize Set_LogMaxSize}" FontSize="12.5" FontWeight="Medium" />
+            <TextBlock Classes="hint" Text="{l:Localize Set_LogMaxSizeHint}" />
+          </StackPanel>
+          <NumericUpDown Grid.Column="1" Width="140" Minimum="1" Maximum="1024" Increment="1"
+                         FormatString="0" VerticalAlignment="Center"
+                         Value="{Binding LogMaxFileMegabytes}"
+                         AutomationProperties.Name="{l:Localize Set_LogMaxSize}" />
+        </Grid>
+        <Grid ColumnDefinitions="*,Auto">
+          <StackPanel Spacing="2">
+            <TextBlock Text="{l:Localize Set_LogRetainedFiles}" FontSize="12.5" FontWeight="Medium" />
+            <TextBlock Classes="hint" Text="{l:Localize Set_LogRetainedFilesHint}" />
+          </StackPanel>
+          <NumericUpDown Grid.Column="1" Width="140" Minimum="1" Maximum="100" Increment="1"
+                         FormatString="0" VerticalAlignment="Center"
+                         Value="{Binding LogRetainedFiles}"
+                         AutomationProperties.Name="{l:Localize Set_LogRetainedFiles}" />
+        </Grid>
+      </StackPanel>
+    </Border>
+
     </StackPanel>
   </ScrollViewer>
 </UserControl>

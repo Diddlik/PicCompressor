@@ -1,0 +1,66 @@
+# Builds the win-x64 package on a tag push and publishes it to a GitHub release.
+# Tag the commit to release, e.g. `git tag v0.2.0-alpha.1 && git push origin v0.2.0-alpha.1`.
+# Releases are currently unsigned (Authenticode signing stays open under O-006).
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  win-x64:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Derive version from tag
+        id: version
+        shell: pwsh
+        run: |
+          $version = "${{ github.ref_name }}" -replace '^v', ''
+          if ($version -notmatch '^\d+\.\d+\.\d+([\-+][0-9A-Za-z.-]+)?$') {
+            throw "Tag '${{ github.ref_name }}' is not a valid version."
+          }
+          "value=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Set up UCRT64 toolchain
+        id: msys2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: false
+          install: >-
+            mingw-w64-ucrt-x86_64-gcc
+            mingw-w64-ucrt-x86_64-make
+
+      - name: Build and package
+        shell: pwsh
+        run: |
+          ./scripts/publish-win-x64.ps1 `
+            -Version "${{ steps.version.outputs.value }}" `
+            -ToolchainRoot "${{ steps.msys2.outputs.msys2-location }}\ucrt64"
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: piccompressor-win-x64-${{ steps.version.outputs.value }}
+          path: artifacts/releases/win-x64
+
+      - name: Publish GitHub release
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          ./scripts/release-github.ps1 `
+            -Version "${{ steps.version.outputs.value }}" `
+            -RepoUrl "${{ github.server_url }}/${{ github.repository }}" `
+            -Publish

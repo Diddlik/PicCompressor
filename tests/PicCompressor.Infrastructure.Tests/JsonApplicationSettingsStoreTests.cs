@@ -33,7 +33,9 @@ public sealed class JsonApplicationSettingsStoreTests : IDisposable
             Suffix = "_small",
             OutputDirectory = @"C:\out",
             ParallelJobs = 4,
-            HistoryRetentionDays = 30
+            HistoryRetentionDays = 30,
+            LogMaxFileMegabytes = 20,
+            LogRetainedFiles = 3
         };
 
         store.Save(settings);
@@ -83,6 +85,9 @@ public sealed class JsonApplicationSettingsStoreTests : IDisposable
     [InlineData("\"ProgressiveLevel\": 7")]
     [InlineData("\"ParallelJobs\": 0")]
     [InlineData("\"HistoryRetentionDays\": 0")]
+    [InlineData("\"LogMaxFileMegabytes\": 0")]
+    [InlineData("\"LogMaxFileMegabytes\": 5000")]
+    [InlineData("\"LogRetainedFiles\": 0")]
     [InlineData("\"Suffix\": \"\"")]
     [InlineData("\"EngineId\": \"  \"")]
     public void An_out_of_range_field_falls_back_without_discarding_the_others(string field)
@@ -100,6 +105,8 @@ public sealed class JsonApplicationSettingsStoreTests : IDisposable
         Assert.InRange(settings.ProgressiveLevel, 0, 2);
         Assert.InRange(settings.ParallelJobs, 1, 256);
         Assert.InRange(settings.HistoryRetentionDays, 1, 3650);
+        Assert.InRange(settings.LogMaxFileMegabytes, 1, 1024);
+        Assert.InRange(settings.LogRetainedFiles, 1, 100);
         Assert.False(string.IsNullOrWhiteSpace(settings.Suffix));
         Assert.False(string.IsNullOrWhiteSpace(settings.EngineId));
         Assert.Equal(defaults.SchemaVersion, settings.SchemaVersion);
