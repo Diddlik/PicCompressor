@@ -64,4 +64,54 @@ public sealed class CliOptionsTests
         Assert.True(options.DryRun);
         Assert.Equal(3, options.Parallelism);
     }
+
+    [Fact]
+    public void Parse_defaults_timeout_to_no_limit()
+    {
+        var options = CliOptions.Parse(["input.png"]);
+
+        Assert.Equal(0, options.TimeoutSeconds);
+    }
+
+    [Fact]
+    public void Parse_accepts_a_runtime_timeout()
+    {
+        var options = CliOptions.Parse(["input.png", "--timeout", "120"]);
+
+        Assert.Equal(120, options.TimeoutSeconds);
+    }
+
+    [Fact]
+    public void Parse_rejects_an_out_of_range_timeout()
+    {
+        var exception = Assert.Throws<CliUsageException>(
+            () => CliOptions.Parse(["input.png", "--timeout", "999999"]));
+
+        Assert.Contains("--timeout", exception.Message);
+    }
+
+    [Fact]
+    public void Parse_defaults_minimum_savings_to_none()
+    {
+        var options = CliOptions.Parse(["input.png"]);
+
+        Assert.Equal(0, options.MinimumSavingsPercent);
+    }
+
+    [Fact]
+    public void Parse_accepts_a_minimum_savings_percent()
+    {
+        var options = CliOptions.Parse(["input.png", "--min-savings", "15"]);
+
+        Assert.Equal(15, options.MinimumSavingsPercent);
+    }
+
+    [Fact]
+    public void Parse_rejects_an_out_of_range_minimum_savings()
+    {
+        var exception = Assert.Throws<CliUsageException>(
+            () => CliOptions.Parse(["input.png", "--min-savings", "100"]));
+
+        Assert.Contains("--min-savings", exception.Message);
+    }
 }

@@ -103,6 +103,107 @@ public sealed class CompressionExecutorTests
         Assert.Equal(GuetzliSettings.GuetzliEngineId, result.EngineId);
     }
 
+    [Fact]
+    public async Task ExecuteAsync_treats_a_runtime_timeout_as_a_limit_and_removes_the_temporary_output()
+    {
+        var fileSystem = new StubFileSystem();
+        var executor = new CompressionExecutor(
+            new HangingEngine(),
+            new SafeOutputPublisher(fileSystem, fileSystem),
+            timeProvider: null,
+            runtimeLimits: RuntimeLimit(TimeSpan.FromMilliseconds(50)));
+
+        var result = await executor.ExecuteAsync(CreateJob(), CancellationToken.None);
+
+        Assert.Equal(JobStatus.Failed, result.Status);
+        Assert.Equal(CompressionErrorCategory.LimitExceeded, result.ErrorCategory);
+        Assert.False(fileSystem.FileExists(fileSystem.TemporaryPath));
+        Assert.False(fileSystem.FileExists(Path.GetFullPath("output.jpg")));
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_reports_user_cancellation_even_when_a_runtime_limit_is_set()
+    {
+        var fileSystem = new StubFileSystem();
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+        var executor = new CompressionExecutor(
+            new HangingEngine(),
+            new SafeOutputPublisher(fileSystem, fileSystem),
+            timeProvider: null,
+            runtimeLimits: RuntimeLimit(TimeSpan.FromHours(1)));
+
+        var result = await executor.ExecuteAsync(CreateJob(), cancellation.Token);
+
+        Assert.Equal(JobStatus.Canceled, result.Status);
+        Assert.Equal(CompressionErrorCategory.Canceled, result.ErrorCategory);
+        Assert.False(fileSystem.FileExists(fileSystem.TemporaryPath));
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_publishes_when_encoding_finishes_within_the_runtime_limit()
+    {
+        var fileSystem = new StubFileSystem();
+        var executor = new CompressionExecutor(
+            new StubEngine(EngineEncodingResult.Succeeded(TimeSpan.Zero)),
+            new SafeOutputPublisher(fileSystem, fileSystem),
+            timeProvider: null,
+            runtimeLimits: RuntimeLimit(TimeSpan.FromHours(1)));
+
+        var result = await executor.ExecuteAsync(CreateJob(), CancellationToken.None);
+
+        Assert.Equal(JobStatus.Succeeded, result.Status);
+        Assert.True(result.OutputPublished);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_discards_output_below_the_minimum_savings_with_a_warning()
+    {
+        // 100-Byte-Eingabe, 50-Byte-Ausgabe = 50 % Einsparung; die Mindestgrenze fordert 80 %.
+        var fileSystem = new StubFileSystem(outputSize: 50);
+        var executor = CreateExecutor(fileSystem, EngineEncodingResult.Succeeded(TimeSpan.Zero));
+
+        var result = await executor.ExecuteAsync(
+            CreateJobWithMinimumSavings(80), CancellationToken.None);
+
+        Assert.Equal(JobStatus.Succeeded, result.Status);
+        Assert.False(result.OutputPublished);
+        Assert.NotNull(result.Warning);
+        Assert.False(fileSystem.FileExists(fileSystem.TemporaryPath));
+        Assert.False(fileSystem.FileExists(Path.GetFullPath("output.jpg")));
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_publishes_output_meeting_the_minimum_savings()
+    {
+        var fileSystem = new StubFileSystem(outputSize: 50);
+        var executor = CreateExecutor(fileSystem, EngineEncodingResult.Succeeded(TimeSpan.Zero));
+
+        var result = await executor.ExecuteAsync(
+            CreateJobWithMinimumSavings(40), CancellationToken.None);
+
+        Assert.Equal(JobStatus.Succeeded, result.Status);
+        Assert.True(result.OutputPublished);
+    }
+
+    private static CompressionJob CreateJobWithMinimumSavings(int minimumSavingsPercent) =>
+        new(
+            Guid.NewGuid(),
+            Path.GetFullPath("input.png"),
+            Path.GetFullPath("output.jpg"),
+            new JpegliSettings(80, JpegliChromaSubsampling.Subsampling420, 2),
+            ExifPolicy.Private,
+            ColorProfilePolicy.Preserve,
+            RgbColor.White,
+            CollisionPolicy.Skip,
+            LargerOutputPolicy.Discard,
+            DateTimeOffset.UtcNow,
+            new InputImageInfo(InputImageFormat.Png, 10, 10, 100),
+            minimumSavingsPercent: minimumSavingsPercent);
+
+    private static EngineRuntimeLimits RuntimeLimit(TimeSpan limit) =>
+        new(new Dictionary<string, TimeSpan> { [JpegliSettings.JpegliEngineId] = limit });
+
     private static CompressionExecutor CreateExecutor(
         StubFileSystem fileSystem,
         EngineEncodingResult encodingResult) =>
@@ -156,6 +257,24 @@ public sealed class CompressionExecutorTests
         {
             WasInvoked = true;
             return Task.FromResult(result);
+        }
+    }
+
+    /// <summary>Simuliert einen hängenden Encoder: läuft, bis das Abbruch-Handle greift.</summary>
+    private sealed class HangingEngine : ICompressionEngine
+    {
+        public string EngineId => JpegliSettings.JpegliEngineId;
+
+        public Task<EngineCapability> DetectCapabilityAsync(CancellationToken cancellationToken) =>
+            Task.FromResult(EngineCapability.Available(EngineId, "test", "test"));
+
+        public async Task<EngineEncodingResult> EncodeAsync(
+            CompressionJob job,
+            string temporaryOutputPath,
+            CancellationToken cancellationToken)
+        {
+            await Task.Delay(Timeout.Infinite, cancellationToken).ConfigureAwait(false);
+            return EngineEncodingResult.Succeeded(TimeSpan.Zero);
         }
     }
 

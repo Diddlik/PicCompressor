@@ -17,7 +17,8 @@ public sealed record CompressionRequest(
     LargerOutputPolicy LargerOutputPolicy,
     string? OutputDirectory,
     string Suffix,
-    Guid? PredecessorJobId = null);
+    Guid? PredecessorJobId = null,
+    int MinimumSavingsPercent = 0);
 
 /// <summary>
 /// Fortschritt eines Jobs. <paramref name="Percent"/> bleibt <c>null</c>, solange die Engine

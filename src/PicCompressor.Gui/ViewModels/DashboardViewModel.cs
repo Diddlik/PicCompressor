@@ -269,7 +269,8 @@ public sealed class DashboardViewModel : ObservableObject
             Settings.LargerOutputPolicy,
             Settings.UsesCustomDirectory ? Settings.OutputDirectory : null,
             Settings.Suffix,
-            item.PredecessorJobId);
+            item.PredecessorJobId,
+            Settings.MinimumSavingsPercent);
     }
 
     private void Cancel() => runCancellation?.Cancel();

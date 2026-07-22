@@ -30,6 +30,9 @@ public sealed class SettingsViewModel : ObservableObject
     private int historyRetentionDays = 90;
     private int logMaxFileMegabytes = 5;
     private int logRetainedFiles = 5;
+    private int jpegliTimeoutSeconds;
+    private int guetzliTimeoutSeconds;
+    private int minimumSavingsPercent;
 
     private readonly IApplicationSettingsStore settingsStore;
     private ApplicationSettings stored;
@@ -347,6 +350,33 @@ public sealed class SettingsViewModel : ObservableObject
         set => SetProperty(ref logRetainedFiles, Math.Clamp(value, 1, 100));
     }
 
+    /// <summary>
+    /// Encoder-Zeitlimit für Jpegli in Sekunden (MP-004, Abschnitt 7.1); <c>0</c> = kein Limit.
+    /// Wirkt beim nächsten Start des Desktop Hosts, weil der Executor dort damit aufgebaut wird.
+    /// </summary>
+    public int JpegliTimeoutSeconds
+    {
+        get => jpegliTimeoutSeconds;
+        set => SetProperty(ref jpegliTimeoutSeconds, Math.Clamp(value, 0, 86_400));
+    }
+
+    /// <summary>Encoder-Zeitlimit für Guetzli in Sekunden; <c>0</c> = kein Limit (MP-004).</summary>
+    public int GuetzliTimeoutSeconds
+    {
+        get => guetzliTimeoutSeconds;
+        set => SetProperty(ref guetzliTimeoutSeconds, Math.Clamp(value, 0, 86_400));
+    }
+
+    /// <summary>
+    /// Geforderte Mindesteinsparung in Prozent (MP-004); <c>0</c> = keine Mindestgrenze. Ein
+    /// Ergebnis darunter wird verworfen und als erfolgreicher Job ohne Ausgabe mit Warnung gemeldet.
+    /// </summary>
+    public int MinimumSavingsPercent
+    {
+        get => minimumSavingsPercent;
+        set => SetProperty(ref minimumSavingsPercent, Math.Clamp(value, 0, 99));
+    }
+
     public AppearanceViewModel Appearance { get; } = new();
 
     /// <summary>
@@ -376,6 +406,9 @@ public sealed class SettingsViewModel : ObservableObject
             HistoryRetentionDays = settings.HistoryRetentionDays;
             LogMaxFileMegabytes = settings.LogMaxFileMegabytes;
             LogRetainedFiles = settings.LogRetainedFiles;
+            JpegliTimeoutSeconds = settings.JpegliTimeoutSeconds;
+            GuetzliTimeoutSeconds = settings.GuetzliTimeoutSeconds;
+            MinimumSavingsPercent = settings.MinimumSavingsPercent;
             Appearance.Language = Parse(settings.Language, AppLanguage.System);
             Appearance.Theme = Parse(settings.Theme, AppTheme.System);
         }
@@ -413,7 +446,10 @@ public sealed class SettingsViewModel : ObservableObject
             ParallelJobs = ParallelJobs,
             HistoryRetentionDays = HistoryRetentionDays,
             LogMaxFileMegabytes = LogMaxFileMegabytes,
-            LogRetainedFiles = LogRetainedFiles
+            LogRetainedFiles = LogRetainedFiles,
+            JpegliTimeoutSeconds = JpegliTimeoutSeconds,
+            GuetzliTimeoutSeconds = GuetzliTimeoutSeconds,
+            MinimumSavingsPercent = MinimumSavingsPercent
         };
         settingsStore.Save(stored);
     }

@@ -35,6 +35,37 @@ public sealed class SafeOutputPublisherTests
     }
 
     [Fact]
+    public void Publish_discards_output_below_the_minimum_savings()
+    {
+        // 100-Byte-Eingabe, 60-Byte-Ausgabe = 40 % Einsparung; die Grenze fordert 50 %.
+        var fileSystem = new StubOutputFileSystem("temp.tmp");
+        var publisher = CreatePublisher(fileSystem, fileSize: 60);
+        var job = CreateJob(inputSize: 100, minimumSavingsPercent: 50);
+        var temporaryOutput = publisher.CreateTemporaryFile(job);
+
+        var result = publisher.Publish(job, temporaryOutput);
+
+        Assert.Equal(OutputPublicationDisposition.DiscardedBelowMinimumSavings, result.Disposition);
+        Assert.False(fileSystem.FileExists(fileSystem.Path("temp.tmp")));
+        Assert.False(fileSystem.FileExists(fileSystem.Path("output.jpg")));
+    }
+
+    [Fact]
+    public void Publish_keeps_output_meeting_the_minimum_savings()
+    {
+        // 100-Byte-Eingabe, 40-Byte-Ausgabe = 60 % Einsparung; die Grenze fordert 50 %.
+        var fileSystem = new StubOutputFileSystem("temp.tmp");
+        var publisher = CreatePublisher(fileSystem, fileSize: 40);
+        var job = CreateJob(inputSize: 100, minimumSavingsPercent: 50);
+        var temporaryOutput = publisher.CreateTemporaryFile(job);
+
+        var result = publisher.Publish(job, temporaryOutput);
+
+        Assert.Equal(OutputPublicationDisposition.Published, result.Disposition);
+        Assert.True(fileSystem.FileExists(fileSystem.Path("output.jpg")));
+    }
+
+    [Fact]
     public void Publish_removes_invalid_temporary_output()
     {
         var fileSystem = new StubOutputFileSystem("temp.tmp");
@@ -95,7 +126,8 @@ public sealed class SafeOutputPublisherTests
 
     private static CompressionJob CreateJob(
         long inputSize = 100,
-        LargerOutputPolicy largerOutputPolicy = LargerOutputPolicy.Discard) =>
+        LargerOutputPolicy largerOutputPolicy = LargerOutputPolicy.Discard,
+        int minimumSavingsPercent = 0) =>
         new(
             Guid.NewGuid(),
             Path.GetFullPath("input.png"),
@@ -107,7 +139,8 @@ public sealed class SafeOutputPublisherTests
             CollisionPolicy.Skip,
             largerOutputPolicy,
             DateTimeOffset.UtcNow,
-            new InputImageInfo(InputImageFormat.Png, 10, 10, inputSize));
+            new InputImageInfo(InputImageFormat.Png, 10, 10, inputSize),
+            minimumSavingsPercent: minimumSavingsPercent);
 
     private sealed class StubInspector(InputImageInfo result) : IInputImageInspector
     {

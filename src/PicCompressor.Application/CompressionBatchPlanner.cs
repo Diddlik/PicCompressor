@@ -10,7 +10,8 @@ public sealed record CompressionBatchSettings(
     CollisionPolicy CollisionPolicy,
     LargerOutputPolicy LargerOutputPolicy,
     string? OutputDirectory,
-    string Suffix);
+    string Suffix,
+    int MinimumSavingsPercent = 0);
 
 public sealed record CompressionJobPlan(
     DiscoveredInput Input,
@@ -44,7 +45,8 @@ public sealed class CompressionBatchPlanner(CompressionJobFactory jobFactory)
                         settings.CollisionPolicy,
                         settings.LargerOutputPolicy,
                         outputDirectory,
-                        settings.Suffix),
+                        settings.Suffix,
+                        MinimumSavingsPercent: settings.MinimumSavingsPercent),
                     reservedOutputPaths);
                 reservedOutputPaths.Add(job.OutputPath);
                 plans.Add(new(input, job, null, null));

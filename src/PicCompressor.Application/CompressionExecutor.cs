@@ -1,3 +1,4 @@
+using System.Globalization;
 using PicCompressor.Domain;
 
 namespace PicCompressor.Application;
@@ -42,13 +43,15 @@ public sealed class CompressionExecutor : ICompressionJobExecutor
     private readonly IReadOnlyDictionary<string, ICompressionEngine> engines;
     private readonly SafeOutputPublisher outputPublisher;
     private readonly TimeProvider clock;
+    private readonly EngineRuntimeLimits runtimeLimits;
 
     /// <summary>Bequemlichkeit für einen einzelnen Encoder; delegiert an die Mehr-Engine-Variante.</summary>
     public CompressionExecutor(
         ICompressionEngine engine,
         SafeOutputPublisher outputPublisher,
-        TimeProvider? timeProvider = null)
-        : this([engine], outputPublisher, timeProvider)
+        TimeProvider? timeProvider = null,
+        EngineRuntimeLimits? runtimeLimits = null)
+        : this([engine], outputPublisher, timeProvider, runtimeLimits)
     {
     }
 
@@ -56,17 +59,21 @@ public sealed class CompressionExecutor : ICompressionJobExecutor
     /// Wählt pro Job die Engine anhand von <see cref="CompressionEngineSettings.EngineId"/>.
     /// Ein Job für eine nicht verdrahtete Engine schlägt als
     /// <see cref="CompressionErrorCategory.EngineUnavailable"/> fehl statt still auf eine andere
-    /// Engine auszuweichen (Abschnitt 4.2).
+    /// Engine auszuweichen (Abschnitt 4.2). Ein optionales enginespezifisches Zeitlimit
+    /// (<paramref name="runtimeLimits"/>) bricht ein hängendes Encoding kooperativ ab und meldet
+    /// es als <see cref="CompressionErrorCategory.LimitExceeded"/> (MP-004, Abschnitt 7.1).
     /// </summary>
     public CompressionExecutor(
         IEnumerable<ICompressionEngine> engines,
         SafeOutputPublisher outputPublisher,
-        TimeProvider? timeProvider = null)
+        TimeProvider? timeProvider = null,
+        EngineRuntimeLimits? runtimeLimits = null)
     {
         ArgumentNullException.ThrowIfNull(engines);
         ArgumentNullException.ThrowIfNull(outputPublisher);
         this.outputPublisher = outputPublisher;
         clock = timeProvider ?? TimeProvider.System;
+        this.runtimeLimits = runtimeLimits ?? EngineRuntimeLimits.None;
 
         var map = new Dictionary<string, ICompressionEngine>(StringComparer.Ordinal);
         foreach (var engine in engines)
@@ -149,18 +156,28 @@ public sealed class CompressionExecutor : ICompressionJobExecutor
                 "Temporary output could not be created.");
         }
 
+        var runtimeLimit = runtimeLimits.For(engineId);
+        using var timeoutSource = runtimeLimit is TimeSpan limit
+            ? new CancellationTokenSource(limit, clock)
+            : null;
+        using var linkedSource = timeoutSource is null
+            ? null
+            : CancellationTokenSource.CreateLinkedTokenSource(
+                cancellationToken, timeoutSource.Token);
+        var encodeToken = linkedSource?.Token ?? cancellationToken;
+
         EngineEncodingResult encodingResult;
         try
         {
             encodingResult = await engine
-                .EncodeAsync(job, temporaryOutput.Path, cancellationToken)
+                .EncodeAsync(job, temporaryOutput.Path, encodeToken)
                 .ConfigureAwait(false);
         }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        catch (OperationCanceledException) when (encodeToken.IsCancellationRequested)
         {
-            return Cleanup(
-                temporaryOutput,
-                () => Canceled(job, startedAt, capability.BuildVersion));
+            return CanceledOrTimedOut(
+                job, startedAt, capability, temporaryOutput,
+                timeoutSource, cancellationToken, runtimeLimit);
         }
         catch (Exception exception)
         {
@@ -176,9 +193,9 @@ public sealed class CompressionExecutor : ICompressionJobExecutor
 
         if (encodingResult.Status is EngineEncodingStatus.Canceled)
         {
-            return Cleanup(
-                temporaryOutput,
-                () => Canceled(job, startedAt, capability.BuildVersion));
+            return CanceledOrTimedOut(
+                job, startedAt, capability, temporaryOutput,
+                timeoutSource, cancellationToken, runtimeLimit);
         }
 
         if (encodingResult.Status is EngineEncodingStatus.Failed)
@@ -196,8 +213,15 @@ public sealed class CompressionExecutor : ICompressionJobExecutor
         try
         {
             var publication = outputPublisher.Publish(job, temporaryOutput);
-            var discarded = publication.Disposition
-                is OutputPublicationDisposition.DiscardedNotSmaller;
+            var published = publication.Disposition is OutputPublicationDisposition.Published;
+            var warning = publication.Disposition switch
+            {
+                OutputPublicationDisposition.DiscardedNotSmaller =>
+                    "Encoded output was not smaller and was discarded.",
+                OutputPublicationDisposition.DiscardedBelowMinimumSavings =>
+                    $"Encoded output saved less than the required {job.MinimumSavingsPercent}% and was discarded.",
+                _ => null
+            };
             return new(
                 job.Id,
                 JobStatus.Succeeded,
@@ -210,8 +234,8 @@ public sealed class CompressionExecutor : ICompressionJobExecutor
                 startedAt,
                 clock.GetUtcNow(),
                 true,
-                !discarded,
-                discarded ? "Encoded output was not smaller and was discarded." : null,
+                published,
+                warning,
                 null,
                 null);
         }
@@ -224,6 +248,39 @@ public sealed class CompressionExecutor : ICompressionJobExecutor
                 exception.Message,
                 capability.BuildVersion);
         }
+    }
+
+    /// <summary>
+    /// Ein durch das Zeitlimit ausgelöster Abbruch ist eine Laufzeitüberschreitung
+    /// (<see cref="CompressionErrorCategory.LimitExceeded"/>), kein Benutzerabbruch. Ein
+    /// gleichzeitiger Benutzerabbruch hat Vorrang und bleibt <see cref="JobStatus.Canceled"/>
+    /// (MP-004, Abschnitt 7.1). In beiden Fällen wird die temporäre Datei entfernt.
+    /// </summary>
+    private CompressionExecutionResult CanceledOrTimedOut(
+        CompressionJob job,
+        DateTimeOffset startedAt,
+        EngineCapability capability,
+        TemporaryOutputFile temporaryOutput,
+        CancellationTokenSource? timeoutSource,
+        CancellationToken userToken,
+        TimeSpan? runtimeLimit)
+    {
+        if (timeoutSource is { IsCancellationRequested: true } && !userToken.IsCancellationRequested)
+        {
+            var seconds = runtimeLimit!.Value.TotalSeconds.ToString("0.###", CultureInfo.InvariantCulture);
+            return Cleanup(
+                temporaryOutput,
+                () => Failure(
+                    job,
+                    startedAt,
+                    CompressionErrorCategory.LimitExceeded,
+                    $"Encoding exceeded the runtime limit of {seconds} seconds.",
+                    capability.BuildVersion));
+        }
+
+        return Cleanup(
+            temporaryOutput,
+            () => Canceled(job, startedAt, capability.BuildVersion));
     }
 
     private CompressionExecutionResult Cleanup(

@@ -13,7 +13,8 @@ public sealed record CompressionJobRequest(
     string? OutputDirectory = null,
     string Suffix = "_compressed",
     string? ProfileName = null,
-    Guid? PredecessorJobId = null);
+    Guid? PredecessorJobId = null,
+    int MinimumSavingsPercent = 0);
 
 public sealed class CompressionJobFactory(
     IFileSystem fileSystem,
@@ -80,7 +81,8 @@ public sealed class CompressionJobFactory(
             timeProvider.GetUtcNow(),
             inputImageInfo,
             request.ProfileName,
-            request.PredecessorJobId);
+            request.PredecessorJobId,
+            request.MinimumSavingsPercent);
     }
 
     private InputImageInfo InspectInput(string inputPath)

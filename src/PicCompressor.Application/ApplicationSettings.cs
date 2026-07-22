@@ -62,6 +62,21 @@ public sealed record ApplicationSettings
 
     /// <summary>Anzahl aufbewahrter Loggenerationen (Abschnitt 13.3).</summary>
     public int LogRetainedFiles { get; init; } = 5;
+
+    /// <summary>
+    /// Enginespezifisches Encoder-Zeitlimit in Sekunden (MP-004, Abschnitt 7.1).
+    /// <c>0</c> bedeutet „kein Limit“ und erhält das heutige Verhalten.
+    /// </summary>
+    public int JpegliTimeoutSeconds { get; init; }
+
+    /// <summary>Encoder-Zeitlimit für Guetzli in Sekunden; <c>0</c> = kein Limit (MP-004).</summary>
+    public int GuetzliTimeoutSeconds { get; init; }
+
+    /// <summary>
+    /// Geforderte Mindesteinsparung in Prozent (MP-004). <c>0</c> = keine Mindestgrenze;
+    /// ein Ergebnis mit geringerer Einsparung wird verworfen statt veröffentlicht.
+    /// </summary>
+    public int MinimumSavingsPercent { get; init; }
 }
 
 public interface IApplicationSettingsStore

@@ -79,6 +79,19 @@
           <ToggleSwitch Grid.Column="1" IsChecked="{Binding DiscardLargerOutput}"
                         AutomationProperties.Name="{l:Localize Set_DiscardLarger}" />
         </Grid>
+
+        <Border Height="1" Background="{DynamicResource PcBorderSoft}" />
+
+        <Grid ColumnDefinitions="*,Auto">
+          <StackPanel Spacing="2">
+            <TextBlock Text="{l:Localize Set_MinSavings}" FontSize="12.5" FontWeight="Medium" />
+            <TextBlock Classes="hint" Text="{l:Localize Set_MinSavingsHint}" />
+          </StackPanel>
+          <NumericUpDown Grid.Column="1" Width="140" Minimum="0" Maximum="99" Increment="1"
+                         FormatString="0" VerticalAlignment="Center"
+                         Value="{Binding MinimumSavingsPercent}"
+                         AutomationProperties.Name="{l:Localize Set_MinSavings}" />
+        </Grid>
       </StackPanel>
     </Border>
 
@@ -244,6 +257,33 @@
                 AutomationProperties.Name="{l:Localize Set_ParallelJobs}" />
         <TextBlock Classes="hint"
                    Text="{l:Localize Set_ParallelJobsHint}" />
+      </StackPanel>
+    </Border>
+
+    <!-- Encoder-Zeitlimit (MP-004) -->
+    <Border Classes="card">
+      <StackPanel Spacing="13">
+        <TextBlock Classes="h2" Text="{l:Localize Set_Timeout}" />
+        <Grid ColumnDefinitions="*,Auto">
+          <StackPanel Spacing="2">
+            <TextBlock Text="{l:Localize Set_TimeoutJpegli}" FontSize="12.5" FontWeight="Medium" />
+            <TextBlock Classes="hint" Text="{l:Localize Set_TimeoutHint}" />
+          </StackPanel>
+          <NumericUpDown Grid.Column="1" Width="140" Minimum="0" Maximum="86400" Increment="10"
+                         FormatString="0" VerticalAlignment="Center"
+                         Value="{Binding JpegliTimeoutSeconds}"
+                         AutomationProperties.Name="{l:Localize Set_TimeoutJpegli}" />
+        </Grid>
+        <Grid ColumnDefinitions="*,Auto">
+          <StackPanel Spacing="2">
+            <TextBlock Text="{l:Localize Set_TimeoutGuetzli}" FontSize="12.5" FontWeight="Medium" />
+            <TextBlock Classes="hint" Text="{l:Localize Set_TimeoutHint}" />
+          </StackPanel>
+          <NumericUpDown Grid.Column="1" Width="140" Minimum="0" Maximum="86400" Increment="10"
+                         FormatString="0" VerticalAlignment="Center"
+                         Value="{Binding GuetzliTimeoutSeconds}"
+                         AutomationProperties.Name="{l:Localize Set_TimeoutGuetzli}" />
+        </Grid>
       </StackPanel>
     </Border>
 

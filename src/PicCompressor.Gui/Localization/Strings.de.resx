@@ -289,6 +289,24 @@
   <data name="Set_LogRetainedFilesHint" xml:space="preserve">
     <value>Ältere Protokolldateien über diese Anzahl hinaus werden entfernt.</value>
   </data>
+  <data name="Set_Timeout" xml:space="preserve">
+    <value>Encoder-Zeitlimit</value>
+  </data>
+  <data name="Set_TimeoutJpegli" xml:space="preserve">
+    <value>Jpegli-Zeitlimit (Sekunden)</value>
+  </data>
+  <data name="Set_TimeoutGuetzli" xml:space="preserve">
+    <value>Guetzli-Zeitlimit (Sekunden)</value>
+  </data>
+  <data name="Set_TimeoutHint" xml:space="preserve">
+    <value>0 deaktiviert das Limit; wirkt beim nächsten Start.</value>
+  </data>
+  <data name="Set_MinSavings" xml:space="preserve">
+    <value>Mindesteinsparung (%)</value>
+  </data>
+  <data name="Set_MinSavingsHint" xml:space="preserve">
+    <value>0 deaktiviert sie; eine geringere Einsparung wird als erfolgreicher Job ohne Datei verworfen.</value>
+  </data>
   <data name="Update_Section" xml:space="preserve">
     <value>Updates</value>
   </data>
