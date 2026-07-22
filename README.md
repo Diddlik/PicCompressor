@@ -50,6 +50,20 @@ dotnet run --project src/PicCompressor.Desktop/PicCompressor.Desktop.csproj
 
 The first build downloads and compiles the pinned Jpegli sources.
 
+## Releasing
+
+Releases are hosted on GitHub Releases. Pushing a version tag builds the win-x64
+package and publishes it through the `release` workflow
+(`.github/workflows/release.yml`):
+
+```powershell
+git tag v0.2.0-alpha.1
+git push origin v0.2.0-alpha.1
+```
+
+Releases are currently unsigned, so installation triggers a SmartScreen warning
+until Authenticode signing is in place.
+
 ## CLI
 
 ```text
