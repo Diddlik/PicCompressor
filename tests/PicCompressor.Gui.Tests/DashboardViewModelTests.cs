@@ -313,8 +313,88 @@ public sealed class DashboardViewModelTests : IDisposable
         Assert.True(dashboard.HasDropHint);
     }
 
+    [Fact]
+    public void RemoveItem_removes_only_that_item()
+    {
+        var dashboard = Create(FakeCompressionService.Succeeding());
+        var a = new QueueItemViewModel(Path.Combine(directory, "a.jpg"), "jpegli", 10);
+        var b = new QueueItemViewModel(Path.Combine(directory, "b.jpg"), "jpegli", 10);
+        dashboard.Queue.Add(a);
+        dashboard.Queue.Add(b);
+
+        dashboard.RemoveItemCommand.Execute(a);
+
+        var remaining = Assert.Single(dashboard.Queue);
+        Assert.Same(b, remaining);
+    }
+
+    [Fact]
+    public async Task RetryItem_requeues_a_failed_job_with_a_predecessor_reference()
+    {
+        var dashboard = Create(
+            FakeCompressionService.Failing(CompressionErrorCategory.EngineFailed));
+        await dashboard.AddPathsAsync([TempFiles.CreateImage(directory, "a.jpg")]);
+        await RunAsync(dashboard);
+        var item = Assert.Single(dashboard.Queue);
+        Assert.True(dashboard.RetryItemCommand.CanExecute(item));
+
+        dashboard.RetryItemCommand.Execute(item);
+
+        Assert.Equal(JobStatus.Queued, item.Status);
+        Assert.False(item.IsTerminal);
+    }
+
+    [Fact]
+    public void CompareItem_raises_compare_requested_with_the_item()
+    {
+        var dashboard = Create(FakeCompressionService.Succeeding());
+        var item = new QueueItemViewModel(Path.Combine(directory, "a.jpg"), "jpegli", 10);
+        QueueItemViewModel? requested = null;
+        dashboard.CompareRequested += (_, value) => requested = value;
+
+        dashboard.CompareItemCommand.Execute(item);
+
+        Assert.Same(item, requested);
+    }
+
+    [Fact]
+    public void CopyPath_and_reveal_use_the_input_path_until_an_output_is_published()
+    {
+        var actions = new FakeFileActionService();
+        var dashboard = new DashboardViewModel(
+            new SettingsViewModel(), FakeCompressionService.Succeeding(),
+            new FakeInputDiscovery(), actions);
+        var input = Path.Combine(directory, "a.jpg");
+        var item = new QueueItemViewModel(input, "jpegli", 10);
+
+        dashboard.CopyPathItemCommand.Execute(item);
+        dashboard.RevealItemCommand.Execute(item);
+
+        Assert.Equal(input, actions.CopiedPath);
+        Assert.Equal(input, actions.RevealedPath);
+        // Ohne veröffentlichte Ausgabe ist "Öffnen" nicht ausführbar.
+        Assert.False(dashboard.OpenItemCommand.CanExecute(item));
+    }
+
+    [Fact]
+    public async Task Open_targets_the_published_output_after_a_successful_run()
+    {
+        var actions = new FakeFileActionService();
+        var dashboard = new DashboardViewModel(
+            new SettingsViewModel(), FakeCompressionService.Succeeding(outputSizeBytes: 40),
+            new FakeInputDiscovery(), actions);
+        await dashboard.AddPathsAsync([TempFiles.CreateImage(directory, "a.jpg")]);
+        await RunAsync(dashboard);
+        var item = Assert.Single(dashboard.Queue);
+
+        Assert.True(dashboard.OpenItemCommand.CanExecute(item));
+        dashboard.OpenItemCommand.Execute(item);
+
+        Assert.Equal(item.OutputPath, actions.OpenedPath);
+    }
+
     private DashboardViewModel Create(ICompressionService service) =>
-        new(new SettingsViewModel(), service, new FakeInputDiscovery());
+        new(new SettingsViewModel(), service, new FakeInputDiscovery(), new FakeFileActionService());
 
     private static async Task RunAsync(DashboardViewModel dashboard)
     {

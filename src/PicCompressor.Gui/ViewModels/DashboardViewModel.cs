@@ -12,6 +12,7 @@ public sealed class DashboardViewModel : ObservableObject
 {
     private readonly ICompressionService compressionService;
     private readonly IInputDiscovery inputDiscovery;
+    private readonly IFileActionService fileActions;
 
     private CancellationTokenSource? runCancellation;
     private CancellationTokenSource? discoveryCancellation;
@@ -23,7 +24,8 @@ public sealed class DashboardViewModel : ObservableObject
     public DashboardViewModel(
         SettingsViewModel settings,
         ICompressionService compressionService,
-        IInputDiscovery? inputDiscovery = null)
+        IInputDiscovery? inputDiscovery = null,
+        IFileActionService? fileActions = null)
     {
         ArgumentNullException.ThrowIfNull(settings);
         ArgumentNullException.ThrowIfNull(compressionService);
@@ -31,6 +33,7 @@ public sealed class DashboardViewModel : ObservableObject
         Settings = settings;
         this.compressionService = compressionService;
         this.inputDiscovery = inputDiscovery ?? new UnconfiguredInputDiscovery();
+        this.fileActions = fileActions ?? new UnconfiguredFileActionService();
 
         Queue.CollectionChanged += OnQueueChanged;
 
@@ -40,10 +43,27 @@ public sealed class DashboardViewModel : ObservableObject
         ClearCompletedCommand = new RelayCommand(ClearCompleted, () => HasCompletedJobs);
         RetryFailedCommand = new RelayCommand(RetryFailed, () => HasRetryableJobs);
         RemoveAllCommand = new RelayCommand(RemoveAll, () => Queue.Count > 0 && !IsRunning);
+
+        CompareItemCommand = new RelayCommand<QueueItemViewModel>(
+            item => CompareRequested?.Invoke(this, item));
+        OpenItemCommand = new RelayCommand<QueueItemViewModel>(
+            item => _ = fileActions!.OpenFileAsync(item.OutputPath!),
+            item => item.OutputPublished && item.OutputPath is not null);
+        RevealItemCommand = new RelayCommand<QueueItemViewModel>(
+            item => _ = fileActions!.RevealInFolderAsync(TargetPath(item)));
+        CopyPathItemCommand = new RelayCommand<QueueItemViewModel>(
+            item => _ = fileActions!.CopyPathAsync(TargetPath(item)));
+        RemoveItemCommand = new RelayCommand<QueueItemViewModel>(RemoveItem, _ => !IsRunning);
+        RetryItemCommand = new RelayCommand<QueueItemViewModel>(
+            RetryItem,
+            item => !IsRunning && item.Status is JobStatus.Failed or JobStatus.Canceled);
     }
 
     /// <summary>Meldet jeden abgeschlossenen Job, damit Verlauf und Vergleich nachziehen können.</summary>
     public event EventHandler<QueueItemViewModel>? JobCompleted;
+
+    /// <summary>Meldet den Wunsch, eine Datei zu vergleichen; die Shell wechselt in die Vergleichsansicht.</summary>
+    public event EventHandler<QueueItemViewModel>? CompareRequested;
 
     public SettingsViewModel Settings { get; }
 
@@ -60,6 +80,18 @@ public sealed class DashboardViewModel : ObservableObject
     public RelayCommand RemoveAllCommand { get; }
 
     public RelayCommand CancelDiscoveryCommand { get; }
+
+    public RelayCommand<QueueItemViewModel> CompareItemCommand { get; }
+
+    public RelayCommand<QueueItemViewModel> OpenItemCommand { get; }
+
+    public RelayCommand<QueueItemViewModel> RevealItemCommand { get; }
+
+    public RelayCommand<QueueItemViewModel> CopyPathItemCommand { get; }
+
+    public RelayCommand<QueueItemViewModel> RemoveItemCommand { get; }
+
+    public RelayCommand<QueueItemViewModel> RetryItemCommand { get; }
 
     public bool RecurseFolders
     {
@@ -324,6 +356,18 @@ public sealed class DashboardViewModel : ObservableObject
 
     private void CancelDiscovery() => discoveryCancellation?.Cancel();
 
+    /// <summary>Ziel einer Datei-Aktion: das veröffentlichte Ergebnis, sonst die Eingabe.</summary>
+    private static string TargetPath(QueueItemViewModel item) =>
+        item is { OutputPublished: true, OutputPath: string output } ? output : item.InputPath;
+
+    private void RemoveItem(QueueItemViewModel item) => Queue.Remove(item);
+
+    private void RetryItem(QueueItemViewModel item)
+    {
+        item.PrepareRetry();
+        RaiseQueueState();
+    }
+
     private void ClearCompleted()
     {
         foreach (var done in Queue.Where(item => item.IsTerminal).ToList())
@@ -379,6 +423,10 @@ public sealed class DashboardViewModel : ObservableObject
         ClearCompletedCommand.RaiseCanExecuteChanged();
         RetryFailedCommand.RaiseCanExecuteChanged();
         RemoveAllCommand.RaiseCanExecuteChanged();
+        // Pro-Zeilen-Aktionen hängen an Status und Laufzustand und werden mit neu bewertet.
+        OpenItemCommand.RaiseCanExecuteChanged();
+        RemoveItemCommand.RaiseCanExecuteChanged();
+        RetryItemCommand.RaiseCanExecuteChanged();
     }
 
     private void RaiseRunState()

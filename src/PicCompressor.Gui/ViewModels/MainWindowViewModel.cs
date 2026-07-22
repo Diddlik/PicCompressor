@@ -35,7 +35,8 @@ public sealed class MainWindowViewModel : ObservableObject
         IApplicationSettingsStore? settingsStore = null,
         IInputDiscovery? inputDiscovery = null,
         IPreviewRenderer? previewRenderer = null,
-        IUpdateService? updateService = null)
+        IUpdateService? updateService = null,
+        IFileActionService? fileActions = null)
     {
         ArgumentNullException.ThrowIfNull(compressionService);
         ArgumentNullException.ThrowIfNull(engineCatalogService);
@@ -44,12 +45,18 @@ public sealed class MainWindowViewModel : ObservableObject
         this.engineCatalogService = engineCatalogService;
 
         Settings = new SettingsViewModel(settingsStore, updateService);
-        Dashboard = new DashboardViewModel(Settings, compressionService, inputDiscovery);
+        Dashboard = new DashboardViewModel(Settings, compressionService, inputDiscovery, fileActions);
         History = new HistoryViewModel(historyService);
         Compare = new CompareViewModel(previewRenderer, Settings);
         Compare.AttachQueue(Dashboard.Queue);
 
         Dashboard.JobCompleted += OnJobCompleted;
+        // Eine Vergleichsanforderung aus der Warteschlange wählt die Datei und wechselt die Ansicht.
+        Dashboard.CompareRequested += (_, item) =>
+        {
+            Compare.Selected = item;
+            View = AppView.Compare;
+        };
         Dashboard.PropertyChanged += (_, _) => Raise(nameof(StatusSummary));
 
         ShowDashboardCommand = new RelayCommand(() => View = AppView.Dashboard);

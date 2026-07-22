@@ -97,6 +97,24 @@
   <data name="Dash_FolderPickerTitle" xml:space="preserve">
     <value>Ordner auswählen</value>
   </data>
+  <data name="Dash_ActCompare" xml:space="preserve">
+    <value>Vergleichen</value>
+  </data>
+  <data name="Dash_ActOpen" xml:space="preserve">
+    <value>Öffnen</value>
+  </data>
+  <data name="Dash_ActReveal" xml:space="preserve">
+    <value>Im Ordner anzeigen</value>
+  </data>
+  <data name="Dash_ActCopyPath" xml:space="preserve">
+    <value>Pfad kopieren</value>
+  </data>
+  <data name="Dash_ActRetry" xml:space="preserve">
+    <value>Wiederholen</value>
+  </data>
+  <data name="Dash_ActRemove" xml:space="preserve">
+    <value>Entfernen</value>
+  </data>
   <data name="Dash_DropHere" xml:space="preserve">
     <value>Bilder oder Ordner hierher ziehen</value>
   </data>

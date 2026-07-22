@@ -66,13 +66,42 @@
                                    Foreground="{DynamicResource PcError}" />
                       </StackPanel>
 
-                      <StackPanel Grid.Column="2" MinWidth="96" Spacing="4"
+                      <StackPanel Grid.Column="2" MinWidth="96" Spacing="6"
                                   HorizontalAlignment="Right">
                         <Border Classes="pill" HorizontalAlignment="Right"
                                 Background="{DynamicResource PcPanel}">
                           <TextBlock Text="{Binding StatusLabel}" FontSize="10.5"
                                      FontWeight="SemiBold" Foreground="{DynamicResource PcDim}" />
                         </Border>
+                        <!-- Pro-Datei-Aktionen (MP-002); die Befehle liegen am DashboardViewModel. -->
+                        <StackPanel Orientation="Horizontal" Spacing="4" HorizontalAlignment="Right">
+                          <Button Classes="link" Content="{l:Localize Dash_ActCompare}"
+                                  Command="{Binding $parent[ItemsControl].((vm:DashboardViewModel)DataContext).CompareItemCommand}"
+                                  CommandParameter="{Binding}"
+                                  AutomationProperties.Name="{l:Localize Dash_ActCompare}" />
+                          <Button Classes="link" Content="{l:Localize Dash_ActOpen}"
+                                  IsVisible="{Binding OutputPublished}"
+                                  Command="{Binding $parent[ItemsControl].((vm:DashboardViewModel)DataContext).OpenItemCommand}"
+                                  CommandParameter="{Binding}"
+                                  AutomationProperties.Name="{l:Localize Dash_ActOpen}" />
+                          <Button Classes="link" Content="{l:Localize Dash_ActReveal}"
+                                  Command="{Binding $parent[ItemsControl].((vm:DashboardViewModel)DataContext).RevealItemCommand}"
+                                  CommandParameter="{Binding}"
+                                  AutomationProperties.Name="{l:Localize Dash_ActReveal}" />
+                          <Button Classes="link" Content="{l:Localize Dash_ActCopyPath}"
+                                  Command="{Binding $parent[ItemsControl].((vm:DashboardViewModel)DataContext).CopyPathItemCommand}"
+                                  CommandParameter="{Binding}"
+                                  AutomationProperties.Name="{l:Localize Dash_ActCopyPath}" />
+                          <Button Classes="link" Content="{l:Localize Dash_ActRetry}"
+                                  IsVisible="{Binding CanRetry}"
+                                  Command="{Binding $parent[ItemsControl].((vm:DashboardViewModel)DataContext).RetryItemCommand}"
+                                  CommandParameter="{Binding}"
+                                  AutomationProperties.Name="{l:Localize Dash_ActRetry}" />
+                          <Button Classes="link" Content="{l:Localize Dash_ActRemove}"
+                                  Command="{Binding $parent[ItemsControl].((vm:DashboardViewModel)DataContext).RemoveItemCommand}"
+                                  CommandParameter="{Binding}"
+                                  AutomationProperties.Name="{l:Localize Dash_ActRemove}" />
+                        </StackPanel>
                       </StackPanel>
                     </Grid>
                   </Border>
