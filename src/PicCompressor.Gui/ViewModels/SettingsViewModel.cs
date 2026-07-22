@@ -59,6 +59,9 @@ public sealed class SettingsViewModel : ObservableObject
     /// <summary>Desktop-Updateoberfläche (MP-006); die Einstellungen sind ihr Einstiegspunkt.</summary>
     public UpdateViewModel Update { get; }
 
+    /// <summary>„Über PicCompressor“ mit Version und Bibliotheks-Credits (Issue #2).</summary>
+    public AboutViewModel About { get; } = new();
+
     public string EngineId
     {
         get => engineId;

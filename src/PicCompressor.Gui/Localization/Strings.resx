@@ -352,6 +352,21 @@
   <data name="Update_Install" xml:space="preserve">
     <value>Download and restart</value>
   </data>
+  <data name="About_Section" xml:space="preserve">
+    <value>About PicCompressor</value>
+  </data>
+  <data name="About_Version" xml:space="preserve">
+    <value>Version {0}</value>
+  </data>
+  <data name="About_Description" xml:space="preserve">
+    <value>Local, high-quality JPEG compression from JPEG and PNG sources.</value>
+  </data>
+  <data name="About_Credits" xml:space="preserve">
+    <value>Bundled components</value>
+  </data>
+  <data name="About_CreditsHint" xml:space="preserve">
+    <value>Full license texts ship in the package's licenses folder.</value>
+  </data>
   <data name="Update_StatusIdle" xml:space="preserve">
     <value>Not checked yet.</value>
   </data>
