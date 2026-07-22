@@ -85,6 +85,7 @@ internal static class Program
             new PersistentHistoryService(historyStore),
             settingsStore,
             new PhysicalInputDiscovery(comparer),
+            new DesktopFileActionService(),
             bridge,
             updateService);
 

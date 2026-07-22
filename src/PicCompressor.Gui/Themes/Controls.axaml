@@ -84,6 +84,23 @@
     <Setter Property="TextElement.Foreground" Value="{DynamicResource PcText}" />
   </Style>
 
+  <!-- Kompakte Textaktion für Zeilenbefehle (MP-002); dezent bis zum Zeigerkontakt. -->
+  <Style Selector="Button.link">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource PcAccent}" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Padding" Value="4,2" />
+    <Setter Property="FontSize" Value="11.5" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+  <Style Selector="Button.link:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource PcAccentSoft}" />
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource PcAccentStrong}" />
+  </Style>
+  <Style Selector="Button.link:disabled">
+    <Setter Property="Opacity" Value="0.4" />
+  </Style>
+
   <!-- Navigationsschiene: ToggleButton als Reiter, Zustand nicht nur über Farbe (Aktivbalken links). -->
   <Style Selector="RadioButton.nav">
     <Setter Property="Foreground" Value="{DynamicResource PcDim}" />

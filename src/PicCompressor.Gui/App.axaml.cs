@@ -17,6 +17,7 @@ public sealed class App : Avalonia.Application
             new InMemoryHistoryService(),
             new InMemoryApplicationSettingsStore(),
             new UnconfiguredInputDiscovery(),
+            new UnconfiguredFileActionService(),
             null,
             new UnconfiguredUpdateService());
 
@@ -28,6 +29,7 @@ public sealed class App : Avalonia.Application
         IHistoryService historyService,
         IApplicationSettingsStore settingsStore,
         IInputDiscovery inputDiscovery,
+        IFileActionService fileActionService,
         IPreviewRenderer? previewRenderer = null,
         IUpdateService? updateService = null)
     {
@@ -36,6 +38,7 @@ public sealed class App : Avalonia.Application
         ArgumentNullException.ThrowIfNull(historyService);
         ArgumentNullException.ThrowIfNull(settingsStore);
         ArgumentNullException.ThrowIfNull(inputDiscovery);
+        ArgumentNullException.ThrowIfNull(fileActionService);
         serviceFactory = () =>
             new(
                 compressionService,
@@ -43,6 +46,7 @@ public sealed class App : Avalonia.Application
                 historyService,
                 settingsStore,
                 inputDiscovery,
+                fileActionService,
                 previewRenderer,
                 updateService ?? new UnconfiguredUpdateService());
     }
@@ -60,7 +64,8 @@ public sealed class App : Avalonia.Application
                 services.SettingsStore,
                 services.InputDiscovery,
                 services.PreviewRenderer,
-                services.UpdateService);
+                services.UpdateService,
+                services.FileActionService);
 
             var window = new MainWindow { DataContext = viewModel };
             window.Opened += async (_, _) =>
@@ -78,6 +83,7 @@ public sealed class App : Avalonia.Application
         IHistoryService HistoryService,
         IApplicationSettingsStore SettingsStore,
         IInputDiscovery InputDiscovery,
+        IFileActionService FileActionService,
         IPreviewRenderer? PreviewRenderer,
         IUpdateService UpdateService);
 }

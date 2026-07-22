@@ -81,6 +81,7 @@ public sealed class QueueItemViewModel : ObservableObject
         Raise(nameof(IsIndeterminate));
         Raise(nameof(IsTerminal));
         Raise(nameof(IsRunning));
+        Raise(nameof(CanRetry));
         Raise(nameof(AccessibleSummary));
     }
 
@@ -111,6 +112,9 @@ public sealed class QueueItemViewModel : ObservableObject
 
     public bool IsTerminal =>
         Status is JobStatus.Succeeded or JobStatus.Failed or JobStatus.Canceled;
+
+    /// <summary>Eine Wiederholung ist nur nach einem Fehlschlag oder Abbruch sinnvoll (Abschnitt 6.1).</summary>
+    public bool CanRetry => Status is JobStatus.Failed or JobStatus.Canceled;
 
     public string StatusLabel => Localizer.Instance[$"Job_{Status}"];
 

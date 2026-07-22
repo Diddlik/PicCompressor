@@ -159,6 +159,33 @@ internal sealed class InlineProgress<T>(Action<T> report) : IProgress<T>
     public void Report(T value) => report(value);
 }
 
+internal sealed class FakeFileActionService : IFileActionService
+{
+    public string? OpenedPath { get; private set; }
+
+    public string? RevealedPath { get; private set; }
+
+    public string? CopiedPath { get; private set; }
+
+    public Task OpenFileAsync(string path)
+    {
+        OpenedPath = path;
+        return Task.CompletedTask;
+    }
+
+    public Task RevealInFolderAsync(string path)
+    {
+        RevealedPath = path;
+        return Task.CompletedTask;
+    }
+
+    public Task CopyPathAsync(string path)
+    {
+        CopiedPath = path;
+        return Task.CompletedTask;
+    }
+}
+
 internal sealed class FakeEngineCatalogService(params EngineAvailability[] engines)
     : IEngineCatalogService
 {
