@@ -66,6 +66,22 @@ public sealed class SafeOutputPublisherTests
     }
 
     [Fact]
+    public void Publish_embeds_the_optimization_marker_in_the_output()
+    {
+        var fileSystem = new StubOutputFileSystem("temp.tmp");
+        var publisher = CreatePublisher(fileSystem, fileSize: 50);
+        var job = CreateJob(inputSize: 100);
+        var temporaryOutput = publisher.CreateTemporaryFile(job);
+
+        var result = publisher.Publish(job, temporaryOutput);
+
+        Assert.Equal(OutputPublicationDisposition.Published, result.Disposition);
+        var published = fileSystem.StoredBytes("output.jpg");
+        Assert.NotNull(published);
+        Assert.True(JpegOptimizationMarker.IsMarked(published!));
+    }
+
+    [Fact]
     public void Publish_removes_invalid_temporary_output()
     {
         var fileSystem = new StubOutputFileSystem("temp.tmp");
@@ -152,6 +168,8 @@ public sealed class SafeOutputPublisherTests
         private readonly HashSet<string> existing = new(
             files.Select(path => System.IO.Path.GetFullPath(path)),
             StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, byte[]> contents =
+            new(StringComparer.OrdinalIgnoreCase);
 
         public string Path(string path) => System.IO.Path.GetFullPath(path);
 
@@ -171,7 +189,20 @@ public sealed class SafeOutputPublisherTests
             return path;
         }
 
-        public void DeleteFile(string path) => existing.Remove(path);
+        public void DeleteFile(string path)
+        {
+            existing.Remove(path);
+            contents.Remove(path);
+        }
+
+        // Standardmässig ein minimales, unmarkiertes JPEG; ein Test kann eigene Bytes setzen.
+        public byte[] ReadAllBytes(string path) =>
+            contents.TryGetValue(path, out var bytes) ? bytes : [0xFF, 0xD8, 0xFF, 0xD9];
+
+        public void WriteAllBytes(string path, byte[] bytes) => contents[path] = bytes;
+
+        public byte[]? StoredBytes(string path) =>
+            contents.TryGetValue(Path(path), out var bytes) ? bytes : null;
 
         public void MoveFile(string sourcePath, string targetPath, bool overwrite)
         {
@@ -187,6 +218,10 @@ public sealed class SafeOutputPublisherTests
             }
 
             existing.Add(targetPath);
+            if (contents.Remove(sourcePath, out var bytes))
+            {
+                contents[targetPath] = bytes;
+            }
         }
     }
 }

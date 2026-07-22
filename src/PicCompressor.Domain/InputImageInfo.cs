@@ -8,7 +8,12 @@ public enum InputImageFormat
 
 public sealed class InputImageInfo
 {
-    public InputImageInfo(InputImageFormat format, int width, int height, long fileSizeBytes)
+    public InputImageInfo(
+        InputImageFormat format,
+        int width,
+        int height,
+        long fileSizeBytes,
+        bool alreadyOptimized = false)
     {
         if (width <= 0)
         {
@@ -29,6 +34,7 @@ public sealed class InputImageInfo
         Width = width;
         Height = height;
         FileSizeBytes = fileSizeBytes;
+        AlreadyOptimized = alreadyOptimized;
     }
 
     public InputImageFormat Format { get; }
@@ -36,4 +42,7 @@ public sealed class InputImageInfo
     public int Height { get; }
     public long FileSizeBytes { get; }
     public long PixelCount => (long)Width * Height;
+
+    /// <summary>Trägt die Eingabe bereits den PicCompressor-Marker (Issue #1)?</summary>
+    public bool AlreadyOptimized { get; }
 }

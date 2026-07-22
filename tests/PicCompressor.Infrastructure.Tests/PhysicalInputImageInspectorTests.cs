@@ -36,6 +36,32 @@ public sealed class PhysicalInputImageInspectorTests : IDisposable
     }
 
     [Fact]
+    public void Inspect_reports_a_plain_jpeg_as_not_yet_optimized()
+    {
+        var path = WriteFile("plain.jpg", CreateJpeg(17, 9));
+
+        var result = new PhysicalInputImageInspector().Inspect(path);
+
+        Assert.False(result.AlreadyOptimized);
+    }
+
+    [Fact]
+    public void Inspect_detects_the_optimization_marker()
+    {
+        // Issue #1: eine bereits von PicCompressor markierte Eingabe wird erkannt.
+        var marked = JpegOptimizationMarker.Embed(CreateJpeg(17, 9));
+        var path = WriteFile("marked.jpg", marked);
+
+        var result = new PhysicalInputImageInspector().Inspect(path);
+
+        Assert.True(result.AlreadyOptimized);
+        // Der Marker verfälscht die Bildmaße nicht.
+        Assert.Equal(InputImageFormat.Jpeg, result.Format);
+        Assert.Equal(17, result.Width);
+        Assert.Equal(9, result.Height);
+    }
+
+    [Fact]
     public void Inspect_rejects_unknown_content()
     {
         var path = WriteFile("image.png", [1, 2, 3, 4, 5, 6, 7, 8]);
