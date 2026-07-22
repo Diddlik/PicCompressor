@@ -274,6 +274,21 @@
   <data name="Set_HistoryRetentionHint" xml:space="preserve">
     <value>Older entries are removed on the next start.</value>
   </data>
+  <data name="Set_Logging" xml:space="preserve">
+    <value>Diagnostic log</value>
+  </data>
+  <data name="Set_LogMaxSize" xml:space="preserve">
+    <value>Maximum file size (MB)</value>
+  </data>
+  <data name="Set_LogMaxSizeHint" xml:space="preserve">
+    <value>Applied on the next start; the log rotates when a file reaches this size.</value>
+  </data>
+  <data name="Set_LogRetainedFiles" xml:space="preserve">
+    <value>Kept generations</value>
+  </data>
+  <data name="Set_LogRetainedFilesHint" xml:space="preserve">
+    <value>Older log files beyond this count are removed.</value>
+  </data>
   <data name="Set_Appearance" xml:space="preserve">
     <value>Language and appearance</value>
   </data>

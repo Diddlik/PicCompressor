@@ -28,6 +28,8 @@ public sealed class SettingsViewModel : ObservableObject
     private RgbColor alphaBackground = RgbColor.White;
     private int parallelJobs = Math.Max(1, Environment.ProcessorCount / 2);
     private int historyRetentionDays = 90;
+    private int logMaxFileMegabytes = 5;
+    private int logRetainedFiles = 5;
 
     private readonly IApplicationSettingsStore settingsStore;
     private ApplicationSettings stored;
@@ -322,6 +324,23 @@ public sealed class SettingsViewModel : ObservableObject
         set => SetProperty(ref historyRetentionDays, Math.Clamp(value, 1, 3650));
     }
 
+    /// <summary>
+    /// Maximale Größe einer Logdatei in MB vor der Rotation (Abschnitt 13.3). Wirkt beim
+    /// nächsten Start des Desktop Hosts, weil der Log dort mit diesen Grenzen aufgebaut wird.
+    /// </summary>
+    public int LogMaxFileMegabytes
+    {
+        get => logMaxFileMegabytes;
+        set => SetProperty(ref logMaxFileMegabytes, Math.Clamp(value, 1, 1024));
+    }
+
+    /// <summary>Anzahl aufbewahrter Loggenerationen (Abschnitt 13.3).</summary>
+    public int LogRetainedFiles
+    {
+        get => logRetainedFiles;
+        set => SetProperty(ref logRetainedFiles, Math.Clamp(value, 1, 100));
+    }
+
     public AppearanceViewModel Appearance { get; } = new();
 
     /// <summary>
@@ -349,6 +368,8 @@ public sealed class SettingsViewModel : ObservableObject
                 : OutputTarget.CustomDirectory;
             ParallelJobs = settings.ParallelJobs;
             HistoryRetentionDays = settings.HistoryRetentionDays;
+            LogMaxFileMegabytes = settings.LogMaxFileMegabytes;
+            LogRetainedFiles = settings.LogRetainedFiles;
             Appearance.Language = Parse(settings.Language, AppLanguage.System);
             Appearance.Theme = Parse(settings.Theme, AppTheme.System);
         }
@@ -384,7 +405,9 @@ public sealed class SettingsViewModel : ObservableObject
                 ? OutputDirectory
                 : null,
             ParallelJobs = ParallelJobs,
-            HistoryRetentionDays = HistoryRetentionDays
+            HistoryRetentionDays = HistoryRetentionDays,
+            LogMaxFileMegabytes = LogMaxFileMegabytes,
+            LogRetainedFiles = LogRetainedFiles
         };
         settingsStore.Save(stored);
     }

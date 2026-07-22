@@ -28,7 +28,15 @@ internal static class Program
         var executor = new CompressionExecutor(
             [jpegli, guetzli],
             new SafeOutputPublisher(fileSystem, inspector));
-        var log = new JsonLinesDiagnosticLog(ApplicationDataPaths.DiagnosticLogPath);
+        // Vorablesen der Rotationsgrenzen: der Log braucht sie schon bei der Konstruktion,
+        // bevor der Speicher mit ihm Korrekturen melden kann. Diese Sondierung meldet nichts.
+        var logPreferences = new JsonApplicationSettingsStore(
+            ApplicationDataPaths.SettingsFilePath,
+            NullDiagnosticLog.Instance).Load();
+        var log = new JsonLinesDiagnosticLog(
+            ApplicationDataPaths.DiagnosticLogPath,
+            (long)logPreferences.LogMaxFileMegabytes * 1024 * 1024,
+            logPreferences.LogRetainedFiles);
         var settingsStore = new JsonApplicationSettingsStore(
             ApplicationDataPaths.SettingsFilePath,
             log);

@@ -112,6 +112,12 @@ public sealed class JsonApplicationSettingsStore(
         var retention = InRange(
             stored.HistoryRetentionDays, 1, 3650, defaults.HistoryRetentionDays,
             "HistoryRetentionDays", corrections);
+        var logSize = InRange(
+            stored.LogMaxFileMegabytes, 1, 1024, defaults.LogMaxFileMegabytes,
+            "LogMaxFileMegabytes", corrections);
+        var logFiles = InRange(
+            stored.LogRetainedFiles, 1, 100, defaults.LogRetainedFiles,
+            "LogRetainedFiles", corrections);
 
         var sanitized = stored with
         {
@@ -120,6 +126,8 @@ public sealed class JsonApplicationSettingsStore(
             ProgressiveLevel = progressive,
             ParallelJobs = parallel,
             HistoryRetentionDays = retention,
+            LogMaxFileMegabytes = logSize,
+            LogRetainedFiles = logFiles,
             EngineId = string.IsNullOrWhiteSpace(stored.EngineId)
                 ? Corrected(defaults.EngineId, "EngineId", corrections)
                 : stored.EngineId,

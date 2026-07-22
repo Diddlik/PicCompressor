@@ -71,6 +71,37 @@ public sealed class SettingsViewModelTests
         Assert.Equal(30, new SettingsViewModel(store).HistoryRetentionDays);
     }
 
+    [Theory]
+    [InlineData(0, 1)]
+    [InlineData(5000, 1024)]
+    public void Log_max_file_megabytes_is_clamped(int requested, int expected)
+    {
+        var settings = new SettingsViewModel { LogMaxFileMegabytes = requested };
+
+        Assert.Equal(expected, settings.LogMaxFileMegabytes);
+    }
+
+    [Theory]
+    [InlineData(0, 1)]
+    [InlineData(500, 100)]
+    public void Log_retained_files_is_clamped(int requested, int expected)
+    {
+        var settings = new SettingsViewModel { LogRetainedFiles = requested };
+
+        Assert.Equal(expected, settings.LogRetainedFiles);
+    }
+
+    [Fact]
+    public void Log_rotation_limits_survive_a_restart()
+    {
+        var store = new PicCompressor.Application.InMemoryApplicationSettingsStore();
+        _ = new SettingsViewModel(store) { LogMaxFileMegabytes = 20, LogRetainedFiles = 3 };
+
+        var restarted = new SettingsViewModel(store);
+        Assert.Equal(20, restarted.LogMaxFileMegabytes);
+        Assert.Equal(3, restarted.LogRetainedFiles);
+    }
+
     [Fact]
     public void Jpegli_settings_carry_the_selected_values()
     {
