@@ -62,6 +62,12 @@ internal static class Program
             // Ein nicht lesbarer Verlauf darf den Start nicht verhindern.
         }
 
+        // Prereleases werden mitgezogen, solange der direkte Kanal in der Alpha-Phase ist;
+        // stabile Releases erhalten dieselbe Quelle ohne Prerelease-Flag.
+        var updateService = new VelopackUpdateService(
+            "https://github.com/Diddlik/PicCompressor",
+            includePrereleases: true);
+
         App.ConfigureServices(
             new ApplicationCompressionService(
                 new CompressionJobFactory(
@@ -73,7 +79,8 @@ internal static class Program
             new ApplicationEngineCatalogService(new EngineCatalog([jpegli, guetzli])),
             new PersistentHistoryService(historyStore),
             settingsStore,
-            bridge);
+            bridge,
+            updateService);
 
         return AppBuilder.Configure<App>()
             .UsePlatformDetect()

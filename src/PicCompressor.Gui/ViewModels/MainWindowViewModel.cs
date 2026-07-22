@@ -33,7 +33,8 @@ public sealed class MainWindowViewModel : ObservableObject
         IEngineCatalogService engineCatalogService,
         IHistoryService historyService,
         IApplicationSettingsStore? settingsStore = null,
-        IPreviewRenderer? previewRenderer = null)
+        IPreviewRenderer? previewRenderer = null,
+        IUpdateService? updateService = null)
     {
         ArgumentNullException.ThrowIfNull(compressionService);
         ArgumentNullException.ThrowIfNull(engineCatalogService);
@@ -41,7 +42,7 @@ public sealed class MainWindowViewModel : ObservableObject
 
         this.engineCatalogService = engineCatalogService;
 
-        Settings = new SettingsViewModel(settingsStore);
+        Settings = new SettingsViewModel(settingsStore, updateService);
         Dashboard = new DashboardViewModel(Settings, compressionService);
         History = new HistoryViewModel(historyService);
         Compare = new CompareViewModel(previewRenderer, Settings);

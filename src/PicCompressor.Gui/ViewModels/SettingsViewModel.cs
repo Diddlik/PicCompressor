@@ -40,15 +40,21 @@ public sealed class SettingsViewModel : ObservableObject
     /// Der persistente Speicher wird vom Desktop Host verdrahtet; die GUI kennt nur den
     /// Application-Port, nicht die Infrastruktur (Abschnitt 14.1).
     /// </summary>
-    public SettingsViewModel(IApplicationSettingsStore? settingsStore = null)
+    public SettingsViewModel(
+        IApplicationSettingsStore? settingsStore = null,
+        IUpdateService? updateService = null)
     {
         this.settingsStore = settingsStore ?? new InMemoryApplicationSettingsStore();
+        Update = new UpdateViewModel(updateService);
         stored = this.settingsStore.Load();
         ApplyStoredSettings(stored);
 
         PropertyChanged += (_, _) => PersistSettings();
         Appearance.PropertyChanged += (_, _) => PersistSettings();
     }
+
+    /// <summary>Desktop-Updateoberfläche (MP-006); die Einstellungen sind ihr Einstiegspunkt.</summary>
+    public UpdateViewModel Update { get; }
 
     public string EngineId
     {

@@ -16,7 +16,8 @@ public sealed class App : Avalonia.Application
             new UnconfiguredEngineCatalogService(),
             new InMemoryHistoryService(),
             new InMemoryApplicationSettingsStore(),
-            null);
+            null,
+            new UnconfiguredUpdateService());
 
     private readonly AppServices services = serviceFactory();
 
@@ -25,7 +26,8 @@ public sealed class App : Avalonia.Application
         IEngineCatalogService engineCatalogService,
         IHistoryService historyService,
         IApplicationSettingsStore settingsStore,
-        IPreviewRenderer? previewRenderer = null)
+        IPreviewRenderer? previewRenderer = null,
+        IUpdateService? updateService = null)
     {
         ArgumentNullException.ThrowIfNull(compressionService);
         ArgumentNullException.ThrowIfNull(engineCatalogService);
@@ -37,7 +39,8 @@ public sealed class App : Avalonia.Application
                 engineCatalogService,
                 historyService,
                 settingsStore,
-                previewRenderer);
+                previewRenderer,
+                updateService ?? new UnconfiguredUpdateService());
     }
 
     public override void Initialize() => AvaloniaXamlLoader.Load(this);
@@ -51,7 +54,8 @@ public sealed class App : Avalonia.Application
                 services.EngineCatalogService,
                 services.HistoryService,
                 services.SettingsStore,
-                services.PreviewRenderer);
+                services.PreviewRenderer,
+                services.UpdateService);
 
             var window = new MainWindow { DataContext = viewModel };
             window.Opened += async (_, _) =>
@@ -68,5 +72,6 @@ public sealed class App : Avalonia.Application
         IEngineCatalogService EngineCatalogService,
         IHistoryService HistoryService,
         IApplicationSettingsStore SettingsStore,
-        IPreviewRenderer? PreviewRenderer);
+        IPreviewRenderer? PreviewRenderer,
+        IUpdateService UpdateService);
 }

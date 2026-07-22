@@ -289,6 +289,36 @@
   <data name="Set_LogRetainedFilesHint" xml:space="preserve">
     <value>Ältere Protokolldateien über diese Anzahl hinaus werden entfernt.</value>
   </data>
+  <data name="Update_Section" xml:space="preserve">
+    <value>Updates</value>
+  </data>
+  <data name="Update_NotSupported" xml:space="preserve">
+    <value>Updates verwaltet die installierte Anwendung.</value>
+  </data>
+  <data name="Update_Check" xml:space="preserve">
+    <value>Nach Updates suchen</value>
+  </data>
+  <data name="Update_Install" xml:space="preserve">
+    <value>Herunterladen und neu starten</value>
+  </data>
+  <data name="Update_StatusIdle" xml:space="preserve">
+    <value>Noch nicht geprüft.</value>
+  </data>
+  <data name="Update_StatusChecking" xml:space="preserve">
+    <value>Suche nach Updates…</value>
+  </data>
+  <data name="Update_StatusUpToDate" xml:space="preserve">
+    <value>Sie haben die neueste Version.</value>
+  </data>
+  <data name="Update_StatusAvailable" xml:space="preserve">
+    <value>Version {0} ist verfügbar.</value>
+  </data>
+  <data name="Update_StatusDownloading" xml:space="preserve">
+    <value>Update wird heruntergeladen…</value>
+  </data>
+  <data name="Update_StatusError" xml:space="preserve">
+    <value>Update fehlgeschlagen: {0}</value>
+  </data>
   <data name="Set_Appearance" xml:space="preserve">
     <value>Sprache und Darstellung</value>
   </data>

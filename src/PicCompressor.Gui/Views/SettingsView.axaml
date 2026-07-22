@@ -291,6 +291,28 @@
       </StackPanel>
     </Border>
 
+    <!-- Updates (MP-006) -->
+    <Border Classes="card">
+      <StackPanel Spacing="13">
+        <TextBlock Classes="h2" Text="{l:Localize Update_Section}" />
+
+        <TextBlock Classes="hint" Text="{l:Localize Update_NotSupported}"
+                   IsVisible="{Binding !Update.IsSupported}" />
+
+        <StackPanel Spacing="11" IsVisible="{Binding Update.IsSupported}">
+          <TextBlock Text="{Binding Update.StatusText}" TextWrapping="Wrap" />
+          <ProgressBar Minimum="0" Maximum="100" Value="{Binding Update.DownloadProgress}"
+                       IsVisible="{Binding Update.IsDownloading}"
+                       AutomationProperties.Name="{l:Localize Update_Section}" />
+          <StackPanel Orientation="Horizontal" Spacing="9">
+            <Button Content="{l:Localize Update_Check}" Command="{Binding Update.CheckCommand}" />
+            <Button Content="{l:Localize Update_Install}" Command="{Binding Update.InstallCommand}"
+                    IsVisible="{Binding Update.CanInstall}" />
+          </StackPanel>
+        </StackPanel>
+      </StackPanel>
+    </Border>
+
     </StackPanel>
   </ScrollViewer>
 </UserControl>
