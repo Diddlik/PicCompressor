@@ -94,10 +94,42 @@
                    Text="{l:Localize Cmp_PreviewDownscaled}" />
       </StackPanel>
 
-      <Border Classes="card">
-        <StackPanel Spacing="6">
+      <!-- Vorher/Nachher-Tabelle (Issue #4); nur Groesse, Format, Masse und Einsparung. -->
+      <Border Classes="card" IsVisible="{Binding HasComparison}">
+        <StackPanel Spacing="10">
           <TextBlock Classes="h2" Text="{Binding Selected.FileName}" />
-          <TextBlock Classes="mono" Text="{Binding SizeSummary}" />
+          <Grid ColumnDefinitions="*,*,*" RowDefinitions="Auto,Auto,Auto,Auto"
+                RowSpacing="6" ColumnSpacing="12">
+            <TextBlock Grid.Row="0" Grid.Column="0" Classes="caps"
+                       Text="{l:Localize Cmp_TblAttribute}" />
+            <TextBlock Grid.Row="0" Grid.Column="1" Classes="caps"
+                       Text="{l:Localize Cmp_TblBefore}" />
+            <TextBlock Grid.Row="0" Grid.Column="2" Classes="caps"
+                       Text="{l:Localize Cmp_TblAfter}" />
+
+            <TextBlock Grid.Row="1" Grid.Column="0" Classes="hint"
+                       Text="{l:Localize Cmp_TblFormat}" />
+            <TextBlock Grid.Row="1" Grid.Column="1" Classes="mono" Text="{Binding BeforeFormat}" />
+            <TextBlock Grid.Row="1" Grid.Column="2" Classes="mono" Text="{Binding AfterFormat}" />
+
+            <TextBlock Grid.Row="2" Grid.Column="0" Classes="hint"
+                       Text="{l:Localize Cmp_TblSize}" />
+            <TextBlock Grid.Row="2" Grid.Column="1" Classes="mono" Text="{Binding BeforeSize}" />
+            <TextBlock Grid.Row="2" Grid.Column="2" Classes="mono" Text="{Binding AfterSize}" />
+
+            <TextBlock Grid.Row="3" Grid.Column="0" Classes="hint"
+                       Text="{l:Localize Cmp_TblDimensions}" />
+            <TextBlock Grid.Row="3" Grid.Column="1" Classes="mono" Text="{Binding Dimensions}" />
+            <TextBlock Grid.Row="3" Grid.Column="2" Classes="mono" Text="{Binding Dimensions}" />
+          </Grid>
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <TextBlock Classes="caps" VerticalAlignment="Center"
+                       Text="{l:Localize Cmp_TblSavings}" />
+            <TextBlock Classes="mono" FontWeight="SemiBold"
+                       Foreground="{DynamicResource PcAccent}" Text="{Binding SavingsText}" />
+            <TextBlock Classes="hint" VerticalAlignment="Center"
+                       Text="{l:Localize Cmp_TblEstimate}" IsVisible="{Binding IsEstimate}" />
+          </StackPanel>
         </StackPanel>
       </Border>
     </StackPanel>

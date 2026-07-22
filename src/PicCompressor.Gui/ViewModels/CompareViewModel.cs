@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
+using System.Globalization;
 using System.Runtime.InteropServices;
 using Avalonia;
 using Avalonia.Media.Imaging;
@@ -85,6 +86,7 @@ public sealed class CompareViewModel : ObservableObject
             if (SetProperty(ref selected, value))
             {
                 Raise(nameof(HasSelection));
+                RaiseComparison();
                 ResetView();
                 _ = LoadPreviewsAsync();
             }
@@ -327,6 +329,7 @@ public sealed class CompareViewModel : ObservableObject
 
         livePreviewSizeBytes = null;
         Raise(nameof(SizeSummary));
+        RaiseComparison();
 
         var cancellation = new CancellationTokenSource();
         previewCancellation = cancellation;
@@ -352,6 +355,7 @@ public sealed class CompareViewModel : ObservableObject
             OriginalPreview = original;
             CompressedPreview = compressed;
             Raise(nameof(SizeSummary));
+            RaiseComparison();
             ResetView();
         }
         catch (OperationCanceledException)
@@ -427,6 +431,57 @@ public sealed class CompareViewModel : ObservableObject
                     ByteFormat.DescribeSavings(item.InputSizeBytes, live))
                 : item.SizeSummary;
         }
+    }
+
+    // --- Vorher/Nachher-Tabelle (Issue #4). Nur Grösse, Format, Maße und Einsparung; die
+    // Vorlage nennt bewusst keine Qualitätskennzahlen (Butteraugli/SSIM) — Abschnitt 11.1. ---
+
+    /// <summary>Eine Auswahl liegt vor; die Tabelle hat Inhalt.</summary>
+    public bool HasComparison => Selected is not null;
+
+    /// <summary>Die Ausgabegrösse ist eine Probekompression im Speicher, keine veröffentlichte Datei.</summary>
+    public bool IsEstimate => Selected is { CanCompare: false };
+
+    private long? EffectiveOutputSizeBytes => Selected is { } item
+        ? item.CanCompare ? item.OutputSizeBytes : livePreviewSizeBytes
+        : null;
+
+    /// <summary>Eingabeformat aus der Endung; ein stabiler Bezeichner, unübersetzt (Abschnitt 4.3).</summary>
+    public string? BeforeFormat => Selected is { } item
+        ? Path.GetExtension(item.InputPath).ToLowerInvariant() == ".png" ? "PNG" : "JPEG"
+        : null;
+
+    /// <summary>Die Ausgabe ist immer JPEG (Abschnitt 8.1).</summary>
+    public string? AfterFormat => Selected is null ? null : "JPEG";
+
+    public string? BeforeSize => Selected is { } item ? ByteFormat.Describe(item.InputSizeBytes) : null;
+
+    public string? AfterSize =>
+        EffectiveOutputSizeBytes is long size ? ByteFormat.Describe(size) : null;
+
+    public string? SavingsText => Selected is { } item && EffectiveOutputSizeBytes is long size
+        ? ByteFormat.DescribeSavings(item.InputSizeBytes, size)
+        : null;
+
+    /// <summary>Maße des aufrecht gedrehten Originals; Ausgabe behält sie (kein Resize, Abschnitt 3.2).</summary>
+    public string? Dimensions => sourceWidth > 0 && sourceHeight > 0
+        ? string.Format(
+            CultureInfo.CurrentCulture,
+            "{0} × {1}",
+            sourceWidth,
+            sourceHeight)
+        : null;
+
+    private void RaiseComparison()
+    {
+        Raise(nameof(HasComparison));
+        Raise(nameof(IsEstimate));
+        Raise(nameof(BeforeFormat));
+        Raise(nameof(AfterFormat));
+        Raise(nameof(BeforeSize));
+        Raise(nameof(AfterSize));
+        Raise(nameof(SavingsText));
+        Raise(nameof(Dimensions));
     }
 
     private Bitmap ApplySource(PreviewImage image)
