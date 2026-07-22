@@ -112,6 +112,7 @@ public sealed class PhysicalInputImageInspector : IInputImageInspector
         var height = 0;
         var inScan = false;
         var sawScan = false;
+        var alreadyOptimized = false;
 
         while (stream.Position < stream.Length)
         {
@@ -128,7 +129,8 @@ public sealed class PhysicalInputImageInspector : IInputImageInspector
                     throw InvalidImage();
                 }
 
-                return new InputImageInfo(InputImageFormat.Jpeg, width, height, stream.Length);
+                return new InputImageInfo(
+                    InputImageFormat.Jpeg, width, height, stream.Length, alreadyOptimized);
             }
 
             if (marker is >= 0xd0 and <= 0xd7)
@@ -160,6 +162,17 @@ public sealed class PhysicalInputImageInspector : IInputImageInspector
                 }
 
                 stream.Position += payloadLength - 5;
+            }
+            else if (marker == 0xfe)
+            {
+                // Kommentarsegment auf den Provenienz-Marker prüfen (Issue #1). Der Marker liegt
+                // im Kopfbereich, ein voller Datei-Ladevorgang ist dafür nicht nötig.
+                var payload = new byte[payloadLength];
+                stream.ReadExactly(payload);
+                if (JpegOptimizationMarker.PayloadContainsToken(payload))
+                {
+                    alreadyOptimized = true;
+                }
             }
             else
             {

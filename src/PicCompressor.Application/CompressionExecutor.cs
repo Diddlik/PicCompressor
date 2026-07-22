@@ -103,6 +103,14 @@ public sealed class CompressionExecutor : ICompressionJobExecutor
         var startedAt = clock.GetUtcNow();
         var engineId = job.EngineSettings.EngineId;
 
+        // Eine bereits von PicCompressor markierte Eingabe wird nicht erneut komprimiert
+        // (Issue #1): erfolgreicher Job ohne neue Ausgabe mit Hinweis, kein Encoding, keine
+        // temporäre Datei.
+        if (job.InputImageInfo.AlreadyOptimized)
+        {
+            return Skipped(job, startedAt);
+        }
+
         if (!engines.TryGetValue(engineId, out var engine))
         {
             return Failure(
@@ -307,6 +315,29 @@ public sealed class CompressionExecutor : ICompressionJobExecutor
                 originalResult.EngineVersion);
         }
     }
+
+    /// <summary>
+    /// Erfolgreicher Job für eine bereits optimierte Eingabe: kein Encoding, keine veröffentlichte
+    /// Ausgabe, ein Hinweis (Issue #1). Wie die <c>discard</c>-Richtlinie ist dies ein Erfolg ohne
+    /// Ausgabedatei (Abschnitt 17.2).
+    /// </summary>
+    private CompressionExecutionResult Skipped(CompressionJob job, DateTimeOffset startedAt) =>
+        new(
+            job.Id,
+            JobStatus.Succeeded,
+            job.InputPath,
+            job.OutputPath,
+            job.EngineSettings.EngineId,
+            null,
+            job.InputImageInfo.FileSizeBytes,
+            null,
+            startedAt,
+            clock.GetUtcNow(),
+            false,
+            false,
+            "Input was already optimized by PicCompressor; skipped.",
+            null,
+            null);
 
     private CompressionExecutionResult Failure(
         CompressionJob job,

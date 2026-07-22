@@ -201,6 +201,36 @@ public sealed class CompressionExecutorTests
             new InputImageInfo(InputImageFormat.Png, 10, 10, 100),
             minimumSavingsPercent: minimumSavingsPercent);
 
+    [Fact]
+    public async Task ExecuteAsync_skips_an_already_optimized_input_without_encoding()
+    {
+        var fileSystem = new StubFileSystem();
+        var engine = new StubEngine(EngineEncodingResult.Succeeded(TimeSpan.Zero));
+        var executor = new CompressionExecutor(
+            engine, new SafeOutputPublisher(fileSystem, fileSystem));
+        var job = new CompressionJob(
+            Guid.NewGuid(),
+            Path.GetFullPath("input.jpg"),
+            Path.GetFullPath("output.jpg"),
+            new JpegliSettings(80, JpegliChromaSubsampling.Subsampling420, 2),
+            ExifPolicy.Remove,
+            ColorProfilePolicy.Preserve,
+            RgbColor.White,
+            CollisionPolicy.Skip,
+            LargerOutputPolicy.Discard,
+            DateTimeOffset.UtcNow,
+            new InputImageInfo(InputImageFormat.Jpeg, 10, 10, 100, alreadyOptimized: true));
+
+        var result = await executor.ExecuteAsync(job, CancellationToken.None);
+
+        Assert.Equal(JobStatus.Succeeded, result.Status);
+        Assert.False(result.OutputPublished);
+        Assert.NotNull(result.Warning);
+        Assert.False(engine.WasInvoked);
+        // Kein Encoding, keine temporäre Datei.
+        Assert.False(fileSystem.FileExists(fileSystem.TemporaryPath));
+    }
+
     private static EngineRuntimeLimits RuntimeLimit(TimeSpan limit) =>
         new(new Dictionary<string, TimeSpan> { [JpegliSettings.JpegliEngineId] = limit });
 
@@ -299,6 +329,14 @@ public sealed class CompressionExecutorTests
         }
 
         public void DeleteFile(string path) => files.Remove(path);
+
+        // Ein minimales JPEG genügt: der Marker-Einbau liest und schreibt es, die
+        // Grössenprüfung nutzt weiterhin den festen Stub-Inspector.
+        public byte[] ReadAllBytes(string path) => [0xFF, 0xD8, 0xFF, 0xD9];
+
+        public void WriteAllBytes(string path, byte[] bytes)
+        {
+        }
 
         public void MoveFile(string sourcePath, string targetPath, bool overwrite)
         {

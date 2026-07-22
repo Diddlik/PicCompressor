@@ -62,6 +62,12 @@ public sealed class SafeOutputPublisher(
                 "Temporary output does not exist.");
         }
 
+        // Provenienz-Marker einbetten (Issue #1), bevor die Ausgabe geprüft und gemessen wird:
+        // so zählen die wenigen Marker-Bytes ehrlich zur Ausgabegröße und die Validierung sieht
+        // die endgültige Datei. Ist die Ausgabe kein JPEG, bleibt sie unverändert und die
+        // folgende Prüfung schlägt wie bisher fehl.
+        EmbedOptimizationMarker(canonicalTemporaryPath);
+
         var outputInfo = InspectOutput(canonicalTemporaryPath);
         if (outputInfo.Format is not InputImageFormat.Jpeg
             || outputInfo.Width != job.InputImageInfo.Width
@@ -141,6 +147,33 @@ public sealed class SafeOutputPublisher(
     {
         ArgumentNullException.ThrowIfNull(temporaryOutput);
         DeleteRequired(temporaryOutput.Path);
+    }
+
+    /// <summary>
+    /// Schreibt den Provenienz-Marker in die temporäre JPEG-Ausgabe (Issue #1). Ein Lese-/
+    /// Schreibfehler wird als <see cref="CompressionErrorCategory.FileSystemError"/> gemeldet und
+    /// die Teildatei bereinigt; ein bereits markierter oder Nicht-JPEG-Inhalt bleibt unverändert.
+    /// </summary>
+    private void EmbedOptimizationMarker(string temporaryPath)
+    {
+        try
+        {
+            var original = fileSystem.ReadAllBytes(temporaryPath);
+            var marked = JpegOptimizationMarker.Embed(original);
+            if (marked.Length != original.Length)
+            {
+                fileSystem.WriteAllBytes(temporaryPath, marked);
+            }
+        }
+        catch (Exception exception) when (
+            exception is IOException or UnauthorizedAccessException)
+        {
+            throw Failure(
+                CompressionErrorCategory.FileSystemError,
+                "Temporary output could not be marked.",
+                temporaryPath,
+                exception);
+        }
     }
 
     private InputImageInfo InspectOutput(string temporaryPath)

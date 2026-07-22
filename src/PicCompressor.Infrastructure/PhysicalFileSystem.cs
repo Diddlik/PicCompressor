@@ -43,4 +43,8 @@ public sealed class PhysicalFileSystem(StringComparer pathComparer) : IOutputFil
 
     public void MoveFile(string sourcePath, string targetPath, bool overwrite) =>
         File.Move(sourcePath, targetPath, overwrite);
+
+    public byte[] ReadAllBytes(string path) => File.ReadAllBytes(path);
+
+    public void WriteAllBytes(string path, byte[] bytes) => File.WriteAllBytes(path, bytes);
 }
