@@ -797,6 +797,15 @@ public sealed class NativeCodecBridgeTests
         return [.. profile];
     }
 
+    private static string NativeLibraryFileName =>
+        System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(
+            System.Runtime.InteropServices.OSPlatform.Windows)
+            ? "piccompressor_native.dll"
+            : System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(
+                System.Runtime.InteropServices.OSPlatform.OSX)
+                ? "piccompressor_native.dylib"
+                : "piccompressor_native.so";
+
     private static string FindNativeLibrary()
     {
         var configuredPath = Environment.GetEnvironmentVariable(
@@ -806,9 +815,8 @@ public sealed class NativeCodecBridgeTests
             return Path.GetFullPath(configuredPath);
         }
 
-        var copiedLibrary = Path.Combine(
-            AppContext.BaseDirectory,
-            "piccompressor_native.dll");
+        var fileName = NativeLibraryFileName;
+        var copiedLibrary = Path.Combine(AppContext.BaseDirectory, fileName);
         if (File.Exists(copiedLibrary))
         {
             return copiedLibrary;
@@ -817,24 +825,24 @@ public sealed class NativeCodecBridgeTests
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
         while (directory is not null)
         {
-            var nativeDirectory = Path.Combine(directory.FullName, "native");
-            var candidate = Directory.Exists(nativeDirectory)
-                ? Directory
-                    .EnumerateFiles(
-                        nativeDirectory,
-                        "piccompressor_native.dll",
-                        SearchOption.AllDirectories)
-                    .FirstOrDefault()
-                : null;
-            if (candidate is not null)
+            foreach (var container in new[] { "native", "artifacts" })
             {
-                return candidate;
+                var searchRoot = Path.Combine(directory.FullName, container);
+                var candidate = Directory.Exists(searchRoot)
+                    ? Directory
+                        .EnumerateFiles(searchRoot, fileName, SearchOption.AllDirectories)
+                        .FirstOrDefault()
+                    : null;
+                if (candidate is not null)
+                {
+                    return candidate;
+                }
             }
 
             directory = directory.Parent;
         }
 
         throw new FileNotFoundException(
-            "Build piccompressor_native or set PICCOMPRESSOR_NATIVE_TEST_LIBRARY before running interop tests.");
+            $"Build {fileName} or set PICCOMPRESSOR_NATIVE_TEST_LIBRARY before running interop tests.");
     }
 }

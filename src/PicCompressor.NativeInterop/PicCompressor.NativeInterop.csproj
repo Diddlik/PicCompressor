@@ -12,6 +12,7 @@
   </PropertyGroup>
 
   <PropertyGroup Condition="$([MSBuild]::IsOSPlatform('Windows'))">
+    <PicCompressorNativeFileName>piccompressor_native.dll</PicCompressorNativeFileName>
     <PicCompressorNativeLibraryWasSpecified
         Condition="'$(PicCompressorNativeLibrary)' != ''">true</PicCompressorNativeLibraryWasSpecified>
     <PicCompressorNativeLibrary
@@ -32,9 +33,17 @@
         Condition="'$(PicCompressorBuildNative)' == 'true'">$([System.IO.Path]::ChangeExtension('$(PicCompressorNativeLibrary)', '.pdb'))</PicCompressorNativeSymbols>
   </PropertyGroup>
 
+  <!-- Non-Windows RIDs consume a prebuilt native library (scripts/build-native-linux-x64.sh);
+       there is no in-build cross-compilation here. -->
+  <PropertyGroup Condition="$([MSBuild]::IsOSPlatform('Linux'))">
+    <PicCompressorNativeFileName>piccompressor_native.so</PicCompressorNativeFileName>
+    <PicCompressorNativeLibrary
+        Condition="'$(PicCompressorNativeLibrary)' == ''">$([MSBuild]::NormalizePath('$(MSBuildThisFileDirectory)', '..', '..', 'artifacts', 'native', 'linux-x64', 'piccompressor_native.so'))</PicCompressorNativeLibrary>
+  </PropertyGroup>
+
   <ItemGroup Condition="'$(PicCompressorNativeLibrary)' != ''">
     <None Include="$(PicCompressorNativeLibrary)"
-          Link="piccompressor_native.dll"
+          Link="$(PicCompressorNativeFileName)"
           CopyToOutputDirectory="PreserveNewest"
           CopyToPublishDirectory="PreserveNewest" />
     <None Include="$(PicCompressorNativeSymbols)"

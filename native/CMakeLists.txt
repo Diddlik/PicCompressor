@@ -77,6 +77,10 @@ if(PC_ENABLE_GUETZLI)
         ${guetzli_SOURCE_DIR}
         ${guetzli_SOURCE_DIR}/third_party/butteraugli)
     target_compile_features(guetzli_static PRIVATE cxx_std_17)
+    # The static library is linked into the shared piccompressor_native. ELF shared
+    # objects require every constituent object to be position-independent; Windows
+    # DLLs do not, so this only matters on Linux/macOS but is harmless elsewhere.
+    set_target_properties(guetzli_static PROPERTIES POSITION_INDEPENDENT_CODE ON)
     # Upstream third-party code: silence its warnings instead of failing the build.
     if(MSVC)
         target_compile_options(guetzli_static PRIVATE /w /EHsc)
