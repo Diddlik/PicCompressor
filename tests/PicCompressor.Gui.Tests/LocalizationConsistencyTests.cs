@@ -101,7 +101,9 @@ public sealed class LocalizationConsistencyTests
             "Hist_ColEngine", "Hist_ColStatus", "Cmp_Original",
             "Status_EnginesAvailable", "Set_EngineHeading",
             // "Zoom" ist im Deutschen dasselbe Wort; der Zoomwert ist ein reines Zahlenformat.
-            "Cmp_Zoom", "Cmp_ZoomValue"
+            "Cmp_Zoom", "Cmp_ZoomValue",
+            // "Updates" ist im Deutschen als Lehnwort identisch.
+            "Update_Section"
         ];
 
         var identical = English
