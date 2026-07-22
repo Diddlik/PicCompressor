@@ -82,6 +82,21 @@
   <data name="Dash_AddFiles" xml:space="preserve">
     <value>Dateien hinzufügen…</value>
   </data>
+  <data name="Dash_AddFolder" xml:space="preserve">
+    <value>Ordner hinzufügen…</value>
+  </data>
+  <data name="Dash_Discovering" xml:space="preserve">
+    <value>Wird durchsucht… {0} gefunden</value>
+  </data>
+  <data name="Dash_DiscoveryCanceled" xml:space="preserve">
+    <value>Ordnersuche abgebrochen.</value>
+  </data>
+  <data name="Dash_CancelDiscovery" xml:space="preserve">
+    <value>Suche abbrechen</value>
+  </data>
+  <data name="Dash_FolderPickerTitle" xml:space="preserve">
+    <value>Ordner auswählen</value>
+  </data>
   <data name="Dash_DropHere" xml:space="preserve">
     <value>Bilder oder Ordner hierher ziehen</value>
   </data>

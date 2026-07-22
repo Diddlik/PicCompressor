@@ -149,9 +149,14 @@
           <TextBlock Classes="h1" Text="{l:Localize Dash_Title}" />
           <TextBlock Classes="sub" Text="{l:Localize Dash_Subtitle}" />
         </StackPanel>
-        <Button Grid.Column="1" Classes="secondary" x:Name="AddFilesButton"
-                Content="{l:Localize Dash_AddFiles}" VerticalAlignment="Bottom"
-                AutomationProperties.Name="{l:Localize Dash_AddFiles}" />
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Bottom">
+          <Button Classes="secondary" x:Name="AddFilesButton"
+                  Content="{l:Localize Dash_AddFiles}"
+                  AutomationProperties.Name="{l:Localize Dash_AddFiles}" />
+          <Button Classes="secondary" x:Name="AddFolderButton"
+                  Content="{l:Localize Dash_AddFolder}"
+                  AutomationProperties.Name="{l:Localize Dash_AddFolder}" />
+        </StackPanel>
       </Grid>
 
       <!-- Ablagebereich; die Schaltfläche darin ist der gleichwertige Tastaturweg. -->
@@ -180,6 +185,16 @@
           <TextBlock Classes="hint" HorizontalAlignment="Center" TextAlignment="Center"
                      Foreground="{DynamicResource PcWarn}"
                      Text="{Binding DropHint}" IsVisible="{Binding HasDropHint}" />
+          <!-- Laufende Ordner-Discovery: Fortschritt und Abbruch (MP-002). -->
+          <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center"
+                      IsVisible="{Binding IsDiscovering}">
+            <ProgressBar IsIndeterminate="True" Width="120" VerticalAlignment="Center" />
+            <TextBlock Classes="hint" VerticalAlignment="Center"
+                       Text="{Binding DiscoveringLabel}" />
+            <Button Classes="secondary" Content="{l:Localize Dash_CancelDiscovery}"
+                    Command="{Binding CancelDiscoveryCommand}"
+                    AutomationProperties.Name="{l:Localize Dash_CancelDiscovery}" />
+          </StackPanel>
         </StackPanel>
       </Border>
 

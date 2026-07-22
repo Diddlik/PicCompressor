@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
+using PicCompressor.Application;
 using PicCompressor.Domain;
 using PicCompressor.Gui.Localization;
 using PicCompressor.Gui.Services;
@@ -9,26 +10,33 @@ namespace PicCompressor.Gui.ViewModels;
 
 public sealed class DashboardViewModel : ObservableObject
 {
-    private static readonly string[] SupportedExtensions = [".jpg", ".jpeg", ".png"];
-
     private readonly ICompressionService compressionService;
+    private readonly IInputDiscovery inputDiscovery;
 
     private CancellationTokenSource? runCancellation;
+    private CancellationTokenSource? discoveryCancellation;
     private bool recurseFolders = true;
+    private bool isDiscovering;
+    private int discoveredCount;
     private string? dropHint;
 
-    public DashboardViewModel(SettingsViewModel settings, ICompressionService compressionService)
+    public DashboardViewModel(
+        SettingsViewModel settings,
+        ICompressionService compressionService,
+        IInputDiscovery? inputDiscovery = null)
     {
         ArgumentNullException.ThrowIfNull(settings);
         ArgumentNullException.ThrowIfNull(compressionService);
 
         Settings = settings;
         this.compressionService = compressionService;
+        this.inputDiscovery = inputDiscovery ?? new UnconfiguredInputDiscovery();
 
         Queue.CollectionChanged += OnQueueChanged;
 
         CompressAllCommand = new AsyncRelayCommand(CompressAllAsync, () => HasPendingJobs);
         CancelCommand = new RelayCommand(Cancel, () => IsRunning);
+        CancelDiscoveryCommand = new RelayCommand(CancelDiscovery, () => IsDiscovering);
         ClearCompletedCommand = new RelayCommand(ClearCompleted, () => HasCompletedJobs);
         RetryFailedCommand = new RelayCommand(RetryFailed, () => HasRetryableJobs);
         RemoveAllCommand = new RelayCommand(RemoveAll, () => Queue.Count > 0 && !IsRunning);
@@ -51,17 +59,51 @@ public sealed class DashboardViewModel : ObservableObject
 
     public RelayCommand RemoveAllCommand { get; }
 
+    public RelayCommand CancelDiscoveryCommand { get; }
+
     public bool RecurseFolders
     {
         get => recurseFolders;
         set => SetProperty(ref recurseFolders, value);
     }
 
+    /// <summary>Läuft gerade eine Ordner-Discovery? Die Enumeration selbst liegt abseits des UI-Threads.</summary>
+    public bool IsDiscovering
+    {
+        get => isDiscovering;
+        private set
+        {
+            if (SetProperty(ref isDiscovering, value))
+            {
+                Raise(nameof(DiscoveringLabel));
+                CancelDiscoveryCommand.RaiseCanExecuteChanged();
+                CompressAllCommand.RaiseCanExecuteChanged();
+            }
+        }
+    }
+
+    /// <summary>Bisher gefundene Dateien während einer laufenden Discovery.</summary>
+    public int DiscoveredCount
+    {
+        get => discoveredCount;
+        private set
+        {
+            if (SetProperty(ref discoveredCount, value))
+            {
+                Raise(nameof(DiscoveringLabel));
+            }
+        }
+    }
+
+    public string? DiscoveringLabel => IsDiscovering
+        ? Localizer.Instance.Format("Dash_Discovering", DiscoveredCount)
+        : null;
+
     public bool IsRunning => runCancellation is not null;
 
     public bool IsQueueEmpty => Queue.Count == 0;
 
-    public bool HasPendingJobs => !IsRunning && Queue.Any(item => !item.IsTerminal);
+    public bool HasPendingJobs => !IsRunning && !IsDiscovering && Queue.Any(item => !item.IsTerminal);
 
     public bool HasCompletedJobs => !IsRunning && Queue.Any(item => item.IsTerminal);
 
@@ -86,71 +128,76 @@ public sealed class DashboardViewModel : ObservableObject
     public bool HasDropHint => !string.IsNullOrEmpty(DropHint);
 
     /// <summary>
-    /// Nimmt Dateien und Ordner aus Drag-and-drop oder Dateiauswahl auf. Die Endung entscheidet
-    /// hier nur über die Vorauswahl; die inhaltliche Formatprüfung nach Abschnitt 7.1 gehört in
-    /// die Anwendungsschicht und findet beim Ausführen statt.
+    /// Nimmt Dateien und Ordner aus Drag-and-drop oder Auswahl auf. Die Ordner-Discovery läuft
+    /// über den gemeinsamen Application-Anwendungsfall abseits des UI-Threads (MP-002); die
+    /// Endung entscheidet dort nur über die Vorauswahl, die inhaltliche Formatprüfung nach
+    /// Abschnitt 7.1 folgt beim Ausführen.
     /// </summary>
-    public int AddPaths(IEnumerable<string> paths)
+    public async Task<int> AddPathsAsync(IEnumerable<string> paths)
     {
         ArgumentNullException.ThrowIfNull(paths);
 
-        var added = 0;
-        foreach (var path in paths)
+        // Existenz der Wurzeln auf dem UI-Thread prüfen (wenige Pfade); die teure Enumeration
+        // bleibt off-thread. So bricht ein veralteter Pfad die Aufnahme nicht ab.
+        var roots = paths.Where(path => File.Exists(path) || Directory.Exists(path)).ToList();
+        if (roots.Count == 0)
         {
-            if (Directory.Exists(path))
-            {
-                added += AddDirectory(path);
-            }
-            else if (File.Exists(path) && IsSupported(path) && AddFile(path))
-            {
-                added++;
-            }
+            DropHint = Localizer.Instance["Dash_NoSupportedFiles"];
+            return 0;
         }
 
-        DropHint = added == 0
-            ? Localizer.Instance["Dash_NoSupportedFiles"]
-            : null;
-        return added;
-    }
-
-    private int AddDirectory(string directory)
-    {
-        var options = new EnumerationOptions
+        using var cancellation = new CancellationTokenSource();
+        discoveryCancellation = cancellation;
+        DiscoveredCount = 0;
+        IsDiscovering = true;
+        try
         {
-            RecurseSubdirectories = RecurseFolders,
-            // Abschnitt 7.3: Verzeichnislinks werden standardmäßig nicht verfolgt.
-            AttributesToSkip = FileAttributes.ReparsePoint | FileAttributes.System,
-            IgnoreInaccessible = true
-        };
-
-        var added = 0;
-        foreach (var file in Directory.EnumerateFiles(directory, "*", options))
-        {
-            if (IsSupported(file) && AddFile(file))
+            var excluded = Settings.UsesCustomDirectory ? Settings.OutputDirectory : null;
+            var progress = new Progress<int>(count => DiscoveredCount = count);
+            IReadOnlyList<DiscoveredInput> found;
+            try
             {
-                added++;
+                found = await inputDiscovery
+                    .DiscoverAsync(roots, RecurseFolders, excluded, progress, cancellation.Token)
+                    .ConfigureAwait(true);
             }
-        }
+            catch (OperationCanceledException)
+            {
+                DropHint = Localizer.Instance["Dash_DiscoveryCanceled"];
+                return 0;
+            }
+            catch (Exception exception) when (
+                exception is IOException or UnauthorizedAccessException)
+            {
+                DropHint = Localizer.Instance["Dash_NoSupportedFiles"];
+                return 0;
+            }
 
-        return added;
+            var added = 0;
+            foreach (var input in found)
+            {
+                if (AddFile(input.Path, input.FileSizeBytes))
+                {
+                    added++;
+                }
+            }
+
+            DropHint = added == 0 ? Localizer.Instance["Dash_NoSupportedFiles"] : null;
+            return added;
+        }
+        finally
+        {
+            discoveryCancellation = null;
+            IsDiscovering = false;
+            DiscoveredCount = 0;
+        }
     }
 
-    private bool AddFile(string path)
+    private bool AddFile(string path, long size)
     {
         if (Queue.Any(item => string.Equals(item.InputPath, path, StringComparison.OrdinalIgnoreCase)))
         {
             return false;
-        }
-
-        long size;
-        try
-        {
-            size = new FileInfo(path).Length;
-        }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
-        {
-            // Der Eintrag bleibt sichtbar; die belastbare Prüfung folgt beim Ausführen.
-            size = 0;
         }
 
         Queue.Add(new QueueItemViewModel(path, Settings.EngineId, size));
@@ -275,6 +322,8 @@ public sealed class DashboardViewModel : ObservableObject
 
     private void Cancel() => runCancellation?.Cancel();
 
+    private void CancelDiscovery() => discoveryCancellation?.Cancel();
+
     private void ClearCompleted()
     {
         foreach (var done in Queue.Where(item => item.IsTerminal).ToList())
@@ -338,7 +387,4 @@ public sealed class DashboardViewModel : ObservableObject
         RaiseQueueState();
         CancelCommand.RaiseCanExecuteChanged();
     }
-
-    private static bool IsSupported(string path) =>
-        SupportedExtensions.Contains(Path.GetExtension(path), StringComparer.OrdinalIgnoreCase);
 }

@@ -45,5 +45,37 @@ public sealed class PhysicalInputDiscoveryTests : IDisposable
         Assert.DoesNotContain(inputs, input => input.Path.Contains("old.jpg", StringComparison.Ordinal));
     }
 
+    [Fact]
+    public async Task DiscoverAsync_matches_the_synchronous_result_and_reports_size_and_progress()
+    {
+        File.WriteAllText(Path.Combine(directory, "sized.jpg"), "0123456789");
+        var discovery = Comparer();
+        var counts = new List<int>();
+        var progress = new Progress<int>(counts.Add);
+
+        var inputs = await discovery.DiscoverAsync(
+            [directory], recursive: true, excludedDirectory: null, progress, CancellationToken.None);
+
+        var sync = discovery.Discover([directory], recursive: true, excludedDirectory: null);
+        Assert.Equal(sync.Select(input => input.Path), inputs.Select(input => input.Path));
+        Assert.Contains(inputs, input => input.Path.EndsWith("sized.jpg", StringComparison.Ordinal)
+            && input.FileSizeBytes == 10);
+    }
+
+    [Fact]
+    public async Task DiscoverAsync_throws_when_cancelled_before_it_runs()
+    {
+        var discovery = Comparer();
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(
+            () => discovery.DiscoverAsync(
+                [directory], recursive: true, excludedDirectory: null, progress: null, cancellation.Token));
+    }
+
+    private static PhysicalInputDiscovery Comparer() =>
+        new(OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
+
     public void Dispose() => Directory.Delete(directory, recursive: true);
 }

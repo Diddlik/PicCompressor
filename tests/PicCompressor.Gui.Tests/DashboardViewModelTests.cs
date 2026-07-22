@@ -21,14 +21,14 @@ public sealed class DashboardViewModelTests : IDisposable
     }
 
     [Fact]
-    public void AddPaths_accepts_only_supported_extensions()
+    public async Task AddPaths_accepts_only_supported_extensions()
     {
         var dashboard = Create(FakeCompressionService.Succeeding());
         var jpg = TempFiles.CreateImage(directory, "a.jpg");
         var png = TempFiles.CreateImage(directory, "b.PNG");
         var txt = TempFiles.CreateImage(directory, "c.txt");
 
-        var added = dashboard.AddPaths([jpg, png, txt]);
+        var added = await dashboard.AddPathsAsync([jpg, png, txt]);
 
         Assert.Equal(2, added);
         Assert.Equal(2, dashboard.Queue.Count);
@@ -36,25 +36,25 @@ public sealed class DashboardViewModelTests : IDisposable
     }
 
     [Fact]
-    public void AddPaths_ignores_duplicates()
+    public async Task AddPaths_ignores_duplicates()
     {
         var dashboard = Create(FakeCompressionService.Succeeding());
         var jpg = TempFiles.CreateImage(directory, "a.jpg");
 
-        dashboard.AddPaths([jpg]);
-        var second = dashboard.AddPaths([jpg]);
+        await dashboard.AddPathsAsync([jpg]);
+        var second = await dashboard.AddPathsAsync([jpg]);
 
         Assert.Equal(0, second);
         Assert.Single(dashboard.Queue);
     }
 
     [Fact]
-    public void AddPaths_reports_when_nothing_was_supported()
+    public async Task AddPaths_reports_when_nothing_was_supported()
     {
         var dashboard = Create(FakeCompressionService.Succeeding());
         var txt = TempFiles.CreateImage(directory, "c.txt");
 
-        dashboard.AddPaths([txt]);
+        await dashboard.AddPathsAsync([txt]);
 
         Assert.True(dashboard.HasDropHint);
     }
@@ -63,7 +63,7 @@ public sealed class DashboardViewModelTests : IDisposable
     public async Task Unconfigured_service_never_reports_success()
     {
         var dashboard = Create(new UnconfiguredCompressionService());
-        dashboard.AddPaths([TempFiles.CreateImage(directory, "a.jpg")]);
+        await dashboard.AddPathsAsync([TempFiles.CreateImage(directory, "a.jpg")]);
 
         await RunAsync(dashboard);
 
@@ -78,7 +78,7 @@ public sealed class DashboardViewModelTests : IDisposable
     public async Task Successful_outcome_is_taken_over_verbatim()
     {
         var dashboard = Create(FakeCompressionService.Succeeding(outputSizeBytes: 250));
-        dashboard.AddPaths([TempFiles.CreateImage(directory, "a.jpg")]);
+        await dashboard.AddPathsAsync([TempFiles.CreateImage(directory, "a.jpg")]);
 
         await RunAsync(dashboard);
 
@@ -95,7 +95,7 @@ public sealed class DashboardViewModelTests : IDisposable
     {
         var dashboard = Create(
             FakeCompressionService.Failing(CompressionErrorCategory.OutputValidationFailed));
-        dashboard.AddPaths([TempFiles.CreateImage(directory, "a.jpg")]);
+        await dashboard.AddPathsAsync([TempFiles.CreateImage(directory, "a.jpg")]);
 
         await RunAsync(dashboard);
 
@@ -109,7 +109,7 @@ public sealed class DashboardViewModelTests : IDisposable
     public async Task Unexpected_exception_becomes_an_unexpected_error_not_a_success()
     {
         var dashboard = Create(FakeCompressionService.Throwing());
-        dashboard.AddPaths([TempFiles.CreateImage(directory, "a.jpg")]);
+        await dashboard.AddPathsAsync([TempFiles.CreateImage(directory, "a.jpg")]);
 
         await RunAsync(dashboard);
 
@@ -123,7 +123,7 @@ public sealed class DashboardViewModelTests : IDisposable
     public async Task Cancellation_yields_a_canceled_job_without_output()
     {
         var dashboard = Create(FakeCompressionService.Canceling());
-        dashboard.AddPaths([TempFiles.CreateImage(directory, "a.jpg")]);
+        await dashboard.AddPathsAsync([TempFiles.CreateImage(directory, "a.jpg")]);
 
         await RunAsync(dashboard);
 
@@ -139,7 +139,7 @@ public sealed class DashboardViewModelTests : IDisposable
         var service = FakeCompressionService.Succeeding();
         var dashboard = Create(service);
         dashboard.Settings.IsGuetzli = true;
-        dashboard.AddPaths([TempFiles.CreateImage(directory, "a.jpg")]);
+        await dashboard.AddPathsAsync([TempFiles.CreateImage(directory, "a.jpg")]);
 
         await RunAsync(dashboard);
 
@@ -160,7 +160,7 @@ public sealed class DashboardViewModelTests : IDisposable
         dashboard.Settings.CollisionPolicy = CollisionPolicy.Rename;
         dashboard.Settings.LargerOutputPolicy = LargerOutputPolicy.Keep;
         dashboard.Settings.Suffix = "_small";
-        dashboard.AddPaths([TempFiles.CreateImage(directory, "a.jpg")]);
+        await dashboard.AddPathsAsync([TempFiles.CreateImage(directory, "a.jpg")]);
 
         await RunAsync(dashboard);
 
@@ -180,7 +180,7 @@ public sealed class DashboardViewModelTests : IDisposable
         var dashboard = Create(service);
         dashboard.Settings.OutputDirectory = directory;
         dashboard.Settings.UsesCustomDirectory = true;
-        dashboard.AddPaths([TempFiles.CreateImage(directory, "a.jpg")]);
+        await dashboard.AddPathsAsync([TempFiles.CreateImage(directory, "a.jpg")]);
 
         await RunAsync(dashboard);
 
@@ -188,7 +188,7 @@ public sealed class DashboardViewModelTests : IDisposable
     }
 
     [Fact]
-    public void Commands_reflect_queue_state()
+    public async Task Commands_reflect_queue_state()
     {
         var dashboard = Create(FakeCompressionService.Succeeding());
 
@@ -196,7 +196,7 @@ public sealed class DashboardViewModelTests : IDisposable
         Assert.False(dashboard.ClearCompletedCommand.CanExecute(null));
         Assert.False(dashboard.CancelCommand.CanExecute(null));
 
-        dashboard.AddPaths([TempFiles.CreateImage(directory, "a.jpg")]);
+        await dashboard.AddPathsAsync([TempFiles.CreateImage(directory, "a.jpg")]);
 
         Assert.True(dashboard.CompressAllCommand.CanExecute(null));
         Assert.True(dashboard.RemoveAllCommand.CanExecute(null));
@@ -206,9 +206,9 @@ public sealed class DashboardViewModelTests : IDisposable
     public async Task ClearCompleted_removes_only_terminal_jobs()
     {
         var dashboard = Create(FakeCompressionService.Succeeding());
-        dashboard.AddPaths([TempFiles.CreateImage(directory, "a.jpg")]);
+        await dashboard.AddPathsAsync([TempFiles.CreateImage(directory, "a.jpg")]);
         await RunAsync(dashboard);
-        dashboard.AddPaths([TempFiles.CreateImage(directory, "b.jpg")]);
+        await dashboard.AddPathsAsync([TempFiles.CreateImage(directory, "b.jpg")]);
 
         dashboard.ClearCompletedCommand.Execute(null);
 
@@ -223,7 +223,7 @@ public sealed class DashboardViewModelTests : IDisposable
         var completed = new List<QueueItemViewModel>();
         dashboard.JobCompleted += (_, item) => completed.Add(item);
 
-        dashboard.AddPaths(
+        await dashboard.AddPathsAsync(
         [
             TempFiles.CreateImage(directory, "a.jpg"),
             TempFiles.CreateImage(directory, "b.jpg")
@@ -239,7 +239,7 @@ public sealed class DashboardViewModelTests : IDisposable
         var service = FakeCompressionService.Succeeding();
         var dashboard = Create(service);
         dashboard.Settings.ParallelJobs = 2;
-        dashboard.AddPaths(
+        await dashboard.AddPathsAsync(
         [
             TempFiles.CreateImage(directory, "parallel-a.jpg"),
             TempFiles.CreateImage(directory, "parallel-b.jpg")
@@ -279,7 +279,7 @@ public sealed class DashboardViewModelTests : IDisposable
                         Guid.NewGuid()));
         });
         var dashboard = Create(service);
-        dashboard.AddPaths([TempFiles.CreateImage(directory, "retry.jpg")]);
+        await dashboard.AddPathsAsync([TempFiles.CreateImage(directory, "retry.jpg")]);
         await RunAsync(dashboard);
 
         dashboard.RetryFailedCommand.Execute(null);
@@ -289,8 +289,32 @@ public sealed class DashboardViewModelTests : IDisposable
         Assert.Equal(JobStatus.Succeeded, Assert.Single(dashboard.Queue).Status);
     }
 
+    [Fact]
+    public async Task Discovery_can_be_cancelled_and_leaves_the_queue_empty()
+    {
+        var discovery = new FakeInputDiscovery { BlockUntilCancelled = true };
+        var dashboard = new DashboardViewModel(
+            new SettingsViewModel(), FakeCompressionService.Succeeding(), discovery);
+        var jpg = TempFiles.CreateImage(directory, "a.jpg");
+
+        var adding = dashboard.AddPathsAsync([jpg]);
+        // Der Aufruf blockiert in der Discovery, bis der Abbruch greift.
+        while (!dashboard.IsDiscovering)
+        {
+            await Task.Yield();
+        }
+
+        dashboard.CancelDiscoveryCommand.Execute(null);
+        var added = await adding;
+
+        Assert.Equal(0, added);
+        Assert.False(dashboard.IsDiscovering);
+        Assert.Empty(dashboard.Queue);
+        Assert.True(dashboard.HasDropHint);
+    }
+
     private DashboardViewModel Create(ICompressionService service) =>
-        new(new SettingsViewModel(), service);
+        new(new SettingsViewModel(), service, new FakeInputDiscovery());
 
     private static async Task RunAsync(DashboardViewModel dashboard)
     {

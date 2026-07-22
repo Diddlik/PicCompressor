@@ -84,6 +84,7 @@ internal static class Program
             new ApplicationEngineCatalogService(new EngineCatalog([jpegli, guetzli])),
             new PersistentHistoryService(historyStore),
             settingsStore,
+            new PhysicalInputDiscovery(comparer),
             bridge,
             updateService);
 

@@ -15,8 +15,9 @@ public partial class DashboardView : UserControl
         AddHandler(DragDrop.DragOverEvent, OnDragOver);
         AddHandler(DragDrop.DropEvent, OnDrop);
 
-        AddFilesButton.Click += async (_, _) => await BrowseAsync();
-        BrowseButton.Click += async (_, _) => await BrowseAsync();
+        AddFilesButton.Click += async (_, _) => await BrowseFilesAsync();
+        BrowseButton.Click += async (_, _) => await BrowseFilesAsync();
+        AddFolderButton.Click += async (_, _) => await BrowseFolderAsync();
     }
 
     private DashboardViewModel? ViewModel => DataContext as DashboardViewModel;
@@ -39,11 +40,12 @@ public partial class DashboardView : UserControl
             .ToList();
         if (paths is { Count: > 0 })
         {
-            viewModel.AddPaths(paths);
+            // Fire-and-forget: die Discovery läuft off-thread; der Drop-Handler ist synchron.
+            _ = viewModel.AddPathsAsync(paths);
         }
     }
 
-    private async Task BrowseAsync()
+    private async Task BrowseFilesAsync()
     {
         if (ViewModel is not { } viewModel || TopLevel.GetTopLevel(this) is not { } topLevel)
         {
@@ -69,7 +71,30 @@ public partial class DashboardView : UserControl
             .ToList();
         if (paths.Count > 0)
         {
-            viewModel.AddPaths(paths);
+            await viewModel.AddPathsAsync(paths);
+        }
+    }
+
+    private async Task BrowseFolderAsync()
+    {
+        if (ViewModel is not { } viewModel || TopLevel.GetTopLevel(this) is not { } topLevel)
+        {
+            return;
+        }
+
+        var folders = await topLevel.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+        {
+            Title = Localizer.Instance["Dash_FolderPickerTitle"],
+            AllowMultiple = true
+        });
+
+        var paths = folders
+            .Select(folder => folder.TryGetLocalPath())
+            .OfType<string>()
+            .ToList();
+        if (paths.Count > 0)
+        {
+            await viewModel.AddPathsAsync(paths);
         }
     }
 }
