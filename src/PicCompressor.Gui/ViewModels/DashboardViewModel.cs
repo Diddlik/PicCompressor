@@ -13,6 +13,7 @@ public sealed class DashboardViewModel : ObservableObject
     private readonly ICompressionService compressionService;
     private readonly IInputDiscovery inputDiscovery;
     private readonly IFileActionService fileActions;
+    private readonly ThumbnailCache? thumbnails;
 
     private CancellationTokenSource? runCancellation;
     private CancellationTokenSource? discoveryCancellation;
@@ -25,7 +26,8 @@ public sealed class DashboardViewModel : ObservableObject
         SettingsViewModel settings,
         ICompressionService compressionService,
         IInputDiscovery? inputDiscovery = null,
-        IFileActionService? fileActions = null)
+        IFileActionService? fileActions = null,
+        ThumbnailCache? thumbnails = null)
     {
         ArgumentNullException.ThrowIfNull(settings);
         ArgumentNullException.ThrowIfNull(compressionService);
@@ -34,6 +36,8 @@ public sealed class DashboardViewModel : ObservableObject
         this.compressionService = compressionService;
         this.inputDiscovery = inputDiscovery ?? new UnconfiguredInputDiscovery();
         this.fileActions = fileActions ?? new UnconfiguredFileActionService();
+        // Ohne Vorschaudienst bleibt die Liste ohne Bilder; sie ist deswegen nicht weniger bedienbar.
+        this.thumbnails = thumbnails;
 
         Queue.CollectionChanged += OnQueueChanged;
 
@@ -232,7 +236,7 @@ public sealed class DashboardViewModel : ObservableObject
             return false;
         }
 
-        Queue.Add(new QueueItemViewModel(path, Settings.EngineId, size));
+        Queue.Add(new QueueItemViewModel(path, Settings.EngineId, size, thumbnails));
         return true;
     }
 
