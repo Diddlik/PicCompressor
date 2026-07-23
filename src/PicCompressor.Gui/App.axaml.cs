@@ -19,7 +19,8 @@ public sealed class App : Avalonia.Application
             new UnconfiguredInputDiscovery(),
             new UnconfiguredFileActionService(),
             null,
-            new UnconfiguredUpdateService());
+            new UnconfiguredUpdateService(),
+            new UnconfiguredClipboardImportService());
 
     private readonly AppServices services = serviceFactory();
 
@@ -31,7 +32,8 @@ public sealed class App : Avalonia.Application
         IInputDiscovery inputDiscovery,
         IFileActionService fileActionService,
         IPreviewRenderer? previewRenderer = null,
-        IUpdateService? updateService = null)
+        IUpdateService? updateService = null,
+        IClipboardImportService? clipboardImport = null)
     {
         ArgumentNullException.ThrowIfNull(compressionService);
         ArgumentNullException.ThrowIfNull(engineCatalogService);
@@ -48,7 +50,8 @@ public sealed class App : Avalonia.Application
                 inputDiscovery,
                 fileActionService,
                 previewRenderer,
-                updateService ?? new UnconfiguredUpdateService());
+                updateService ?? new UnconfiguredUpdateService(),
+                clipboardImport ?? new UnconfiguredClipboardImportService());
     }
 
     public override void Initialize() => AvaloniaXamlLoader.Load(this);
@@ -65,7 +68,8 @@ public sealed class App : Avalonia.Application
                 services.InputDiscovery,
                 services.PreviewRenderer,
                 services.UpdateService,
-                services.FileActionService);
+                services.FileActionService,
+                services.ClipboardImport);
 
             var window = new MainWindow { DataContext = viewModel };
             window.Opened += async (_, _) =>
@@ -85,5 +89,6 @@ public sealed class App : Avalonia.Application
         IInputDiscovery InputDiscovery,
         IFileActionService FileActionService,
         IPreviewRenderer? PreviewRenderer,
-        IUpdateService UpdateService);
+        IUpdateService UpdateService,
+        IClipboardImportService ClipboardImport);
 }

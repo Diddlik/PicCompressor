@@ -14,6 +14,7 @@ public sealed class DashboardViewModel : ObservableObject
     private readonly IInputDiscovery inputDiscovery;
     private readonly IFileActionService fileActions;
     private readonly ThumbnailCache? thumbnails;
+    private readonly IClipboardImportService clipboardImport;
 
     private CancellationTokenSource? runCancellation;
     private CancellationTokenSource? discoveryCancellation;
@@ -27,7 +28,8 @@ public sealed class DashboardViewModel : ObservableObject
         ICompressionService compressionService,
         IInputDiscovery? inputDiscovery = null,
         IFileActionService? fileActions = null,
-        ThumbnailCache? thumbnails = null)
+        ThumbnailCache? thumbnails = null,
+        IClipboardImportService? clipboardImport = null)
     {
         ArgumentNullException.ThrowIfNull(settings);
         ArgumentNullException.ThrowIfNull(compressionService);
@@ -38,10 +40,12 @@ public sealed class DashboardViewModel : ObservableObject
         this.fileActions = fileActions ?? new UnconfiguredFileActionService();
         // Ohne Vorschaudienst bleibt die Liste ohne Bilder; sie ist deswegen nicht weniger bedienbar.
         this.thumbnails = thumbnails;
+        this.clipboardImport = clipboardImport ?? new UnconfiguredClipboardImportService();
 
         Queue.CollectionChanged += OnQueueChanged;
 
         CompressAllCommand = new AsyncRelayCommand(CompressAllAsync, () => HasPendingJobs);
+        PasteCommand = new AsyncRelayCommand(PasteAsync, () => !IsRunning && !IsDiscovering);
         CancelCommand = new RelayCommand(Cancel, () => IsRunning);
         CancelDiscoveryCommand = new RelayCommand(CancelDiscovery, () => IsDiscovering);
         ClearCompletedCommand = new RelayCommand(ClearCompleted, () => HasCompletedJobs);
@@ -74,6 +78,8 @@ public sealed class DashboardViewModel : ObservableObject
     public ObservableCollection<QueueItemViewModel> Queue { get; } = [];
 
     public AsyncRelayCommand CompressAllCommand { get; }
+
+    public AsyncRelayCommand PasteCommand { get; }
 
     public RelayCommand CancelCommand { get; }
 
@@ -114,6 +120,7 @@ public sealed class DashboardViewModel : ObservableObject
                 Raise(nameof(DiscoveringLabel));
                 CancelDiscoveryCommand.RaiseCanExecuteChanged();
                 CompressAllCommand.RaiseCanExecuteChanged();
+                PasteCommand.RaiseCanExecuteChanged();
             }
         }
     }
@@ -227,6 +234,26 @@ public sealed class DashboardViewModel : ObservableObject
             IsDiscovering = false;
             DiscoveredCount = 0;
         }
+    }
+
+    /// <summary>
+    /// Reiht Dateilisten und Bilddaten aus der Zwischenablage ein (MP-003). Der Host-Adapter legt
+    /// Bilddaten zuvor als verwaltete temporäre Eingabe ab und meldet deren Pfad; eingereiht wird
+    /// über denselben Weg wie Ablage und Auswahl, also mit voller Prüfung nach Abschnitt 7.1.
+    /// <c>internal</c> statt <c>private</c>, damit Tests den Abschluss abwarten können.
+    /// </summary>
+    internal async Task PasteAsync()
+    {
+        var paths = await clipboardImport
+            .ReadImportPathsAsync(CancellationToken.None)
+            .ConfigureAwait(true);
+        if (paths.Count == 0)
+        {
+            DropHint = Localizer.Instance["Dash_ClipboardEmpty"];
+            return;
+        }
+
+        await AddPathsAsync(paths).ConfigureAwait(true);
     }
 
     private bool AddFile(string path, long size)
@@ -438,5 +465,6 @@ public sealed class DashboardViewModel : ObservableObject
         Raise(nameof(IsRunning));
         RaiseQueueState();
         CancelCommand.RaiseCanExecuteChanged();
+        PasteCommand.RaiseCanExecuteChanged();
     }
 }

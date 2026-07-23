@@ -85,6 +85,12 @@
   <data name="Dash_AddFolder" xml:space="preserve">
     <value>Add folder…</value>
   </data>
+  <data name="Dash_Paste" xml:space="preserve">
+    <value>Paste</value>
+  </data>
+  <data name="Dash_ClipboardEmpty" xml:space="preserve">
+    <value>The clipboard holds no images or files.</value>
+  </data>
   <data name="Dash_Discovering" xml:space="preserve">
     <value>Scanning… {0} found</value>
   </data>

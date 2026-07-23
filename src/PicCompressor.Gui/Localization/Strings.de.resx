@@ -85,6 +85,12 @@
   <data name="Dash_AddFolder" xml:space="preserve">
     <value>Ordner hinzufügen…</value>
   </data>
+  <data name="Dash_Paste" xml:space="preserve">
+    <value>Einfügen</value>
+  </data>
+  <data name="Dash_ClipboardEmpty" xml:space="preserve">
+    <value>Die Zwischenablage enthält keine Bilder oder Dateien.</value>
+  </data>
   <data name="Dash_Discovering" xml:space="preserve">
     <value>Wird durchsucht… {0} gefunden</value>
   </data>

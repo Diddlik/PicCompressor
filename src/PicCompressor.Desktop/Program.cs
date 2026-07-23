@@ -69,6 +69,10 @@ internal static class Program
 
         // Prereleases werden mitgezogen, solange der direkte Kanal in der Alpha-Phase ist;
         // stabile Releases erhalten dieselbe Quelle ohne Prerelease-Flag.
+        // Reste früherer Läufe entfernen, solange noch keine Eingabe dieses Laufs eingereiht ist.
+        var temporaryInputs = new TemporaryInputStore();
+        temporaryInputs.ClearPreviousRuns();
+
         var updateService = new VelopackUpdateService(
             "https://github.com/Diddlik/PicCompressor",
             includePrereleases: true);
@@ -87,7 +91,8 @@ internal static class Program
             new PhysicalInputDiscovery(comparer),
             new DesktopFileActionService(),
             bridge,
-            updateService);
+            updateService,
+            new DesktopClipboardImportService(temporaryInputs));
 
         return AppBuilder.Configure<App>()
             .UsePlatformDetect()

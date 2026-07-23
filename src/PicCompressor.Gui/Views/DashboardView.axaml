@@ -5,6 +5,10 @@
              x:Class="PicCompressor.Gui.Views.DashboardView"
              x:DataType="vm:DashboardViewModel">
 
+  <UserControl.KeyBindings>
+    <KeyBinding Gesture="Ctrl+V" Command="{Binding PasteCommand}" />
+  </UserControl.KeyBindings>
+
   <UserControl.Resources>
 
     <DataTemplate x:Key="QueueCard" x:DataType="vm:DashboardViewModel">
@@ -198,6 +202,10 @@
           <Button Classes="secondary" x:Name="AddFolderButton"
                   Content="{l:Localize Dash_AddFolder}"
                   AutomationProperties.Name="{l:Localize Dash_AddFolder}" />
+          <!-- Zwischenablage: Dateiliste oder Bilddaten (MP-003); Strg+V ist der gleiche Weg. -->
+          <Button Classes="secondary" Content="{l:Localize Dash_Paste}"
+                  Command="{Binding PasteCommand}"
+                  AutomationProperties.Name="{l:Localize Dash_Paste}" />
         </StackPanel>
       </Grid>
 

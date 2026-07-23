@@ -36,7 +36,8 @@ public sealed class MainWindowViewModel : ObservableObject
         IInputDiscovery? inputDiscovery = null,
         IPreviewRenderer? previewRenderer = null,
         IUpdateService? updateService = null,
-        IFileActionService? fileActions = null)
+        IFileActionService? fileActions = null,
+        IClipboardImportService? clipboardImport = null)
     {
         ArgumentNullException.ThrowIfNull(compressionService);
         ArgumentNullException.ThrowIfNull(engineCatalogService);
@@ -50,7 +51,8 @@ public sealed class MainWindowViewModel : ObservableObject
             compressionService,
             inputDiscovery,
             fileActions,
-            previewRenderer is null ? null : new ThumbnailCache(previewRenderer));
+            previewRenderer is null ? null : new ThumbnailCache(previewRenderer),
+            clipboardImport);
         History = new HistoryViewModel(historyService);
         Compare = new CompareViewModel(previewRenderer, Settings);
         Compare.AttachQueue(Dashboard.Queue);

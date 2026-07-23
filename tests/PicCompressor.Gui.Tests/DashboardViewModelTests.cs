@@ -393,6 +393,35 @@ public sealed class DashboardViewModelTests : IDisposable
         Assert.Equal(item.OutputPath, actions.OpenedPath);
     }
 
+    [Fact]
+    public async Task Paste_enqueues_what_the_clipboard_adapter_reports()
+    {
+        var image = TempFiles.CreateImage(directory, "pasted.png");
+        var dashboard = new DashboardViewModel(
+            new SettingsViewModel(), FakeCompressionService.Succeeding(),
+            new FakeInputDiscovery(), new FakeFileActionService(),
+            clipboardImport: new FakeClipboardImportService(image));
+
+        await dashboard.PasteAsync();
+
+        Assert.Equal(image, Assert.Single(dashboard.Queue).InputPath);
+        Assert.Null(dashboard.DropHint);
+    }
+
+    [Fact]
+    public async Task Paste_reports_an_empty_clipboard_instead_of_enqueueing()
+    {
+        var dashboard = new DashboardViewModel(
+            new SettingsViewModel(), FakeCompressionService.Succeeding(),
+            new FakeInputDiscovery(), new FakeFileActionService(),
+            clipboardImport: new FakeClipboardImportService());
+
+        await dashboard.PasteAsync();
+
+        Assert.Empty(dashboard.Queue);
+        Assert.True(dashboard.HasDropHint);
+    }
+
     private DashboardViewModel Create(ICompressionService service) =>
         new(new SettingsViewModel(), service, new FakeInputDiscovery(), new FakeFileActionService());
 
