@@ -35,12 +35,25 @@
           <ScrollViewer MaxHeight="420">
             <ItemsControl ItemsSource="{Binding Queue}"
                           AutomationProperties.Name="{l:Localize Dash_QueueLabel}">
+              <!-- Nur sichtbare Zeilen werden erzeugt; sehr grosse Stapel bleiben bedienbar (MP-002). -->
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                  <VirtualizingStackPanel />
+                </ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:QueueItemViewModel">
                   <Border Classes="row" Margin="0,0,0,8"
                           AutomationProperties.Name="{Binding AccessibleSummary}">
-                    <Grid ColumnDefinitions="*,12,Auto">
-                      <StackPanel Spacing="4">
+                    <Grid ColumnDefinitions="Auto,10,*,12,Auto">
+                      <!-- Begrenztes Vorschaubild; die Liste dekodiert nie ein ganzes Bild (MP-002). -->
+                      <Border Width="40" Height="40" CornerRadius="6" ClipToBounds="True"
+                              VerticalAlignment="Top"
+                              Background="{DynamicResource PcTrack}">
+                        <Image Source="{Binding Thumbnail}" Stretch="UniformToFill" />
+                      </Border>
+
+                      <StackPanel Grid.Column="2" Spacing="4">
                         <StackPanel Orientation="Horizontal" Spacing="8">
                           <TextBlock Text="{Binding FileName}" FontSize="12.5" FontWeight="Medium"
                                      Foreground="{DynamicResource PcText}"
@@ -66,7 +79,7 @@
                                    Foreground="{DynamicResource PcError}" />
                       </StackPanel>
 
-                      <StackPanel Grid.Column="2" MinWidth="96" Spacing="6"
+                      <StackPanel Grid.Column="4" MinWidth="96" Spacing="6"
                                   HorizontalAlignment="Right">
                         <Border Classes="pill" HorizontalAlignment="Right"
                                 Background="{DynamicResource PcPanel}">

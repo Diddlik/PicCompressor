@@ -1,3 +1,4 @@
+using Avalonia.Media.Imaging;
 using PicCompressor.Domain;
 using PicCompressor.Gui.Localization;
 using PicCompressor.Gui.Services;
@@ -7,6 +8,7 @@ namespace PicCompressor.Gui.ViewModels;
 public sealed class QueueItemViewModel : ObservableObject
 {
     private readonly Lock statusGate = new();
+    private readonly ThumbnailCache? thumbnails;
     private JobStatus status = JobStatus.Queued;
     private double? progressPercent;
     private string? warning;
@@ -16,12 +18,17 @@ public sealed class QueueItemViewModel : ObservableObject
     private string? outputPath;
     private bool outputPublished;
 
-    public QueueItemViewModel(string inputPath, string engineId, long inputSizeBytes)
+    public QueueItemViewModel(
+        string inputPath,
+        string engineId,
+        long inputSizeBytes,
+        ThumbnailCache? thumbnails = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(inputPath);
         ArgumentException.ThrowIfNullOrWhiteSpace(engineId);
         ArgumentOutOfRangeException.ThrowIfNegative(inputSizeBytes);
 
+        this.thumbnails = thumbnails;
         InputPath = inputPath;
         FileName = Path.GetFileName(inputPath);
         EngineId = engineId;
@@ -38,6 +45,42 @@ public sealed class QueueItemViewModel : ObservableObject
     public string EngineLabel => EngineIds.DisplayName(EngineId);
 
     public long InputSizeBytes { get; }
+
+    /// <summary>
+    /// Vorschaubild der Zeile oder <c>null</c>. Es wird erst beim ersten Lesen angefordert, also
+    /// erst wenn die virtualisierte Liste die Zeile wirklich erzeugt. Das Bild bleibt im
+    /// begrenzten <see cref="ThumbnailCache"/> und nicht an der Zeile hängen, damit ein sehr
+    /// großer Stapel nicht ebenso viele Bilder im Speicher hält (Abschnitt 19.1, MP-002).
+    /// </summary>
+    public Bitmap? Thumbnail
+    {
+        get
+        {
+            if (thumbnails is null)
+            {
+                return null;
+            }
+
+            if (thumbnails.Peek(InputPath) is Bitmap ready)
+            {
+                return ready;
+            }
+
+            RequestThumbnail();
+            return null;
+        }
+    }
+
+    private async void RequestThumbnail()
+    {
+        // Nur ein Treffer meldet sich zurück; ein Fehlschlag lässt die Zeile ohne Bild und löst
+        // damit auch keine erneute Anforderung aus.
+        if (await thumbnails!.RequestAsync(InputPath, AlphaBackground).ConfigureAwait(true)
+            is not null)
+        {
+            Raise(nameof(Thumbnail));
+        }
+    }
 
     /// <summary>
     /// Effektiver Alpha-Hintergrund des Laufs. Die Vorschau des Originals muss transparente

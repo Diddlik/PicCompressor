@@ -45,7 +45,12 @@ public sealed class MainWindowViewModel : ObservableObject
         this.engineCatalogService = engineCatalogService;
 
         Settings = new SettingsViewModel(settingsStore, updateService);
-        Dashboard = new DashboardViewModel(Settings, compressionService, inputDiscovery, fileActions);
+        Dashboard = new DashboardViewModel(
+            Settings,
+            compressionService,
+            inputDiscovery,
+            fileActions,
+            previewRenderer is null ? null : new ThumbnailCache(previewRenderer));
         History = new HistoryViewModel(historyService);
         Compare = new CompareViewModel(previewRenderer, Settings);
         Compare.AttachQueue(Dashboard.Queue);
