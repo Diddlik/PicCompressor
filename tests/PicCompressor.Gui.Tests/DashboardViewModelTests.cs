@@ -422,6 +422,40 @@ public sealed class DashboardViewModelTests : IDisposable
         Assert.True(dashboard.HasDropHint);
     }
 
+    [Fact]
+    public async Task A_finished_batch_notifies_with_the_result_counts()
+    {
+        var notifications = new FakeNotificationService();
+        var dashboard = new DashboardViewModel(
+            new SettingsViewModel(), FakeCompressionService.Succeeding(),
+            new FakeInputDiscovery(), new FakeFileActionService(),
+            notifications: notifications);
+        await dashboard.AddPathsAsync([TempFiles.CreateImage(directory, "a.jpg")]);
+
+        await RunAsync(dashboard);
+
+        Assert.Equal(1, notifications.Count);
+        Assert.False(notifications.WasError);
+        Assert.Contains("1", notifications.Body);
+    }
+
+    [Fact]
+    public async Task A_failed_job_marks_the_notification_as_an_error()
+    {
+        var notifications = new FakeNotificationService();
+        var dashboard = new DashboardViewModel(
+            new SettingsViewModel(),
+            FakeCompressionService.Failing(CompressionErrorCategory.EngineFailed),
+            new FakeInputDiscovery(), new FakeFileActionService(),
+            notifications: notifications);
+        await dashboard.AddPathsAsync([TempFiles.CreateImage(directory, "a.jpg")]);
+
+        await RunAsync(dashboard);
+
+        Assert.Equal(1, notifications.Count);
+        Assert.True(notifications.WasError);
+    }
+
     private DashboardViewModel Create(ICompressionService service) =>
         new(new SettingsViewModel(), service, new FakeInputDiscovery(), new FakeFileActionService());
 
