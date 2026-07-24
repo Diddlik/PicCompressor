@@ -105,11 +105,27 @@ internal static class Program
     }
 
     /// <summary>
-    /// Filtert die Startargumente auf vorhandene Datei- und Ordnerpfade. Flags und veraltete Pfade
-    /// fallen hier heraus; die inhaltliche Prüfung (Format, Größe) folgt beim Einreihen nach
-    /// Abschnitt 7.1. VeloPack-Hook-Argumente sind zu diesem Zeitpunkt bereits von
+    /// Ermittelt die beim Start einzureihenden Pfade aus den Argumenten: direkte Datei-/Ordnerpfade
+    /// („Öffnen mit“) und die Pfade eines versionierten Deep-Links (<c>piccompressor://…</c>).
+    /// Nur vorhandene Pfade bleiben; die inhaltliche Prüfung (Format, Größe) folgt beim Einreihen
+    /// nach Abschnitt 7.1. VeloPack-Hook-Argumente sind zu diesem Zeitpunkt bereits von
     /// <c>VelopackApp.Build().Run()</c> verarbeitet.
     /// </summary>
-    private static IReadOnlyList<string> InitialInputsFrom(string[] args) =>
-        [.. args.Where(arg => File.Exists(arg) || Directory.Exists(arg))];
+    private static IReadOnlyList<string> InitialInputsFrom(string[] args)
+    {
+        var candidates = new List<string>();
+        foreach (var arg in args)
+        {
+            if (DeepLink.TryParseImport(arg, out var linked))
+            {
+                candidates.AddRange(linked);
+            }
+            else
+            {
+                candidates.Add(arg);
+            }
+        }
+
+        return [.. candidates.Where(path => File.Exists(path) || Directory.Exists(path))];
+    }
 }
