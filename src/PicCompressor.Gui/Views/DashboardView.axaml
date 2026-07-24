@@ -11,32 +11,38 @@
 
   <UserControl.Resources>
 
+    <!-- ===================== Queue card ===================== -->
     <DataTemplate x:Key="QueueCard" x:DataType="vm:DashboardViewModel">
-      <Border Classes="card" MinHeight="220">
+      <Border Classes="card" MinHeight="240" Margin="0,0,6,6">
         <DockPanel>
-          <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="0,0,0,12">
-            <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-              <TextBlock Classes="h2" Text="{l:Localize Dash_Queue}" />
-              <TextBlock Classes="hint" VerticalAlignment="Center" Text="{Binding QueueCountLabel}" />
+          <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="0,0,0,16">
+            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+              <TextBlock Classes="cardTitle" FontSize="19" Text="{l:Localize Dash_Queue}" />
+              <TextBlock Classes="captionText" FontSize="15" FontWeight="SemiBold"
+                         VerticalAlignment="Center" Text="{Binding QueueCountLabel}" />
             </StackPanel>
-            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
-              <Button Classes="secondary" Content="{l:Localize Dash_RetryFailed}"
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+              <Button Classes="ghost" Height="32" Padding="13,0" Content="{l:Localize Dash_RetryFailed}"
                       Command="{Binding RetryFailedCommand}"
                       AutomationProperties.Name="{l:Localize Dash_RetryFailed}" />
-              <Button Classes="secondary" Content="{l:Localize Dash_ClearCompleted}"
+              <Button Classes="ghost" Height="32" Padding="13,0" Content="{l:Localize Dash_ClearCompleted}"
                       Command="{Binding ClearCompletedCommand}"
                       AutomationProperties.Name="{l:Localize Dash_ClearCompleted}" />
-              <Button Classes="secondary" Content="{l:Localize Dash_RemoveAll}"
+              <Button Classes="ghost coral" Height="32" Padding="13,0" Content="{l:Localize Dash_RemoveAll}"
                       Command="{Binding RemoveAllCommand}"
                       AutomationProperties.Name="{l:Localize Dash_RemoveAll}" />
             </StackPanel>
           </Grid>
 
-          <TextBlock DockPanel.Dock="Top" Classes="hint" Margin="0,0,0,8"
-                     IsVisible="{Binding IsQueueEmpty}"
-                     Text="{l:Localize Dash_QueueEmpty}" />
+          <!-- Leerzustand (UI-Doc 03). -->
+          <StackPanel DockPanel.Dock="Top" Spacing="8" Margin="0,20" HorizontalAlignment="Center"
+                      IsVisible="{Binding IsQueueEmpty}">
+            <TextBlock Text="{l:Localize Dash_QueueEmptyGlyph}" FontSize="40" HorizontalAlignment="Center" />
+            <TextBlock Classes="muted" FontWeight="SemiBold" TextAlignment="Center"
+                       Text="{l:Localize Dash_QueueEmpty}" />
+          </StackPanel>
 
-          <ScrollViewer MaxHeight="420">
+          <ScrollViewer MaxHeight="440">
             <ItemsControl ItemsSource="{Binding Queue}"
                           AutomationProperties.Name="{l:Localize Dash_QueueLabel}">
               <!-- Nur sichtbare Zeilen werden erzeugt; sehr grosse Stapel bleiben bedienbar (MP-002). -->
@@ -47,48 +53,47 @@
               </ItemsControl.ItemsPanel>
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:QueueItemViewModel">
-                  <Border Classes="row" Margin="0,0,0,8"
+                  <Border Classes="insetRow" Margin="0,0,0,10"
                           AutomationProperties.Name="{Binding AccessibleSummary}">
-                    <Grid ColumnDefinitions="Auto,10,*,12,Auto">
+                    <Grid ColumnDefinitions="Auto,14,*,12,Auto">
                       <!-- Begrenztes Vorschaubild; die Liste dekodiert nie ein ganzes Bild (MP-002). -->
-                      <Border Width="40" Height="40" CornerRadius="6" ClipToBounds="True"
+                      <Border Width="38" Height="38" CornerRadius="11" ClipToBounds="True"
                               VerticalAlignment="Top"
-                              Background="{DynamicResource PcTrack}">
+                              Background="{DynamicResource VioletSoftBrush}"
+                              BorderBrush="{DynamicResource InkBrush}" BorderThickness="2">
                         <Image Source="{Binding Thumbnail}" Stretch="UniformToFill" />
                       </Border>
 
                       <StackPanel Grid.Column="2" Spacing="4">
                         <StackPanel Orientation="Horizontal" Spacing="8">
-                          <TextBlock Text="{Binding FileName}" FontSize="12.5" FontWeight="Medium"
-                                     Foreground="{DynamicResource PcText}"
+                          <TextBlock Text="{Binding FileName}" FontSize="14" FontWeight="SemiBold"
+                                     Foreground="{DynamicResource InkBrush}"
                                      TextTrimming="CharacterEllipsis"
                                      ToolTip.Tip="{Binding InputPath}" />
-                          <Border Classes="pill" Background="{DynamicResource PcAccentSoft}">
-                            <TextBlock Text="{Binding EngineLabel}" FontSize="10" FontWeight="SemiBold"
-                                       Foreground="{DynamicResource PcAccent}" />
+                          <Border Classes="badge violet" Padding="8,1">
+                            <TextBlock Text="{Binding EngineLabel}" FontSize="10.5" FontWeight="SemiBold" />
                           </Border>
                         </StackPanel>
-                        <TextBlock Classes="mono" Text="{Binding SizeSummary}" />
+                        <TextBlock Classes="monoNum" FontSize="12" Foreground="{DynamicResource MutedTextBrush}"
+                                   Text="{Binding SizeSummary}" />
                         <ProgressBar Height="5" Minimum="0" Maximum="100"
                                      Value="{Binding ProgressPercent, FallbackValue=0}"
                                      IsIndeterminate="{Binding IsIndeterminate}"
                                      IsVisible="{Binding !IsTerminal}"
-                                     Foreground="{DynamicResource PcAccent}"
-                                     Background="{DynamicResource PcTrack}" />
-                        <TextBlock Classes="hint" Text="{Binding Warning}"
+                                     Foreground="{DynamicResource InkBrush}"
+                                     Background="{DynamicResource HairlineBrush}" />
+                        <TextBlock Classes="captionText" Text="{Binding Warning}"
                                    IsVisible="{Binding HasWarning}" TextWrapping="Wrap"
-                                   Foreground="{DynamicResource PcWarn}" />
-                        <TextBlock Classes="hint" Text="{Binding ErrorSummary}"
+                                   Foreground="{DynamicResource CoralTextBrush}" />
+                        <TextBlock Classes="captionText" Text="{Binding ErrorSummary}"
                                    IsVisible="{Binding HasError}" TextWrapping="Wrap"
-                                   Foreground="{DynamicResource PcError}" />
+                                   Foreground="{DynamicResource CoralTextBrush}" />
                       </StackPanel>
 
                       <StackPanel Grid.Column="4" MinWidth="96" Spacing="6"
                                   HorizontalAlignment="Right">
-                        <Border Classes="pill" HorizontalAlignment="Right"
-                                Background="{DynamicResource PcPanel}">
-                          <TextBlock Text="{Binding StatusLabel}" FontSize="10.5"
-                                     FontWeight="SemiBold" Foreground="{DynamicResource PcDim}" />
+                        <Border Classes="badge" HorizontalAlignment="Right" Padding="12,5">
+                          <TextBlock Text="{Binding StatusLabel}" FontSize="11.5" FontWeight="Bold" />
                         </Border>
                         <!-- Pro-Datei-Aktionen (MP-002); die Befehle liegen am DashboardViewModel. -->
                         <StackPanel Orientation="Horizontal" Spacing="4" HorizontalAlignment="Right">
@@ -130,13 +135,14 @@
       </Border>
     </DataTemplate>
 
+    <!-- ===================== Quick settings card ===================== -->
     <DataTemplate x:Key="QuickSettingsCard" x:DataType="vm:DashboardViewModel">
-      <Border Classes="card">
+      <Border Classes="card" Margin="0,0,6,6">
         <StackPanel Spacing="14">
-          <TextBlock Classes="h2" Text="{l:Localize Dash_QuickSettings}" />
+          <TextBlock Classes="cardTitle" FontSize="19" Text="{l:Localize Dash_QuickSettings}" />
 
-          <StackPanel Spacing="7" DataContext="{Binding Settings}">
-            <TextBlock Classes="caps" Text="{l:Localize Common_Engine}" />
+          <StackPanel Spacing="8" DataContext="{Binding Settings}">
+            <TextBlock Classes="capsLabel" Text="{l:Localize Common_Engine}" />
             <Border Classes="segmentHost">
               <UniformGrid Columns="2">
                 <RadioButton Classes="segment" GroupName="QuickEngine"
@@ -149,37 +155,40 @@
                              AutomationProperties.Name="{l:Localize Engine_Guetzli}" />
               </UniformGrid>
             </Border>
-            <TextBlock Classes="hint" Text="{Binding EngineDescription}" />
-            <TextBlock Classes="hint" Foreground="{DynamicResource PcError}" TextWrapping="Wrap"
-                       Text="{Binding EngineAvailabilityText}"
-                       IsVisible="{Binding !IsSelectedEngineAvailable}" />
           </StackPanel>
 
-          <StackPanel Spacing="6" DataContext="{Binding Settings}">
-            <Grid ColumnDefinitions="*,Auto">
-              <TextBlock Text="{l:Localize Common_Quality}" FontSize="12.5" FontWeight="Medium"
-                         Foreground="{DynamicResource PcText}" />
-              <TextBlock Grid.Column="1" Classes="mono" FontSize="12.5" FontWeight="SemiBold"
-                         Foreground="{DynamicResource PcAccent}" Text="{Binding Quality}" />
+          <StackPanel Spacing="8" DataContext="{Binding Settings}">
+            <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
+              <TextBlock Text="{l:Localize Common_Quality}" Classes="bodyText" FontWeight="SemiBold"
+                         VerticalAlignment="Center" />
+              <Border Grid.Column="1" Classes="badge lime" Padding="12,1">
+                <TextBlock Classes="monoNum" FontSize="20" FontWeight="Bold" Text="{Binding Quality}" />
+              </Border>
             </Grid>
             <Slider Minimum="{Binding MinQuality}" Maximum="100" TickFrequency="1"
                     IsSnapToTickEnabled="True" Value="{Binding Quality}"
                     AutomationProperties.Name="{l:Localize Common_Quality}" />
-            <TextBlock Classes="hint" Foreground="{DynamicResource PcWarn}"
+            <TextBlock Classes="captionText" Text="{Binding EngineDescription}" />
+            <TextBlock Classes="captionText" Foreground="{DynamicResource CoralTextBrush}"
                        IsVisible="{Binding IsGuetzli}" TextWrapping="Wrap"
                        Text="{l:Localize Engine_GuetzliFloor}" />
+            <TextBlock Classes="captionText" Foreground="{DynamicResource CoralTextBrush}" TextWrapping="Wrap"
+                       Text="{Binding EngineAvailabilityText}"
+                       IsVisible="{Binding !IsSelectedEngineAvailable}" />
           </StackPanel>
 
-          <Border Height="1" Background="{DynamicResource PcBorderSoft}" />
-
-          <Button Classes="primary" Content="{l:Localize Dash_CompressAll}"
+          <Button Classes="cta" Content="{l:Localize Dash_CompressAll}" Height="52" CornerRadius="16"
                   Command="{Binding CompressAllCommand}"
                   HorizontalAlignment="Stretch"
                   AutomationProperties.Name="{l:Localize Dash_CompressAll}" />
-          <Button Classes="secondary" Content="{l:Localize Dash_Cancel}"
+          <Button Classes="ghost violet" Content="{l:Localize Dash_CompareBeforeAfter}" Height="44" CornerRadius="14"
+                  HorizontalAlignment="Stretch"
+                  Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ShowCompareCommand}"
+                  AutomationProperties.Name="{l:Localize Dash_CompareBeforeAfter}" />
+          <Button Classes="ghost coral" Content="{l:Localize Dash_Cancel}"
                   Command="{Binding CancelCommand}"
                   IsVisible="{Binding IsRunning}"
-                  HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                  HorizontalAlignment="Stretch"
                   AutomationProperties.Name="{l:Localize Dash_Cancel}" />
         </StackPanel>
       </Border>
@@ -187,78 +196,100 @@
 
   </UserControl.Resources>
 
-  <ScrollViewer Padding="20">
-    <StackPanel Spacing="15">
+  <!-- Rechts/unten Luft lassen, damit der harte Schatten der Karten nicht abgeschnitten wird
+       (Bildlaufleiste + Offset). -->
+  <ScrollViewer Padding="2,2,22,22">
+    <StackPanel Spacing="16">
 
-      <Grid ColumnDefinitions="*,Auto">
-        <StackPanel Spacing="2">
-          <TextBlock Classes="h1" Text="{l:Localize Dash_Title}" />
-          <TextBlock Classes="sub" Text="{l:Localize Dash_Subtitle}" />
-        </StackPanel>
-        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Bottom">
-          <Button Classes="secondary" x:Name="AddFilesButton"
-                  Content="{l:Localize Dash_AddFiles}"
-                  AutomationProperties.Name="{l:Localize Dash_AddFiles}" />
-          <Button Classes="secondary" x:Name="AddFolderButton"
-                  Content="{l:Localize Dash_AddFolder}"
-                  AutomationProperties.Name="{l:Localize Dash_AddFolder}" />
-          <!-- Zwischenablage: Dateiliste oder Bilddaten (MP-003); Strg+V ist der gleiche Weg. -->
-          <Button Classes="secondary" Content="{l:Localize Dash_Paste}"
-                  Command="{Binding PasteCommand}"
-                  AutomationProperties.Name="{l:Localize Dash_Paste}" />
-        </StackPanel>
-      </Grid>
-
-      <!-- Ablagebereich; die Schaltfläche darin ist der gleichwertige Tastaturweg. -->
-      <Border x:Name="DropZone" Background="{DynamicResource PcPanel}"
-              BorderBrush="{DynamicResource PcBorder}" BorderThickness="1.5"
-              CornerRadius="12" Padding="24" DragDrop.AllowDrop="True"
+      <!-- Drop hero — die ganze Karte ist Ablageziel; die Schaltfläche ist der Tastaturweg. -->
+      <Border x:Name="DropZone" Background="{DynamicResource PaperBrush}"
+              BorderBrush="{DynamicResource InkBrush}" BorderThickness="2.5"
+              CornerRadius="28" Padding="34,28" DragDrop.AllowDrop="True"
+              BoxShadow="5 6 0 0 #E617140E"
               AutomationProperties.Name="{l:Localize Dash_DropZoneName}">
-        <StackPanel Spacing="9" HorizontalAlignment="Center">
-          <Path HorizontalAlignment="Center"
-                Data="M17 3 V19 M11 13 l6 6 l6 -6 M4 22 v5 a3 3 0 0 0 3 3 h20 a3 3 0 0 0 3 -3 v-5"
-                Stroke="{DynamicResource PcAccent}" StrokeThickness="1.7"
-                StrokeLineCap="Round" StrokeJoin="Round" />
-          <TextBlock HorizontalAlignment="Center" FontSize="14.5" FontWeight="SemiBold"
-                     TextAlignment="Center" TextWrapping="Wrap"
-                     Foreground="{DynamicResource PcText}"
-                     Text="{l:Localize Dash_DropHere}" />
-          <TextBlock Classes="hint" HorizontalAlignment="Center" TextAlignment="Center"
-                     Text="{l:Localize Dash_DropHint}" />
-          <CheckBox HorizontalAlignment="Center" Content="{l:Localize Dash_Recurse}"
-                    Foreground="{DynamicResource PcDim}" FontSize="12"
-                    IsChecked="{Binding RecurseFolders}"
-                    AutomationProperties.Name="{l:Localize Dash_Recurse}" />
-          <Button Classes="primary" x:Name="BrowseButton" HorizontalAlignment="Center"
-                  Content="{l:Localize Dash_Browse}"
-                  AutomationProperties.Name="{l:Localize Dash_Browse}" />
-          <TextBlock Classes="hint" HorizontalAlignment="Center" TextAlignment="Center"
-                     Foreground="{DynamicResource PcWarn}"
-                     Text="{Binding DropHint}" IsVisible="{Binding HasDropHint}" />
-          <!-- Laufende Ordner-Discovery: Fortschritt und Abbruch (MP-002). -->
-          <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center"
-                      IsVisible="{Binding IsDiscovering}">
-            <ProgressBar IsIndeterminate="True" Width="120" VerticalAlignment="Center" />
-            <TextBlock Classes="hint" VerticalAlignment="Center"
-                       Text="{Binding DiscoveringLabel}" />
-            <Button Classes="secondary" Content="{l:Localize Dash_CancelDiscovery}"
-                    Command="{Binding CancelDiscoveryCommand}"
-                    AutomationProperties.Name="{l:Localize Dash_CancelDiscovery}" />
+        <StackPanel Orientation="Horizontal" Spacing="26">
+          <Border Width="82" Height="82" CornerRadius="22" VerticalAlignment="Top"
+                  Background="{DynamicResource LimeBrush}"
+                  BorderBrush="{DynamicResource InkBrush}" BorderThickness="2.5"
+                  RenderTransform="rotate(-4deg)">
+            <Path HorizontalAlignment="Center" VerticalAlignment="Center" Stretch="None"
+                  Data="M20 6 V26 M12 19 l8 8 l8 -8 M8 34 h24"
+                  Stroke="{DynamicResource InkBrush}" StrokeThickness="2.6"
+                  StrokeLineCap="Round" StrokeJoin="Round" />
+          </Border>
+          <StackPanel Spacing="0" VerticalAlignment="Center" HorizontalAlignment="Left">
+            <TextBlock Classes="heroTitle" FontSize="32" Text="{l:Localize Dash_DropHere}" />
+            <TextBlock Classes="muted" Margin="0,8,0,0" Text="{l:Localize Dash_DropHint}" />
+            <StackPanel Orientation="Horizontal" Spacing="14" Margin="0,16,0,0">
+              <Button Classes="cta" x:Name="BrowseButton" Content="{l:Localize Dash_Browse}"
+                      AutomationProperties.Name="{l:Localize Dash_Browse}" />
+              <Button Classes="ghost violet" x:Name="AddFolderButton" Content="{l:Localize Dash_AddFolder}"
+                      AutomationProperties.Name="{l:Localize Dash_AddFolder}" />
+              <Button Classes="ghost" Content="{l:Localize Dash_Paste}"
+                      Command="{Binding PasteCommand}"
+                      AutomationProperties.Name="{l:Localize Dash_Paste}" />
+              <StackPanel Orientation="Horizontal" Spacing="9" VerticalAlignment="Center">
+                <ToggleButton Classes="switch" IsChecked="{Binding RecurseFolders}"
+                              AutomationProperties.Name="{l:Localize Dash_Recurse}" />
+                <TextBlock Classes="bodyText" FontWeight="SemiBold" VerticalAlignment="Center"
+                           Text="{l:Localize Dash_Recurse}" />
+              </StackPanel>
+            </StackPanel>
+            <TextBlock Classes="captionText" Foreground="{DynamicResource CoralTextBrush}" Margin="0,10,0,0"
+                       Text="{Binding DropHint}" IsVisible="{Binding HasDropHint}" />
+            <!-- Laufende Ordner-Discovery: Fortschritt und Abbruch (MP-002). -->
+            <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,10,0,0"
+                        IsVisible="{Binding IsDiscovering}">
+              <ProgressBar IsIndeterminate="True" Width="120" VerticalAlignment="Center" />
+              <TextBlock Classes="captionText" VerticalAlignment="Center"
+                         Text="{Binding DiscoveringLabel}" />
+              <Button Classes="ghost" Height="32" Padding="13,0" Content="{l:Localize Dash_CancelDiscovery}"
+                      Command="{Binding CancelDiscoveryCommand}"
+                      AutomationProperties.Name="{l:Localize Dash_CancelDiscovery}" />
+            </StackPanel>
           </StackPanel>
         </StackPanel>
       </Border>
 
+      <!-- Statistik-Kacheln (aus dem Verlauf des Fensters). -->
+      <Grid ColumnDefinitions="*,16,*,16,*">
+        <Border Grid.Column="0" Classes="tile" Background="{DynamicResource MintTileBrush}">
+          <StackPanel Spacing="6">
+            <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="#4F6B1F"
+                       Text="{l:Localize Stat_SavedAllTime}" />
+            <TextBlock Classes="bigStat"
+                       Text="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).History.TotalSavedText}" />
+          </StackPanel>
+        </Border>
+        <Border Grid.Column="2" Classes="tile" Background="{DynamicResource VioletSoftBrush}">
+          <StackPanel Spacing="6">
+            <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="#5B4BC0"
+                       Text="{l:Localize Stat_FilesCompressed}" />
+            <TextBlock Classes="bigStat"
+                       Text="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).History.FilesCompressedText}" />
+          </StackPanel>
+        </Border>
+        <Border Grid.Column="4" Classes="tile" Background="{DynamicResource CoralSoftBrush}">
+          <StackPanel Spacing="6">
+            <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="#C0492C"
+                       Text="{l:Localize Stat_BestSaving}" />
+            <TextBlock Classes="bigStat"
+                       Text="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).History.BestSavingText}" />
+          </StackPanel>
+        </Border>
+      </Grid>
+
       <!-- Schmale Fenster stapeln Warteschlange und Schnelleinstellungen. -->
       <Panel>
-        <Grid x:Name="WideLayout" ColumnDefinitions="*,14,264"
+        <Grid x:Name="WideLayout" ColumnDefinitions="*,16,320"
               IsVisible="{Binding !$parent[Window].((vm:MainWindowViewModel)DataContext).IsNarrow}">
-          <ContentControl Grid.Column="0" Content="{Binding}"
+          <ContentControl Grid.Column="0" Content="{Binding}" ClipToBounds="False"
                           ContentTemplate="{StaticResource QueueCard}" />
-          <ContentControl Grid.Column="2" Content="{Binding}" VerticalAlignment="Top"
+          <ContentControl Grid.Column="2" Content="{Binding}" VerticalAlignment="Top" ClipToBounds="False"
                           ContentTemplate="{StaticResource QuickSettingsCard}" />
         </Grid>
 
-        <StackPanel x:Name="StackedLayout" Spacing="14"
+        <StackPanel x:Name="StackedLayout" Spacing="16"
                     IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsNarrow}">
           <ContentControl Content="{Binding}" ContentTemplate="{StaticResource QuickSettingsCard}" />
           <ContentControl Content="{Binding}" ContentTemplate="{StaticResource QueueCard}" />

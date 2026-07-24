@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Reflection;
 using PicCompressor.Gui.Localization;
 
@@ -14,15 +15,43 @@ public sealed record CreditEntry(string Name, string Role, string License);
 /// </summary>
 public sealed class AboutViewModel : ObservableObject
 {
-    public AboutViewModel()
+    public AboutViewModel(Action? requestClose = null)
     {
         Version = ResolveInformationalVersion();
+        // Eigennamen/Bezeichner bleiben unübersetzt und plattformidentisch (Abschnitt 4.3).
+        OpenRepositoryCommand = new RelayCommand(OpenRepository);
+        CloseCommand = new RelayCommand(() => requestClose?.Invoke());
     }
 
     /// <summary>Produktversion aus der Assembly; im Entwicklungslauf ein Platzhalter.</summary>
     public string Version { get; }
 
     public string VersionLabel => Localizer.Instance.Format("About_Version", Version);
+
+    /// <summary>Eigenname — unübersetzt (Abschnitt 4.3).</summary>
+    public string Author => "Diddlik";
+
+    /// <summary>Stabiler Lizenzbezeichner — unübersetzt.</summary>
+    public string License => "MIT";
+
+    public string RepositoryUrl => "https://github.com/Diddlik/PicCompressor";
+
+    public RelayCommand OpenRepositoryCommand { get; }
+
+    public RelayCommand CloseCommand { get; }
+
+    private void OpenRepository()
+    {
+        // Standard-Browser über die Shell-Zuordnung öffnen, ohne Interpreter-Aufruf.
+        try
+        {
+            Process.Start(new ProcessStartInfo(RepositoryUrl) { UseShellExecute = true });
+        }
+        catch (Exception)
+        {
+            // Ein fehlender Browser darf den Dialog nicht abstürzen lassen.
+        }
+    }
 
     /// <summary>
     /// Gebündelte Komponenten. Native Encoder und ihre Abhängigkeiten stehen zuerst, dann die

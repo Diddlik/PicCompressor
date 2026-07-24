@@ -460,6 +460,14 @@ public sealed class CompareViewModel : ObservableObject
         ? ByteFormat.DescribeSavings(item.InputSizeBytes, size)
         : null;
 
+    /// <summary>Kompakte Grössendelta-Zeile der Infoleiste (UI-Doc 06); Pfeil bleibt aus dem XAML.</summary>
+    public string? DeltaText => BeforeSize is { } before && AfterSize is { } after
+        ? $"{before} → {after} · {SavingsText}"
+        : null;
+
+    /// <summary>Engine des ausgewählten Ergebnisses für die Infoleiste.</summary>
+    public string? EngineText => Selected?.EngineLabel;
+
     /// <summary>Maße des aufrecht gedrehten Originals; Ausgabe behält sie (kein Resize, Abschnitt 3.2).</summary>
     public string? Dimensions => sourceWidth > 0 && sourceHeight > 0
         ? string.Format(
@@ -478,6 +486,8 @@ public sealed class CompareViewModel : ObservableObject
         Raise(nameof(BeforeSize));
         Raise(nameof(AfterSize));
         Raise(nameof(SavingsText));
+        Raise(nameof(DeltaText));
+        Raise(nameof(EngineText));
         Raise(nameof(Dimensions));
     }
 

@@ -5,27 +5,26 @@
              x:Class="PicCompressor.Gui.Views.CompareView"
              x:DataType="vm:CompareViewModel">
 
-  <!-- Raster statt gestapelter Liste: die Vorschau bekommt die Sternzeile und damit allen
-       Platz, den Kopfzeile, Bedienung und Ergebnisliste übrig lassen. Eine feste Höhe ließe
-       das Bild unabhängig von der Fenstergröße klein. Der Abstand steckt in den Rändern der
-       Kinder, nicht in RowSpacing, damit ausgeblendete Zeilen keine Lücke hinterlassen. -->
-  <Grid Margin="20" RowDefinitions="Auto,Auto,*,Auto,Auto">
+  <!-- Raster: die Vorschau bekommt die Sternzeile und damit allen Platz, den Kopfzeile,
+       Bedienung und Ergebnisliste übrig lassen. Abstände in den Rändern der Kinder, damit
+       ausgeblendete Zeilen keine Lücke hinterlassen. -->
+  <Grid Margin="0,0,4,0" RowDefinitions="Auto,Auto,*,Auto,Auto">
 
-    <StackPanel Grid.Row="0" Spacing="2" Margin="0,0,0,14">
-      <TextBlock Classes="h1" Text="{l:Localize Cmp_Title}" />
-      <TextBlock Classes="sub" Text="{l:Localize Cmp_Subtitle}" />
+    <StackPanel Grid.Row="0" Spacing="4" Margin="2,2,0,14">
+      <TextBlock Classes="pageTitle" Text="{l:Localize Cmp_Title}" />
+      <TextBlock Classes="muted" FontSize="13.5" Text="{l:Localize Cmp_Subtitle}" />
     </StackPanel>
 
     <!-- Ohne validiertes, veröffentlichtes Ergebnis gibt es nichts zu vergleichen. -->
-    <Border Grid.Row="1" Classes="card" Margin="0,0,0,14"
-            IsVisible="{Binding !HasCandidates}">
-      <TextBlock Classes="sub" Text="{l:Localize Cmp_NoCandidates}" />
+    <Border Grid.Row="1" Classes="card" Margin="2,0,2,14" IsVisible="{Binding !HasCandidates}">
+      <TextBlock Classes="muted" Text="{l:Localize Cmp_NoCandidates}" />
     </Border>
 
-    <Border Grid.Row="2" MinHeight="180" Margin="0,0,0,14" CornerRadius="12"
+    <Border Grid.Row="2" MinHeight="280" Margin="2,0,2,14" CornerRadius="24"
             ClipToBounds="True" IsVisible="{Binding HasSelection}"
-            BorderBrush="{DynamicResource PcBorder}" BorderThickness="1"
-            Background="{DynamicResource PcPanel2}">
+            BorderBrush="{DynamicResource InkBrush}" BorderThickness="2.5"
+            BoxShadow="5 6 0 0 #E617140E"
+            Background="{DynamicResource StageBrush}">
       <!-- Fokussierbar, damit Schwenken auch ohne Zeigegerät möglich ist. -->
       <Grid x:Name="CompareSurface" Focusable="True"
             AutomationProperties.Name="{l:Localize Cmp_PreviewName}">
@@ -33,121 +32,133 @@
         <Image x:Name="CompressedImage" Source="{Binding CompressedPreview}"
                Stretch="Uniform" RenderTransformOrigin="50%,50%" />
 
-        <!-- Obere Schicht: deckt die volle Fläche wie die untere, wird aber vom Regler
-             beschnitten. Das Beschneiden sitzt am Rahmen, nicht am Bild, damit die
-             Teilerkante beim Zoomen an ihrer Stelle bleibt. Dieselbe Transformation auf
-             beiden Seiten hält die Ansicht synchron. -->
         <Panel x:Name="OriginalPane">
           <Image x:Name="OriginalImage" Source="{Binding OriginalPreview}"
                  Stretch="Uniform" RenderTransformOrigin="50%,50%" />
         </Panel>
 
-        <!-- Trennkante zwischen den Schichten. Sie liegt über beliebigen Bildinhalten,
-             deshalb eine feste helle Linie mit dunklem Schein statt einer Themenfarbe:
-             nur so bleibt sie auf hellen wie dunklen Bildern sichtbar. Sie nimmt keine
-             Zeigereingaben an, damit das Schwenken darunter weiterläuft. -->
+        <!-- Teilerkante mit Lime-Griff (Prototype). Nimmt keine Zeigereingaben an, damit das
+             Schwenken darunter weiterläuft; die Position setzt der Code-Behind über den Rand. -->
         <Border x:Name="DividerLine" Width="3" HorizontalAlignment="Left"
                 IsHitTestVisible="False" IsVisible="{Binding HasPreview}"
-                Background="#F2FFFFFF" BoxShadow="0 0 5 0 #A6000000" />
+                Background="#F2FFFFFF" BoxShadow="0 0 5 0 #A6000000">
+          <Border Width="44" Height="44" CornerRadius="999" HorizontalAlignment="Center"
+                  VerticalAlignment="Center" Background="{DynamicResource LimeBrush}"
+                  BorderBrush="{DynamicResource InkBrush}" BorderThickness="3"
+                  BoxShadow="2 3 0 0 #FF17140E">
+            <Path Width="18" Height="18" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"
+                  Stroke="{DynamicResource InkBrush}" StrokeThickness="2.6" StrokeLineCap="Round" StrokeJoin="Round"
+                  Data="M9 6 L4 12 L9 18 M15 6 L20 12 L15 18" />
+          </Border>
+        </Border>
 
-        <TextBlock Classes="hint" HorizontalAlignment="Center" VerticalAlignment="Center"
+        <TextBlock Classes="captionText" HorizontalAlignment="Center" VerticalAlignment="Center"
                    TextAlignment="Center" IsVisible="{Binding IsPreviewLoading}"
                    Text="{l:Localize Cmp_PreviewPending}" />
-        <TextBlock Classes="hint" HorizontalAlignment="Center" VerticalAlignment="Center"
+        <TextBlock Classes="captionText" HorizontalAlignment="Center" VerticalAlignment="Center"
                    TextAlignment="Center" IsVisible="{Binding HasPreviewError}"
                    Text="{Binding PreviewError}" />
 
-        <Border Classes="pill" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="12"
-                Background="{DynamicResource PcPanel}">
-          <TextBlock Classes="mono" Text="{l:Localize Cmp_Original}" />
+        <Border Classes="badge" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="14"
+                Background="{DynamicResource PaperBrush}">
+          <TextBlock Text="{l:Localize Cmp_Original}" FontWeight="Bold" />
         </Border>
-        <Border Classes="pill" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="12"
-                Background="{DynamicResource PcAccent}">
-          <TextBlock Classes="mono" Foreground="#FFFFFF" Text="{l:Localize Cmp_Compressed}" />
+        <Border Classes="badge lime" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="14">
+          <TextBlock Text="{l:Localize Cmp_Compressed}" FontWeight="Bold" />
         </Border>
       </Grid>
     </Border>
 
-    <StackPanel Grid.Row="3" Spacing="14" Margin="0,0,0,14"
-                IsVisible="{Binding HasSelection}">
+    <StackPanel Grid.Row="3" Spacing="14" Margin="2,0,2,14" IsVisible="{Binding HasSelection}">
 
-      <StackPanel Spacing="6">
-        <TextBlock Classes="caps" Text="{l:Localize Cmp_Divider}" />
-        <Slider Minimum="0" Maximum="1" Value="{Binding DividerFraction}"
-                SmallChange="0.02" LargeChange="0.1"
-                AutomationProperties.Name="{l:Localize Cmp_Divider}" />
-      </StackPanel>
+      <Slider Minimum="0" Maximum="1" Value="{Binding DividerFraction}"
+              SmallChange="0.02" LargeChange="0.1"
+              AutomationProperties.Name="{l:Localize Cmp_Divider}" />
 
-      <StackPanel Orientation="Horizontal" Spacing="8">
-        <TextBlock Classes="caps" VerticalAlignment="Center" Text="{l:Localize Cmp_Zoom}" />
-        <Button Command="{Binding ZoomOutCommand}" Content="{l:Localize Cmp_ZoomOut}"
-                AutomationProperties.Name="{l:Localize Cmp_ZoomOut}" />
-        <Button Command="{Binding ZoomInCommand}" Content="{l:Localize Cmp_ZoomIn}"
-                AutomationProperties.Name="{l:Localize Cmp_ZoomIn}" />
-        <Button Command="{Binding ActualSizeCommand}" Content="{l:Localize Cmp_ActualSize}"
-                AutomationProperties.Name="{l:Localize Cmp_ActualSize}" />
-        <Button Command="{Binding ResetViewCommand}" Content="{l:Localize Cmp_ResetView}"
-                AutomationProperties.Name="{l:Localize Cmp_ResetView}" />
-        <TextBlock Classes="mono" VerticalAlignment="Center" Text="{Binding ZoomLabel}" />
-        <TextBlock Classes="hint" VerticalAlignment="Center"
-                   IsVisible="{Binding IsPreviewDownscaled}"
-                   Text="{l:Localize Cmp_PreviewDownscaled}" />
-      </StackPanel>
+      <!-- Zoomsteuerung + Infoleiste. -->
+      <Grid ColumnDefinitions="Auto,*">
+        <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+          <Button Classes="ghost lime" Height="38" Command="{Binding ZoomOutCommand}"
+                  Content="{l:Localize Cmp_ZoomOut}" AutomationProperties.Name="{l:Localize Cmp_ZoomOut}" />
+          <Button Classes="ghost lime" Height="38" Command="{Binding ZoomInCommand}"
+                  Content="{l:Localize Cmp_ZoomIn}" AutomationProperties.Name="{l:Localize Cmp_ZoomIn}" />
+          <Button Classes="ghost lime" Height="38" Command="{Binding ActualSizeCommand}"
+                  Content="{l:Localize Cmp_ActualSize}" AutomationProperties.Name="{l:Localize Cmp_ActualSize}" />
+          <Button Classes="ghost lime" Height="38" Command="{Binding ResetViewCommand}"
+                  Content="{l:Localize Cmp_ResetView}" AutomationProperties.Name="{l:Localize Cmp_ResetView}" />
+          <TextBlock Classes="monoNum" FontWeight="Bold" VerticalAlignment="Center" Margin="4,0,0,0"
+                     Text="{Binding ZoomLabel}" />
+          <TextBlock Classes="captionText" VerticalAlignment="Center"
+                     IsVisible="{Binding IsPreviewDownscaled}"
+                     Text="{l:Localize Cmp_PreviewDownscaled}" />
+        </StackPanel>
+
+        <!-- Infoleiste (Ink) mit Dateiname, Engine und Grössendelta (UI-Doc 06). -->
+        <Border Grid.Column="1" Background="{DynamicResource InkBrush}" CornerRadius="16"
+                Padding="18,10" Margin="16,0,0,0" MinWidth="260"
+                IsVisible="{Binding HasComparison}">
+          <Grid ColumnDefinitions="*,Auto,Auto">
+            <TextBlock Foreground="{DynamicResource InkTextInverse}" FontWeight="Bold" FontSize="14"
+                       VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                       Text="{Binding Selected.FileName}" />
+            <Border Grid.Column="1" Classes="badge lime" Margin="10,0,0,0" VerticalAlignment="Center">
+              <TextBlock Text="{Binding EngineText}" FontWeight="Bold" />
+            </Border>
+            <TextBlock Grid.Column="2" Foreground="{DynamicResource LimeBrush}" Classes="monoNum"
+                       FontWeight="Bold" Margin="12,0,0,0" VerticalAlignment="Center"
+                       Text="{Binding DeltaText}" />
+          </Grid>
+        </Border>
+      </Grid>
 
       <!-- Vorher/Nachher-Tabelle (Issue #4); nur Groesse, Format, Masse und Einsparung. -->
       <Border Classes="card" IsVisible="{Binding HasComparison}">
         <StackPanel Spacing="10">
-          <TextBlock Classes="h2" Text="{Binding Selected.FileName}" />
+          <TextBlock Classes="cardTitle" Text="{Binding Selected.FileName}" />
           <Grid ColumnDefinitions="*,*,*" RowDefinitions="Auto,Auto,Auto,Auto"
                 RowSpacing="6" ColumnSpacing="12">
-            <TextBlock Grid.Row="0" Grid.Column="0" Classes="caps"
-                       Text="{l:Localize Cmp_TblAttribute}" />
-            <TextBlock Grid.Row="0" Grid.Column="1" Classes="caps"
-                       Text="{l:Localize Cmp_TblBefore}" />
-            <TextBlock Grid.Row="0" Grid.Column="2" Classes="caps"
-                       Text="{l:Localize Cmp_TblAfter}" />
+            <TextBlock Grid.Row="0" Grid.Column="0" Classes="capsLabel" Text="{l:Localize Cmp_TblAttribute}" />
+            <TextBlock Grid.Row="0" Grid.Column="1" Classes="capsLabel" Text="{l:Localize Cmp_TblBefore}" />
+            <TextBlock Grid.Row="0" Grid.Column="2" Classes="capsLabel" Text="{l:Localize Cmp_TblAfter}" />
 
-            <TextBlock Grid.Row="1" Grid.Column="0" Classes="hint"
-                       Text="{l:Localize Cmp_TblFormat}" />
-            <TextBlock Grid.Row="1" Grid.Column="1" Classes="mono" Text="{Binding BeforeFormat}" />
-            <TextBlock Grid.Row="1" Grid.Column="2" Classes="mono" Text="{Binding AfterFormat}" />
+            <TextBlock Grid.Row="1" Grid.Column="0" Classes="captionText" Text="{l:Localize Cmp_TblFormat}" />
+            <TextBlock Grid.Row="1" Grid.Column="1" Classes="monoNum" Text="{Binding BeforeFormat}" />
+            <TextBlock Grid.Row="1" Grid.Column="2" Classes="monoNum" Text="{Binding AfterFormat}" />
 
-            <TextBlock Grid.Row="2" Grid.Column="0" Classes="hint"
-                       Text="{l:Localize Cmp_TblSize}" />
-            <TextBlock Grid.Row="2" Grid.Column="1" Classes="mono" Text="{Binding BeforeSize}" />
-            <TextBlock Grid.Row="2" Grid.Column="2" Classes="mono" Text="{Binding AfterSize}" />
+            <TextBlock Grid.Row="2" Grid.Column="0" Classes="captionText" Text="{l:Localize Cmp_TblSize}" />
+            <TextBlock Grid.Row="2" Grid.Column="1" Classes="monoNum" Text="{Binding BeforeSize}" />
+            <TextBlock Grid.Row="2" Grid.Column="2" Classes="monoNum" Text="{Binding AfterSize}" />
 
-            <TextBlock Grid.Row="3" Grid.Column="0" Classes="hint"
-                       Text="{l:Localize Cmp_TblDimensions}" />
-            <TextBlock Grid.Row="3" Grid.Column="1" Classes="mono" Text="{Binding Dimensions}" />
-            <TextBlock Grid.Row="3" Grid.Column="2" Classes="mono" Text="{Binding Dimensions}" />
+            <TextBlock Grid.Row="3" Grid.Column="0" Classes="captionText" Text="{l:Localize Cmp_TblDimensions}" />
+            <TextBlock Grid.Row="3" Grid.Column="1" Classes="monoNum" Text="{Binding Dimensions}" />
+            <TextBlock Grid.Row="3" Grid.Column="2" Classes="monoNum" Text="{Binding Dimensions}" />
           </Grid>
           <StackPanel Orientation="Horizontal" Spacing="8">
-            <TextBlock Classes="caps" VerticalAlignment="Center"
-                       Text="{l:Localize Cmp_TblSavings}" />
-            <TextBlock Classes="mono" FontWeight="SemiBold"
-                       Foreground="{DynamicResource PcAccent}" Text="{Binding SavingsText}" />
-            <TextBlock Classes="hint" VerticalAlignment="Center"
+            <TextBlock Classes="capsLabel" VerticalAlignment="Center" Text="{l:Localize Cmp_TblSavings}" />
+            <TextBlock Classes="monoNum" FontWeight="Bold" VerticalAlignment="Center"
+                       Text="{Binding SavingsText}" />
+            <TextBlock Classes="captionText" VerticalAlignment="Center"
                        Text="{l:Localize Cmp_TblEstimate}" IsVisible="{Binding IsEstimate}" />
           </StackPanel>
         </StackPanel>
       </Border>
     </StackPanel>
 
-    <StackPanel Grid.Row="4" Spacing="8" IsVisible="{Binding HasCandidates}">
-        <TextBlock Classes="caps" Text="{l:Localize Cmp_Results}" />
-        <ListBox ItemsSource="{Binding Candidates}" SelectedItem="{Binding Selected}"
-                 Background="Transparent" BorderThickness="0" MaxHeight="200"
-                 AutomationProperties.Name="{l:Localize Cmp_CandidatesName}">
-          <ListBox.ItemTemplate>
-            <DataTemplate x:DataType="vm:QueueItemViewModel">
-              <StackPanel Spacing="2" AutomationProperties.Name="{Binding AccessibleSummary}">
-                <TextBlock Text="{Binding FileName}" FontSize="12.5"
-                           TextTrimming="CharacterEllipsis" />
-                <TextBlock Classes="mono" Text="{Binding SizeSummary}" />
-              </StackPanel>
-            </DataTemplate>
-          </ListBox.ItemTemplate>
+    <StackPanel Grid.Row="4" Spacing="8" Margin="2,0,2,0" IsVisible="{Binding HasCandidates}">
+      <TextBlock Classes="capsLabel" Text="{l:Localize Cmp_Results}" />
+      <ListBox ItemsSource="{Binding Candidates}" SelectedItem="{Binding Selected}"
+               Background="Transparent" BorderThickness="0" MaxHeight="200"
+               AutomationProperties.Name="{l:Localize Cmp_CandidatesName}">
+        <ListBox.ItemTemplate>
+          <DataTemplate x:DataType="vm:QueueItemViewModel">
+            <StackPanel Spacing="2" AutomationProperties.Name="{Binding AccessibleSummary}">
+              <TextBlock Text="{Binding FileName}" FontSize="13.5" FontWeight="SemiBold"
+                         TextTrimming="CharacterEllipsis" />
+              <TextBlock Classes="monoNum" FontSize="12" Foreground="{DynamicResource MutedTextBrush}"
+                         Text="{Binding SizeSummary}" />
+            </StackPanel>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
       </ListBox>
     </StackPanel>
 

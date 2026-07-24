@@ -106,6 +106,10 @@ public sealed class LocalizationConsistencyTests
             "Update_Section",
             // "Version {0}" ist in beiden Sprachen gleich; die Zahl ist ein Platzhalter.
             "About_Version",
+            // "Repository" ist im Deutschen als Fachbegriff identisch.
+            "About_Repository",
+            // Dekoratives Emoji für den Leerzustand — sprachneutral.
+            "Dash_QueueEmptyGlyph",
             // "Format" ist in beiden Sprachen dasselbe Wort.
             "Cmp_TblFormat"
         ];

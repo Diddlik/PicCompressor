@@ -15,7 +15,6 @@ public partial class DashboardView : UserControl
         AddHandler(DragDrop.DragOverEvent, OnDragOver);
         AddHandler(DragDrop.DropEvent, OnDrop);
 
-        AddFilesButton.Click += async (_, _) => await BrowseFilesAsync();
         BrowseButton.Click += async (_, _) => await BrowseFilesAsync();
         AddFolderButton.Click += async (_, _) => await BrowseFolderAsync();
     }

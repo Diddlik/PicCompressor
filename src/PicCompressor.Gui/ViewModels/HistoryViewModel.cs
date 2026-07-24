@@ -37,6 +37,14 @@ public sealed class HistoryEntryViewModel : ObservableObject
         ? ByteFormat.DescribeSavings(Record.InputSizeBytes, size)
         : ByteFormat.NotApplicable;
 
+    /// <summary>Eingesparte Bytes als Kachel-Pille (UI-Doc 05).</summary>
+    public string SavedText => Record.OutputSizeBytes is long size
+        ? ByteFormat.Describe(Math.Max(0, Record.InputSizeBytes - size))
+        : ByteFormat.NotApplicable;
+
+    /// <summary>„vorher → nachher“ als ein Wert (Pfeil bleibt aus dem XAML heraus).</summary>
+    public string BeforeAfter => $"{Before} → {After}";
+
     public bool IsSuccess => Record.Status is JobStatus.Succeeded;
 
     /// <summary>
@@ -112,13 +120,36 @@ public sealed class HistoryViewModel : ObservableObject
     {
         get
         {
-            var saved = Entries
-                .Where(entry => entry.Record.OutputSizeBytes is not null)
-                .Sum(entry => entry.Record.InputSizeBytes - entry.Record.OutputSizeBytes!.Value);
             return Localizer.Instance.Format(
                 "Hist_Summary",
                 Entries.Count,
-                ByteFormat.Describe(Math.Max(0, saved)));
+                ByteFormat.Describe(TotalSavedBytes));
+        }
+    }
+
+    private long TotalSavedBytes => Math.Max(
+        0,
+        Entries
+            .Where(entry => entry.Record.OutputSizeBytes is not null)
+            .Sum(entry => entry.Record.InputSizeBytes - entry.Record.OutputSizeBytes!.Value));
+
+    /// <summary>Kacheln des Arbeitsbereichs (UI-Doc 03): insgesamt gesparter Speicher.</summary>
+    public string TotalSavedText => ByteFormat.Describe(TotalSavedBytes);
+
+    /// <summary>Anzahl erfolgreich komprimierter Dateien.</summary>
+    public string FilesCompressedText =>
+        Entries.Count(entry => entry.IsSuccess).ToString(Localizer.Instance.Culture);
+
+    /// <summary>Beste Einzelersparnis; leerer Verlauf ergibt „0%“.</summary>
+    public string BestSavingText
+    {
+        get
+        {
+            var best = Entries
+                .Where(entry => entry.Record.OutputSizeBytes is long size && entry.Record.InputSizeBytes > 0)
+                .OrderBy(entry => (double)entry.Record.OutputSizeBytes!.Value / entry.Record.InputSizeBytes)
+                .FirstOrDefault();
+            return best?.Savings ?? "0%";
         }
     }
 
@@ -174,6 +205,9 @@ public sealed class HistoryViewModel : ObservableObject
         Raise(nameof(VisibleEntries));
         Raise(nameof(IsEmpty));
         Raise(nameof(Summary));
+        Raise(nameof(TotalSavedText));
+        Raise(nameof(FilesCompressedText));
+        Raise(nameof(BestSavingText));
         ClearCommand.RaiseCanExecuteChanged();
     }
 }

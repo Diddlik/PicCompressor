@@ -13,6 +13,11 @@
 
   <ItemGroup>
     <AvaloniaResource Include="..\..\assets\PicCompressor.ico" Link="Assets\PicCompressor.ico" />
+    <!-- Nur die tatsächlich referenzierten Schriftschnitte einbinden (SIL OFL). -->
+    <AvaloniaResource Include="Assets\Fonts\Bricolage_Grotesque\BricolageGrotesque-VariableFont_opsz,wdth,wght.ttf" />
+    <AvaloniaResource Include="Assets\Fonts\Space_Grotesk\SpaceGrotesk-VariableFont_wght.ttf" />
+    <AvaloniaResource Include="Assets\Fonts\Space_Mono\SpaceMono-Regular.ttf" />
+    <AvaloniaResource Include="Assets\Fonts\Space_Mono\SpaceMono-Bold.ttf" />
   </ItemGroup>
 
   <PropertyGroup>

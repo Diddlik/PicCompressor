@@ -75,17 +75,33 @@ public sealed class MainWindowViewModel : ObservableObject
         ShowSettingsCommand = new RelayCommand(() => View = AppView.Settings);
         ShowHistoryCommand = new RelayCommand(() => View = AppView.History);
         ShowCompareCommand = new RelayCommand(() => View = AppView.Compare);
+
+        About = new AboutViewModel(() => IsAboutOpen = false);
+        ShowAboutCommand = new RelayCommand(() => IsAboutOpen = true);
+        CloseAboutCommand = new RelayCommand(() => IsAboutOpen = false);
     }
 
     public SettingsViewModel Settings { get; }
     public DashboardViewModel Dashboard { get; }
     public HistoryViewModel History { get; }
     public CompareViewModel Compare { get; }
+    public AboutViewModel About { get; }
 
     public RelayCommand ShowDashboardCommand { get; }
     public RelayCommand ShowSettingsCommand { get; }
     public RelayCommand ShowHistoryCommand { get; }
     public RelayCommand ShowCompareCommand { get; }
+    public RelayCommand ShowAboutCommand { get; }
+    public RelayCommand CloseAboutCommand { get; }
+
+    private bool isAboutOpen;
+
+    /// <summary>„Über“ ist ein eigener modaler Overlay (Abschnitt 4.3 / UI-Doc 07), kein Reiter.</summary>
+    public bool IsAboutOpen
+    {
+        get => isAboutOpen;
+        set => SetProperty(ref isAboutOpen, value);
+    }
 
     public AppView View
     {
@@ -147,7 +163,7 @@ public sealed class MainWindowViewModel : ObservableObject
 
     public bool ShowNavigationLabels => !IsCompact;
 
-    public double NavigationRailWidth => IsCompact ? 56 : 196;
+    public double NavigationRailWidth => IsCompact ? 56 : 214;
 
     /// <summary>Ordnet der Fensterbreite die Layoutstufen zu; die Ansicht meldet nur die Breite.</summary>
     public void ApplyWidth(double width)

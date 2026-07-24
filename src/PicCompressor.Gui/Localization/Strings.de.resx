@@ -625,4 +625,49 @@
   <data name="Status_Bar" xml:space="preserve">
     <value>Statuszeile</value>
   </data>
+  <data name="Nav_About" xml:space="preserve">
+    <value>Über</value>
+  </data>
+  <data name="About_Author" xml:space="preserve">
+    <value>Autor</value>
+  </data>
+  <data name="About_License" xml:space="preserve">
+    <value>Lizenz</value>
+  </data>
+  <data name="About_Repository" xml:space="preserve">
+    <value>Repository</value>
+  </data>
+  <data name="Common_Close" xml:space="preserve">
+    <value>Schließen</value>
+  </data>
+  <data name="Brand_Subtitle" xml:space="preserve">
+    <value>Bild-Stapelverkleinerer</value>
+  </data>
+  <data name="Stat_SavedAllTime" xml:space="preserve">
+    <value>Insgesamt gespart</value>
+  </data>
+  <data name="Stat_FilesCompressed" xml:space="preserve">
+    <value>Dateien komprimiert</value>
+  </data>
+  <data name="Stat_BestSaving" xml:space="preserve">
+    <value>Beste Ersparnis</value>
+  </data>
+  <data name="Side_SavedAllTime" xml:space="preserve">
+    <value>insgesamt gespart</value>
+  </data>
+  <data name="Dash_CompareBeforeAfter" xml:space="preserve">
+    <value>Vorher / nachher vergleichen</value>
+  </data>
+  <data name="Dash_QueueEmptyGlyph" xml:space="preserve">
+    <value>🫙</value>
+  </data>
+  <data name="Win_Close" xml:space="preserve">
+    <value>Schließen</value>
+  </data>
+  <data name="Win_Minimize" xml:space="preserve">
+    <value>Minimieren</value>
+  </data>
+  <data name="Win_Maximize" xml:space="preserve">
+    <value>Maximieren</value>
+  </data>
 </root>

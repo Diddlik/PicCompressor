@@ -2,15 +2,19 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:PicCompressor.Gui.ViewModels"
         xmlns:l="using:PicCompressor.Gui.Localization"
+        xmlns:conv="using:PicCompressor.Gui.Converters"
         xmlns:views="using:PicCompressor.Gui.Views"
         x:Class="PicCompressor.Gui.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Title="{l:Localize App_Title}"
         Icon="/Assets/PicCompressor.ico"
         WindowStartupLocation="CenterScreen"
-        Width="1680" Height="1220" MinWidth="420" MinHeight="440"
-        Background="{DynamicResource PcBg}"
-        Foreground="{DynamicResource PcText}">
+        Width="1200" Height="920" MinWidth="960" MinHeight="920"
+        Background="Transparent"
+        TransparencyLevelHint="Transparent"
+        Foreground="{DynamicResource InkBrush}"
+        FontFamily="{DynamicResource PcUiFont}"
+        WindowDecorations="None">
 
   <!-- Ansichtswechsel per Tastatur, unabhängig vom Fokus. -->
   <Window.KeyBindings>
@@ -22,109 +26,247 @@
     <KeyBinding Gesture="Escape" Command="{Binding Dashboard.CancelCommand}" />
   </Window.KeyBindings>
 
-  <!-- Shell nach der UI-Referenzvorlage: Titelzeile · Navigationsschiene + Inhalt · Statuszeile. -->
-  <Grid RowDefinitions="44,*,Auto">
+  <!-- Rundes Fenster: das Fenster ist transparent, dieser Rahmen klippt den Inhalt rund. -->
+  <Border x:Name="RootChrome" CornerRadius="18" ClipToBounds="True"
+          Background="{DynamicResource CanvasBrush}">
+  <Panel>
+    <!-- Dekorative Aura über der Leinwand (Design-System 01). -->
+    <Border Background="{DynamicResource AuraLimeBrush}" IsHitTestVisible="False" />
+    <Border Background="{DynamicResource AuraVioletBrush}" IsHitTestVisible="False" />
 
-    <Border Grid.Row="0" Background="{DynamicResource PcPanel}"
-            BorderBrush="{DynamicResource PcBorderSoft}" BorderThickness="0,0,0,1">
-      <Grid ColumnDefinitions="Auto,*" Margin="12,0">
-        <StackPanel Orientation="Horizontal" Spacing="11" VerticalAlignment="Center">
-          <Border Width="26" Height="26" CornerRadius="7" Background="{DynamicResource PcAccent}">
-            <Path HorizontalAlignment="Center" VerticalAlignment="Center"
-                  Data="M6 2 L2.5 8 L6 14 M10 2 L13.5 8 L10 14"
-                  Stroke="#FFFFFF" StrokeThickness="1.8"
+    <!-- Shell: Titelzeile · Sidebar + Inhalt · (nur bei Warnung) Statusstreifen. -->
+    <Grid RowDefinitions="Auto,*,Auto" Margin="16">
+
+      <!-- Kopfzeile = Titelleiste (eigene Fensterchrome): ziehbar, Punkte sind die Fenstersteuerung. -->
+      <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Margin="4,0,4,16"
+            Background="Transparent" PointerPressed="OnTitleBarPressed">
+        <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+          <Border Width="44" Height="44" CornerRadius="14" Background="{DynamicResource LimeBrush}"
+                  BorderBrush="{DynamicResource InkBrush}" BorderThickness="2"
+                  BoxShadow="3 3 0 0 #FF17140E">
+            <Path HorizontalAlignment="Center" VerticalAlignment="Center" Stretch="None"
+                  Data="M16 6 L22 12 L16 18 M8 6 L2 12 L8 18"
+                  Stroke="{DynamicResource InkBrush}" StrokeThickness="2.6"
                   StrokeLineCap="Round" StrokeJoin="Round" />
           </Border>
-          <TextBlock Text="{l:Localize App_Title}" FontSize="13.5" FontWeight="SemiBold"
-                     VerticalAlignment="Center" />
+          <StackPanel VerticalAlignment="Center">
+            <TextBlock Text="{l:Localize App_Title}" Classes="heroTitle" FontSize="22" />
+            <TextBlock Text="{l:Localize Brand_Subtitle}" FontSize="11.5" FontWeight="Medium"
+                       Foreground="{DynamicResource MutedText2Brush}" Margin="0,3,0,0" />
+          </StackPanel>
         </StackPanel>
 
-        <TextBlock Grid.Column="1" Classes="hint" VerticalAlignment="Center"
-                   HorizontalAlignment="Right" Margin="16,0,0,0"
-                   TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"
-                   Text="{Binding EngineStatus}" ToolTip.Tip="{Binding EngineStatus}" />
+        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+          <Border Height="34" Padding="14,0" CornerRadius="999" Background="{DynamicResource PaperBrush}"
+                  BorderBrush="{DynamicResource InkBrush}" BorderThickness="2" MaxWidth="360"
+                  ToolTip.Tip="{Binding EngineStatus}">
+            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+              <Ellipse Width="8" Height="8" Fill="{DynamicResource LimeBrush}" />
+              <TextBlock Classes="monoNum" FontSize="12.5" VerticalAlignment="Center"
+                         Text="{Binding StatusSummary}" TextTrimming="CharacterEllipsis" />
+            </StackPanel>
+          </Border>
+          <Border Height="34" Padding="14,0" CornerRadius="999" Background="{DynamicResource VioletSoftBrush}"
+                  BorderBrush="{DynamicResource InkBrush}" BorderThickness="2">
+            <TextBlock FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"
+                       Text="{Binding Settings.EngineId}" />
+          </Border>
+          <StackPanel Orientation="Horizontal" Spacing="7" Margin="4,0,0,0" VerticalAlignment="Center">
+            <Ellipse Width="15" Height="15" Fill="{DynamicResource CoralBrush}" Stroke="{DynamicResource InkBrush}" StrokeThickness="2"
+                     Cursor="Hand" PointerPressed="OnCloseWindow"
+                     AutomationProperties.Name="{l:Localize Win_Close}" ToolTip.Tip="{l:Localize Win_Close}" />
+            <Ellipse Width="15" Height="15" Fill="#FFC24A" Stroke="{DynamicResource InkBrush}" StrokeThickness="2"
+                     Cursor="Hand" PointerPressed="OnMinimizeWindow"
+                     AutomationProperties.Name="{l:Localize Win_Minimize}" ToolTip.Tip="{l:Localize Win_Minimize}" />
+            <Ellipse Width="15" Height="15" Fill="{DynamicResource LimeBrush}" Stroke="{DynamicResource InkBrush}" StrokeThickness="2"
+                     Cursor="Hand" PointerPressed="OnMaximizeWindow"
+                     AutomationProperties.Name="{l:Localize Win_Maximize}" ToolTip.Tip="{l:Localize Win_Maximize}" />
+          </StackPanel>
+        </StackPanel>
       </Grid>
-    </Border>
 
-    <Grid Grid.Row="1" ColumnDefinitions="Auto,*">
+      <!-- Sidebar (Paper-Karte) + Inhalt. -->
+      <Grid Grid.Row="1" ColumnDefinitions="Auto,*">
 
-      <Border Background="{DynamicResource PcPanel}"
-              BorderBrush="{DynamicResource PcBorderSoft}" BorderThickness="0,0,1,0"
-              Padding="10,12" Width="{Binding NavigationRailWidth}">
-        <StackPanel Spacing="4" AutomationProperties.Name="{l:Localize Nav_Name}">
-          <RadioButton Classes="nav" GroupName="Nav" IsChecked="{Binding IsDashboard}"
-                       AutomationProperties.Name="{l:Localize Nav_Workspace}"
-                       ToolTip.Tip="{l:Localize Nav_Workspace}">
-            <StackPanel Orientation="Horizontal" Spacing="12">
-              <Path Width="17" Height="17" Stretch="Uniform" VerticalAlignment="Center"
-                    Stroke="{Binding $parent[RadioButton].Foreground}" StrokeThickness="1.5"
-                    Data="M1.5,1.5 h6 v6 h-6 z M9.5,1.5 h6 v6 h-6 z M1.5,9.5 h6 v6 h-6 z M9.5,9.5 h6 v6 h-6 z" />
-              <TextBlock Text="{l:Localize Nav_Workspace}" VerticalAlignment="Center"
-                         IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ShowNavigationLabels}" />
+        <Border Background="{DynamicResource PaperBrush}"
+                BorderBrush="{DynamicResource InkBrush}" BorderThickness="2"
+                CornerRadius="{StaticResource CardRadius}" BoxShadow="5 6 0 0 #E617140E"
+                Padding="14" Margin="0,0,16,0" Width="{Binding NavigationRailWidth}">
+          <DockPanel>
+            <!-- Unten: „insgesamt gespart“-Kachel + „Über“ (UI-Doc 07). -->
+            <StackPanel DockPanel.Dock="Bottom" Spacing="10" Margin="0,12,0,0">
+              <Border Background="{DynamicResource CanvasBrush}" CornerRadius="16" Padding="14"
+                      IsVisible="{Binding ShowNavigationLabels}">
+                <StackPanel HorizontalAlignment="Center">
+                  <TextBlock Classes="heroTitle" FontSize="26" HorizontalAlignment="Center"
+                             Text="{Binding History.TotalSavedText}" />
+                  <TextBlock FontSize="11" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,4,0,0"
+                             Foreground="{DynamicResource MutedText2Brush}"
+                             Text="{l:Localize Side_SavedAllTime}" />
+                </StackPanel>
+              </Border>
+              <Button Classes="ghost violet" HorizontalAlignment="Stretch" Height="40"
+                      Command="{Binding ShowAboutCommand}"
+                      AutomationProperties.Name="{l:Localize Nav_About}"
+                      ToolTip.Tip="{l:Localize Nav_About}">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <Path Width="15" Height="15" Stretch="Uniform" Stroke="{DynamicResource InkBrush}"
+                        StrokeThickness="2.2" StrokeLineCap="Round" StrokeJoin="Round"
+                        Data="M12 3 a9 9 0 1 1 0 18 a9 9 0 1 1 0 -18 M12 11 v5 M12 7.5 v0.1" />
+                  <TextBlock Text="{l:Localize Nav_About}" VerticalAlignment="Center"
+                             IsVisible="{Binding ShowNavigationLabels}" />
+                </StackPanel>
+              </Button>
             </StackPanel>
-          </RadioButton>
 
-          <RadioButton Classes="nav" GroupName="Nav" IsChecked="{Binding IsSettings}"
-                       AutomationProperties.Name="{l:Localize Nav_Settings}"
-                       ToolTip.Tip="{l:Localize Nav_Settings}">
-            <StackPanel Orientation="Horizontal" Spacing="12">
-              <Path Width="17" Height="17" Stretch="Uniform" VerticalAlignment="Center"
-                    Stroke="{Binding $parent[RadioButton].Foreground}" StrokeThickness="1.5"
-                    Data="M1.5,4 h14 M1.5,8.5 h14 M1.5,13 h14 M11.5,2 a2,2 0 1 1 0,4 a2,2 0 1 1 0,-4 M5,6.5 a2,2 0 1 1 0,4 a2,2 0 1 1 0,-4 M12,11 a2,2 0 1 1 0,4 a2,2 0 1 1 0,-4" />
-              <TextBlock Text="{l:Localize Nav_Settings}" VerticalAlignment="Center"
-                         IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ShowNavigationLabels}" />
-            </StackPanel>
-          </RadioButton>
+            <StackPanel Spacing="6" AutomationProperties.Name="{l:Localize Nav_Name}">
+              <RadioButton Classes="nav" GroupName="Nav" IsChecked="{Binding IsDashboard}"
+                           AutomationProperties.Name="{l:Localize Nav_Workspace}"
+                           ToolTip.Tip="{l:Localize Nav_Workspace}">
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                  <Border Classes="navchip"
+                          Background="{Binding IsChecked, RelativeSource={RelativeSource AncestorType=RadioButton}, Converter={x:Static conv:NavConverters.ChipBrush}}">
+                    <Path Width="18" Height="18" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"
+                          Stroke="{DynamicResource InkBrush}" StrokeThickness="2.2"
+                          Data="M3,3 h7 v7 h-7 z M14,3 h7 v7 h-7 z M14,14 h7 v7 h-7 z M3,14 h7 v7 h-7 z" />
+                  </Border>
+                  <TextBlock Text="{l:Localize Nav_Workspace}" VerticalAlignment="Center"
+                             IsVisible="{Binding ShowNavigationLabels}" />
+                </StackPanel>
+              </RadioButton>
 
-          <RadioButton Classes="nav" GroupName="Nav" IsChecked="{Binding IsHistory}"
-                       AutomationProperties.Name="{l:Localize Nav_History}"
-                       ToolTip.Tip="{l:Localize Nav_History}">
-            <StackPanel Orientation="Horizontal" Spacing="12">
-              <Path Width="17" Height="17" Stretch="Uniform" VerticalAlignment="Center"
-                    Stroke="{Binding $parent[RadioButton].Foreground}" StrokeThickness="1.5"
-                    Data="M8.5,1.5 a7,7 0 1 1 0,14 a7,7 0 1 1 0,-14 M8.5,4.5 V8.5 L11.5,10" />
-              <TextBlock Text="{l:Localize Nav_History}" VerticalAlignment="Center"
-                         IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ShowNavigationLabels}" />
-            </StackPanel>
-          </RadioButton>
+              <RadioButton Classes="nav" GroupName="Nav" IsChecked="{Binding IsSettings}"
+                           AutomationProperties.Name="{l:Localize Nav_Settings}"
+                           ToolTip.Tip="{l:Localize Nav_Settings}">
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                  <Border Classes="navchip"
+                          Background="{Binding IsChecked, RelativeSource={RelativeSource AncestorType=RadioButton}, Converter={x:Static conv:NavConverters.ChipBrush}}">
+                    <Path Width="18" Height="18" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"
+                          Stroke="{DynamicResource InkBrush}" StrokeThickness="2.2" StrokeLineCap="Round"
+                          Data="M4,8 h16 M4,16 h16 M9,8 a2.6,2.6 0 1 1 0,0.01 M15,16 a2.6,2.6 0 1 1 0,0.01" />
+                  </Border>
+                  <TextBlock Text="{l:Localize Nav_Settings}" VerticalAlignment="Center"
+                             IsVisible="{Binding ShowNavigationLabels}" />
+                </StackPanel>
+              </RadioButton>
 
-          <RadioButton Classes="nav" GroupName="Nav" IsChecked="{Binding IsCompare}"
-                       AutomationProperties.Name="{l:Localize Nav_Compare}"
-                       ToolTip.Tip="{l:Localize Nav_Compare}">
-            <StackPanel Orientation="Horizontal" Spacing="12">
-              <Path Width="17" Height="17" Stretch="Uniform" VerticalAlignment="Center"
-                    Stroke="{Binding $parent[RadioButton].Foreground}" StrokeThickness="1.5"
-                    Data="M1.5,2.5 h14 v12 h-14 z M8.5,2.5 V14.5 M4.2,8.5 h2.3 M5.3,7.4 l-1.1,1.1 l1.1,1.1 M12.8,8.5 h-2.3 M11.7,7.4 l1.1,1.1 l-1.1,1.1" />
-              <TextBlock Text="{l:Localize Nav_Compare}" VerticalAlignment="Center"
-                         IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ShowNavigationLabels}" />
+              <RadioButton Classes="nav" GroupName="Nav" IsChecked="{Binding IsHistory}"
+                           AutomationProperties.Name="{l:Localize Nav_History}"
+                           ToolTip.Tip="{l:Localize Nav_History}">
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                  <Border Classes="navchip"
+                          Background="{Binding IsChecked, RelativeSource={RelativeSource AncestorType=RadioButton}, Converter={x:Static conv:NavConverters.ChipBrush}}">
+                    <Path Width="18" Height="18" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"
+                          Stroke="{DynamicResource InkBrush}" StrokeThickness="2.2" StrokeLineCap="Round" StrokeJoin="Round"
+                          Data="M12,3 a9,9 0 1 1 0,18 a9,9 0 1 1 0,-18 M12,7 v5 l3,2" />
+                  </Border>
+                  <TextBlock Text="{l:Localize Nav_History}" VerticalAlignment="Center"
+                             IsVisible="{Binding ShowNavigationLabels}" />
+                </StackPanel>
+              </RadioButton>
+
+              <RadioButton Classes="nav" GroupName="Nav" IsChecked="{Binding IsCompare}"
+                           AutomationProperties.Name="{l:Localize Nav_Compare}"
+                           ToolTip.Tip="{l:Localize Nav_Compare}">
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                  <Border Classes="navchip"
+                          Background="{Binding IsChecked, RelativeSource={RelativeSource AncestorType=RadioButton}, Converter={x:Static conv:NavConverters.ChipBrush}}">
+                    <Path Width="18" Height="18" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"
+                          Stroke="{DynamicResource InkBrush}" StrokeThickness="2.2" StrokeLineCap="Round" StrokeJoin="Round"
+                          Data="M3,4 h18 v16 h-18 z M12,4 V20" />
+                  </Border>
+                  <TextBlock Text="{l:Localize Nav_Compare}" VerticalAlignment="Center"
+                             IsVisible="{Binding ShowNavigationLabels}" />
+                </StackPanel>
+              </RadioButton>
             </StackPanel>
-          </RadioButton>
-        </StackPanel>
+          </DockPanel>
+        </Border>
+
+        <!-- Genau eine Ansicht ist geladen; jede bringt ihr eigenes Scrollen mit. -->
+        <Panel Grid.Column="1">
+          <views:DashboardView DataContext="{Binding Dashboard}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsDashboard}" />
+          <views:SettingsView DataContext="{Binding Settings}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsSettings}" />
+          <views:HistoryView DataContext="{Binding History}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsHistory}" />
+          <views:CompareView DataContext="{Binding Compare}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsCompare}" />
+        </Panel>
+      </Grid>
+
+      <!-- Statusstreifen: nur bei Persistenzwarnung (sonst hält die Kopf-Pille den Status). -->
+      <Border Grid.Row="2" Classes="insetRow" Margin="0,16,0,0"
+              Background="{DynamicResource CoralSoftBrush}"
+              IsVisible="{Binding HistoryWarning, Converter={x:Static ObjectConverters.IsNotNull}}"
+              AutomationProperties.Name="{l:Localize Status_Bar}">
+        <TextBlock Classes="bodyText" Text="{Binding HistoryWarning}"
+                   ToolTip.Tip="{Binding HistoryWarning}" TextTrimming="CharacterEllipsis" />
       </Border>
-
-      <!-- Genau eine Ansicht ist geladen; jede bringt ihr eigenes Scrollen mit. -->
-      <Panel Grid.Column="1">
-        <views:DashboardView DataContext="{Binding Dashboard}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsDashboard}" />
-        <views:SettingsView DataContext="{Binding Settings}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsSettings}" />
-        <views:HistoryView DataContext="{Binding History}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsHistory}" />
-        <views:CompareView DataContext="{Binding Compare}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsCompare}" />
-      </Panel>
     </Grid>
 
-    <Border Grid.Row="2" Background="{DynamicResource PcPanel}"
-            BorderBrush="{DynamicResource PcBorderSoft}" BorderThickness="0,1,0,0"
-            Padding="14,7" AutomationProperties.Name="{l:Localize Status_Bar}">
-      <Grid ColumnDefinitions="Auto,*,Auto">
-        <TextBlock Classes="mono" VerticalAlignment="Center"
-                   TextTrimming="CharacterEllipsis" Text="{Binding StatusSummary}" />
-        <TextBlock Grid.Column="1" Classes="hint" VerticalAlignment="Center" Margin="12,0,0,0"
-                   TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"
-                   IsVisible="{Binding HistoryWarning, Converter={x:Static ObjectConverters.IsNotNull}}"
-                   Text="{Binding HistoryWarning}" ToolTip.Tip="{Binding HistoryWarning}" />
-        <TextBlock Grid.Column="2" Classes="mono" VerticalAlignment="Center" Margin="12,0,0,0"
-                   Text="{Binding Settings.EngineId}" />
-      </Grid>
-    </Border>
+    <!-- „Über“-Overlay (UI-Doc 07): abgedunkelter Hintergrund; Klick daneben oder Esc schließt. -->
+    <Panel IsVisible="{Binding IsAboutOpen}">
+      <Border Background="#66171410" Tapped="OnAboutBackdropTapped" />
+      <Border Width="440" HorizontalAlignment="Center" VerticalAlignment="Center"
+              Background="{DynamicResource PaperBrush}"
+              BorderBrush="{DynamicResource InkBrush}" BorderThickness="2.5"
+              CornerRadius="{StaticResource ModalRadius}" BoxShadow="8 10 0 0 #E617140E"
+              Padding="34" DataContext="{Binding About}">
+        <StackPanel Spacing="16" HorizontalAlignment="Center">
+          <Grid>
+            <Border Width="72" Height="72" CornerRadius="20" HorizontalAlignment="Center"
+                    Background="{DynamicResource LimeBrush}"
+                    BorderBrush="{DynamicResource InkBrush}" BorderThickness="2.5"
+                    BoxShadow="4 5 0 0 #FF17140E" RenderTransform="rotate(-5deg)">
+              <Path HorizontalAlignment="Center" VerticalAlignment="Center" Stretch="None"
+                    Data="M22 8 L30 18 L22 28 M14 8 L6 18 L14 28"
+                    Stroke="{DynamicResource InkBrush}" StrokeThickness="3"
+                    StrokeLineCap="Round" StrokeJoin="Round" />
+            </Border>
+            <Button Classes="ghost coral" HorizontalAlignment="Right" VerticalAlignment="Top"
+                    Width="34" Height="34" Padding="0" CornerRadius="11"
+                    Command="{Binding CloseCommand}"
+                    AutomationProperties.Name="{l:Localize Common_Close}"
+                    ToolTip.Tip="{l:Localize Common_Close}">
+              <Path Width="12" Height="12" Stretch="Uniform"
+                    Stroke="{DynamicResource InkBrush}" StrokeThickness="2" StrokeLineCap="Round"
+                    Data="M1,1 L11,11 M11,1 L1,11" />
+            </Button>
+          </Grid>
 
-  </Grid>
+          <TextBlock Text="{l:Localize App_Title}" Classes="heroTitle" FontSize="26"
+                     HorizontalAlignment="Center" />
+          <Border Classes="badge violet" HorizontalAlignment="Center">
+            <TextBlock Text="{Binding VersionLabel}" />
+          </Border>
+          <TextBlock Text="{l:Localize About_Description}" Classes="muted"
+                     TextAlignment="Center" MaxWidth="360" />
+
+          <StackPanel Spacing="8">
+            <Border Classes="insetRow" CornerRadius="13" Padding="16,11">
+              <Grid ColumnDefinitions="Auto,*">
+                <TextBlock Classes="muted" Text="{l:Localize About_Author}" />
+                <TextBlock Grid.Column="1" Classes="bodyText" FontWeight="Bold"
+                           HorizontalAlignment="Right" Text="{Binding Author}" />
+              </Grid>
+            </Border>
+            <Border Classes="insetRow" CornerRadius="13" Padding="16,11">
+              <Grid ColumnDefinitions="Auto,*">
+                <TextBlock Classes="muted" Text="{l:Localize About_License}" />
+                <TextBlock Grid.Column="1" Classes="bodyText" FontWeight="Bold"
+                           HorizontalAlignment="Right" Text="{Binding License}" />
+              </Grid>
+            </Border>
+            <Border Classes="insetRow" CornerRadius="13" Padding="16,11">
+              <Grid ColumnDefinitions="Auto,*">
+                <TextBlock Classes="muted" Text="{l:Localize About_Repository}" />
+                <Button Grid.Column="1" Classes="link" HorizontalAlignment="Right"
+                        Foreground="{DynamicResource VioletBrush}"
+                        Command="{Binding OpenRepositoryCommand}" Content="{Binding RepositoryUrl}" />
+              </Grid>
+            </Border>
+          </StackPanel>
+        </StackPanel>
+      </Border>
+    </Panel>
+  </Panel>
+  </Border>
 </Window>

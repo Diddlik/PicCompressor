@@ -62,7 +62,8 @@ public sealed class CompareWipeTests(AvaloniaSession session)
     public Task The_divider_line_is_drawn_on_the_edge() =>
         session.RunAsync(async () =>
         {
-            var (row, surface) = await RenderAsync(0.5);
+            // Oberhalb des mittigen Lime-Griffs gemessen: dort liegt die reine Teilerlinie.
+            var (row, surface) = await RenderAsync(0.5, -60);
             var divider = (int)(surface.X + (surface.Width / 2));
 
             // Direkt auf der Kante liegt die Linie, kurz daneben schon das schwarze Ergebnis.
@@ -109,7 +110,7 @@ public sealed class CompareWipeTests(AvaloniaSession session)
         (row[x * 4], row[(x * 4) + 1], row[(x * 4) + 2]);
 
     /// <summary>Rendert die Ansicht und gibt eine Bildzeile durch die Mitte der Vergleichsfläche zurück.</summary>
-    private static async Task<(byte[] Row, Rect Surface)> RenderAsync(double dividerFraction)
+    private static async Task<(byte[] Row, Rect Surface)> RenderAsync(double dividerFraction, int rowOffset = 0)
     {
         var compare = new CompareViewModel(new MonochromeRenderer());
         compare.AttachQueue(
@@ -142,7 +143,7 @@ public sealed class CompareWipeTests(AvaloniaSession session)
         var imageRect = new Rect(
             image.TranslatePoint(default, window)!.Value,
             image.Bounds.Size);
-        return (ReadRow(window.CaptureRenderedFrame()!, (int)imageRect.Center.Y), rect);
+        return (ReadRow(window.CaptureRenderedFrame()!, (int)imageRect.Center.Y + rowOffset), rect);
     }
 
     private static byte[] ReadRow(Bitmap frame, int y)

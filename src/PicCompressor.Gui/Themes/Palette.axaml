@@ -49,8 +49,57 @@
 
   </ResourceDictionary.ThemeDictionaries>
 
-  <FontFamily x:Key="PcMono">Consolas, Menlo, DejaVu Sans Mono, monospace</FontFamily>
+  <!-- ============================================================= -->
+  <!-- Redesign "Cozy-neon bento" (docs/UI - refinement/01-design-system.md). -->
+  <!-- Light ist die ausgelieferte Gestaltung; Dark ist Folgearbeit und -->
+  <!-- überschreibt diese Tokens später über die ThemeDictionaries. -->
+  <!-- ============================================================= -->
 
+  <!-- Schriften: gebündelte OFL-Fonts, keine Systemabhängigkeit. -->
+  <FontFamily x:Key="PcDisplayFont">avares://PicCompressor.Gui/Assets/Fonts/Bricolage_Grotesque/BricolageGrotesque-VariableFont_opsz,wdth,wght.ttf#Bricolage Grotesque</FontFamily>
+  <FontFamily x:Key="PcUiFont">avares://PicCompressor.Gui/Assets/Fonts/Space_Grotesk/SpaceGrotesk-VariableFont_wght.ttf#Space Grotesk</FontFamily>
+  <FontFamily x:Key="PcMonoFont">avares://PicCompressor.Gui/Assets/Fonts/Space_Mono/SpaceMono-Regular.ttf#Space Mono</FontFamily>
+  <!-- Altbestand bis alle Views migriert sind (S1-Konvention in TASKS.md). -->
+  <FontFamily x:Key="PcMono">avares://PicCompressor.Gui/Assets/Fonts/Space_Mono/SpaceMono-Regular.ttf#Space Mono</FontFamily>
   <CornerRadius x:Key="PcCardRadius">11</CornerRadius>
   <CornerRadius x:Key="PcControlRadius">8</CornerRadius>
+
+  <!-- Farb-Tokens -->
+  <SolidColorBrush x:Key="CanvasBrush" Color="#F1ECE1" />
+  <SolidColorBrush x:Key="PaperBrush" Color="#FFFFFF" />
+  <SolidColorBrush x:Key="InkBrush" Color="#17140E" />
+  <SolidColorBrush x:Key="InkTextInverse" Color="#F1ECE1" />
+  <SolidColorBrush x:Key="LimeBrush" Color="#B9EE43" />
+  <SolidColorBrush x:Key="VioletBrush" Color="#6E5BF2" />
+  <SolidColorBrush x:Key="VioletSoftBrush" Color="#EDE9FF" />
+  <SolidColorBrush x:Key="CoralBrush" Color="#FF6A45" />
+  <SolidColorBrush x:Key="CoralSoftBrush" Color="#FFE4DC" />
+  <SolidColorBrush x:Key="MintTileBrush" Color="#E4F7C8" />
+  <SolidColorBrush x:Key="MutedTextBrush" Color="#A49B88" />
+  <SolidColorBrush x:Key="MutedText2Brush" Color="#8A8272" />
+  <SolidColorBrush x:Key="FieldBrush" Color="#F7F4EC" />
+  <SolidColorBrush x:Key="HairlineBrush" Color="#E3DDCF" />
+  <!-- Zustandsfarben aus den View-Dokumenten. -->
+  <SolidColorBrush x:Key="NeutralPillBrush" Color="#EDE7DA" />
+  <SolidColorBrush x:Key="CoralTextBrush" Color="#C0492C" />
+  <SolidColorBrush x:Key="StageBrush" Color="#E7E1D4" />
+
+  <!-- Eckenradien -->
+  <CornerRadius x:Key="CardRadius">24</CornerRadius>
+  <CornerRadius x:Key="TileRadius">22</CornerRadius>
+  <CornerRadius x:Key="InputRadius">13</CornerRadius>
+  <CornerRadius x:Key="ModalRadius">28</CornerRadius>
+  <CornerRadius x:Key="PillRadius">999</CornerRadius>
+
+  <!-- Canvas-Aura (dekorativ) — zwei Radialverläufe über der Leinwand, S3 nutzt sie. -->
+  <RadialGradientBrush x:Key="AuraLimeBrush" GradientOrigin="10%,4%" Center="10%,4%"
+                       RadiusX="42%" RadiusY="42%">
+    <GradientStop Offset="0" Color="#38B9EE43" />
+    <GradientStop Offset="1" Color="#00B9EE43" />
+  </RadialGradientBrush>
+  <RadialGradientBrush x:Key="AuraVioletBrush" GradientOrigin="92%,96%" Center="92%,96%"
+                       RadiusX="46%" RadiusY="46%">
+    <GradientStop Offset="0" Color="#296E5BF2" />
+    <GradientStop Offset="1" Color="#006E5BF2" />
+  </RadialGradientBrush>
 </ResourceDictionary>
