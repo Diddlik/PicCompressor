@@ -22,8 +22,8 @@ The desktop application and CLI share the same compression pipeline and safety r
 - Collision protection and explicit overwrite behavior
 - Human-readable and versioned JSON CLI output
 
-<img width="1684" height="1253" alt="image" src="https://github.com/user-attachments/assets/a66121d3-ade5-4a2f-a171-caa7504c44c0" />
-<img width="1687" height="971" alt="image" src="https://github.com/user-attachments/assets/58e77b90-d1cf-48f8-91c4-4046a76a3117" />
+<img width="1849" height="1226" alt="image" src="https://github.com/user-attachments/assets/4b5f3fda-08f2-4c7b-9e16-4ab48acdcd15" />
+<img width="1849" height="1226" alt="image" src="https://github.com/user-attachments/assets/986824b4-e1fb-4fd5-bad5-53cbc2c4b089" />
 
 
 ## Current status
