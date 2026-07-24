@@ -186,6 +186,22 @@ internal sealed class FakeFileActionService : IFileActionService
     }
 }
 
+/// <summary>
+/// Zwischenablage-Doppel: liefert vorgegebene Pfade. Der echte Adapter (Bilddaten als verwaltete
+/// temporäre Eingabe) liegt im Desktop Host, die Ablage selbst prüft
+/// <see cref="PicCompressor.Infrastructure.TemporaryInputStore"/> gesondert.
+/// </summary>
+internal sealed class FakeClipboardImportService(params string[] paths) : IClipboardImportService
+{
+    public int Reads { get; private set; }
+
+    public Task<IReadOnlyList<string>> ReadImportPathsAsync(CancellationToken cancellationToken)
+    {
+        Reads++;
+        return Task.FromResult<IReadOnlyList<string>>(paths);
+    }
+}
+
 internal sealed class FakeEngineCatalogService(params EngineAvailability[] engines)
     : IEngineCatalogService
 {

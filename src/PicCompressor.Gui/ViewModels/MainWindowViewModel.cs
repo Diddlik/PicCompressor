@@ -21,6 +21,7 @@ public sealed class MainWindowViewModel : ObservableObject
     public const double NarrowWidthThreshold = 1000;
 
     private readonly IEngineCatalogService engineCatalogService;
+    private readonly IReadOnlyList<string> initialInputs;
 
     private AppView view = AppView.Dashboard;
     private bool isCompact;
@@ -36,13 +37,16 @@ public sealed class MainWindowViewModel : ObservableObject
         IInputDiscovery? inputDiscovery = null,
         IPreviewRenderer? previewRenderer = null,
         IUpdateService? updateService = null,
-        IFileActionService? fileActions = null)
+        IFileActionService? fileActions = null,
+        IClipboardImportService? clipboardImport = null,
+        IReadOnlyList<string>? initialInputs = null)
     {
         ArgumentNullException.ThrowIfNull(compressionService);
         ArgumentNullException.ThrowIfNull(engineCatalogService);
         ArgumentNullException.ThrowIfNull(historyService);
 
         this.engineCatalogService = engineCatalogService;
+        this.initialInputs = initialInputs ?? [];
 
         Settings = new SettingsViewModel(settingsStore, updateService);
         Dashboard = new DashboardViewModel(
@@ -50,7 +54,8 @@ public sealed class MainWindowViewModel : ObservableObject
             compressionService,
             inputDiscovery,
             fileActions,
-            previewRenderer is null ? null : new ThumbnailCache(previewRenderer));
+            previewRenderer is null ? null : new ThumbnailCache(previewRenderer),
+            clipboardImport);
         History = new HistoryViewModel(historyService);
         Compare = new CompareViewModel(previewRenderer, Settings);
         Compare.AttachQueue(Dashboard.Queue);
@@ -189,6 +194,13 @@ public sealed class MainWindowViewModel : ObservableObject
     {
         await LoadEnginesAsync(cancellationToken).ConfigureAwait(true);
         await History.LoadAsync(cancellationToken).ConfigureAwait(true);
+
+        // Beim Start über "Öffnen mit" übergebene Dateien einreihen (MP-003); sie laufen durch
+        // denselben geprüften Aufnahmeweg wie Ablage, Auswahl und Zwischenablage.
+        if (initialInputs.Count > 0)
+        {
+            await Dashboard.AddPathsAsync(initialInputs).ConfigureAwait(true);
+        }
     }
 
     private async Task LoadEnginesAsync(CancellationToken cancellationToken)

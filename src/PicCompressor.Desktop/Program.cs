@@ -69,6 +69,10 @@ internal static class Program
 
         // Prereleases werden mitgezogen, solange der direkte Kanal in der Alpha-Phase ist;
         // stabile Releases erhalten dieselbe Quelle ohne Prerelease-Flag.
+        // Reste früherer Läufe entfernen, solange noch keine Eingabe dieses Laufs eingereiht ist.
+        var temporaryInputs = new TemporaryInputStore();
+        temporaryInputs.ClearPreviousRuns();
+
         var updateService = new VelopackUpdateService(
             "https://github.com/Diddlik/PicCompressor",
             includePrereleases: true);
@@ -87,11 +91,24 @@ internal static class Program
             new PhysicalInputDiscovery(comparer),
             new DesktopFileActionService(),
             bridge,
-            updateService);
+            updateService,
+            new DesktopClipboardImportService(temporaryInputs),
+            // "Öffnen mit" übergibt Dateipfade als Argumente; die eigentliche Prüfung nach
+            // Abschnitt 7.1 folgt beim Einreihen. Nur vorhandene Pfade weiterreichen (MP-003).
+            InitialInputsFrom(args));
 
         return AppBuilder.Configure<App>()
             .UsePlatformDetect()
             .LogToTrace()
             .StartWithClassicDesktopLifetime(args);
     }
+
+    /// <summary>
+    /// Filtert die Startargumente auf vorhandene Datei- und Ordnerpfade. Flags und veraltete Pfade
+    /// fallen hier heraus; die inhaltliche Prüfung (Format, Größe) folgt beim Einreihen nach
+    /// Abschnitt 7.1. VeloPack-Hook-Argumente sind zu diesem Zeitpunkt bereits von
+    /// <c>VelopackApp.Build().Run()</c> verarbeitet.
+    /// </summary>
+    private static IReadOnlyList<string> InitialInputsFrom(string[] args) =>
+        [.. args.Where(arg => File.Exists(arg) || Directory.Exists(arg))];
 }
