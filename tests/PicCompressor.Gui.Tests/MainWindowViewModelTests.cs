@@ -201,6 +201,30 @@ public sealed class MainWindowViewModelTests
         Assert.Equal("b.jpg", Assert.Single(service.Records).FileName);
     }
 
+    [Fact]
+    public async Task Initial_inputs_from_open_with_are_enqueued_on_startup()
+    {
+        var directory = TempFiles.CreateDirectory();
+        try
+        {
+            var image = TempFiles.CreateImage(directory, "opened.jpg");
+            var main = new MainWindowViewModel(
+                new UnconfiguredCompressionService(),
+                FakeEngineCatalogService.JpegliAvailable(),
+                new InMemoryHistoryService(),
+                inputDiscovery: new FakeInputDiscovery(),
+                initialInputs: [image]);
+
+            await main.InitializeAsync(CancellationToken.None);
+
+            Assert.Equal(image, Assert.Single(main.Dashboard.Queue).InputPath);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
     private static HistoryRecord Record(string fileName) =>
         new(DateTimeOffset.UtcNow, fileName, EngineIds.Jpegli, 10, 5, JobStatus.Succeeded, null);
 
