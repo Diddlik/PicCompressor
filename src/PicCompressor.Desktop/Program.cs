@@ -95,7 +95,8 @@ internal static class Program
             new DesktopClipboardImportService(temporaryInputs),
             // "Öffnen mit" übergibt Dateipfade als Argumente; die eigentliche Prüfung nach
             // Abschnitt 7.1 folgt beim Einreihen. Nur vorhandene Pfade weiterreichen (MP-003).
-            InitialInputsFrom(args));
+            InitialInputsFrom(args),
+            new DesktopNotificationService());
 
         return AppBuilder.Configure<App>()
             .UsePlatformDetect()

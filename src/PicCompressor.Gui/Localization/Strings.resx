@@ -88,6 +88,12 @@
   <data name="Dash_Paste" xml:space="preserve">
     <value>Paste</value>
   </data>
+  <data name="Notify_BatchTitle" xml:space="preserve">
+    <value>Compression finished</value>
+  </data>
+  <data name="Notify_BatchBody" xml:space="preserve">
+    <value>{0} succeeded, {1} failed</value>
+  </data>
   <data name="Dash_ClipboardEmpty" xml:space="preserve">
     <value>The clipboard holds no images or files.</value>
   </data>

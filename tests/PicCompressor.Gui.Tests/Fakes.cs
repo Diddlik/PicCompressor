@@ -202,6 +202,27 @@ internal sealed class FakeClipboardImportService(params string[] paths) : IClipb
     }
 }
 
+/// <summary>Benachrichtigungs-Doppel: hält die letzte Meldung fest.</summary>
+internal sealed class FakeNotificationService : INotificationService
+{
+    public int Count { get; private set; }
+
+    public string? Title { get; private set; }
+
+    public string? Body { get; private set; }
+
+    public bool WasError { get; private set; }
+
+    public Task ShowAsync(string title, string body, bool isError)
+    {
+        Count++;
+        Title = title;
+        Body = body;
+        WasError = isError;
+        return Task.CompletedTask;
+    }
+}
+
 internal sealed class FakeEngineCatalogService(params EngineAvailability[] engines)
     : IEngineCatalogService
 {

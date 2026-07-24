@@ -39,7 +39,8 @@ public sealed class MainWindowViewModel : ObservableObject
         IUpdateService? updateService = null,
         IFileActionService? fileActions = null,
         IClipboardImportService? clipboardImport = null,
-        IReadOnlyList<string>? initialInputs = null)
+        IReadOnlyList<string>? initialInputs = null,
+        INotificationService? notifications = null)
     {
         ArgumentNullException.ThrowIfNull(compressionService);
         ArgumentNullException.ThrowIfNull(engineCatalogService);
@@ -55,7 +56,8 @@ public sealed class MainWindowViewModel : ObservableObject
             inputDiscovery,
             fileActions,
             previewRenderer is null ? null : new ThumbnailCache(previewRenderer),
-            clipboardImport);
+            clipboardImport,
+            notifications);
         History = new HistoryViewModel(historyService);
         Compare = new CompareViewModel(previewRenderer, Settings);
         Compare.AttachQueue(Dashboard.Queue);

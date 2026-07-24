@@ -88,6 +88,12 @@
   <data name="Dash_Paste" xml:space="preserve">
     <value>Einfügen</value>
   </data>
+  <data name="Notify_BatchTitle" xml:space="preserve">
+    <value>Kompression abgeschlossen</value>
+  </data>
+  <data name="Notify_BatchBody" xml:space="preserve">
+    <value>{0} erfolgreich, {1} fehlgeschlagen</value>
+  </data>
   <data name="Dash_ClipboardEmpty" xml:space="preserve">
     <value>Die Zwischenablage enthält keine Bilder oder Dateien.</value>
   </data>

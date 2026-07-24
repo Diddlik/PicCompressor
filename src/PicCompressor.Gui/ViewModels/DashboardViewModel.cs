@@ -15,6 +15,7 @@ public sealed class DashboardViewModel : ObservableObject
     private readonly IFileActionService fileActions;
     private readonly ThumbnailCache? thumbnails;
     private readonly IClipboardImportService clipboardImport;
+    private readonly INotificationService notifications;
 
     private CancellationTokenSource? runCancellation;
     private CancellationTokenSource? discoveryCancellation;
@@ -29,7 +30,8 @@ public sealed class DashboardViewModel : ObservableObject
         IInputDiscovery? inputDiscovery = null,
         IFileActionService? fileActions = null,
         ThumbnailCache? thumbnails = null,
-        IClipboardImportService? clipboardImport = null)
+        IClipboardImportService? clipboardImport = null,
+        INotificationService? notifications = null)
     {
         ArgumentNullException.ThrowIfNull(settings);
         ArgumentNullException.ThrowIfNull(compressionService);
@@ -41,6 +43,7 @@ public sealed class DashboardViewModel : ObservableObject
         // Ohne Vorschaudienst bleibt die Liste ohne Bilder; sie ist deswegen nicht weniger bedienbar.
         this.thumbnails = thumbnails;
         this.clipboardImport = clipboardImport ?? new UnconfiguredClipboardImportService();
+        this.notifications = notifications ?? new UnconfiguredNotificationService();
 
         Queue.CollectionChanged += OnQueueChanged;
 
@@ -361,6 +364,26 @@ public sealed class DashboardViewModel : ObservableObject
             runCancellation = null;
             RaiseRunState();
         }
+
+        await NotifyBatchCompleteAsync(pending).ConfigureAwait(true);
+    }
+
+    /// <summary>
+    /// Meldet den Abschluss eines Laufs als Benachrichtigung (MP-003). Der Text nennt die Zahl
+    /// erfolgreicher und fehlgeschlagener Jobs; ein Fehlschlag markiert die Meldung als Fehler.
+    /// Die Anzeige ist capability-gesteuert und rein additiv — ohne verdrahteten Host geschieht
+    /// nichts.
+    /// </summary>
+    private async Task NotifyBatchCompleteAsync(IReadOnlyList<QueueItemViewModel> processed)
+    {
+        var failed = processed.Count(item => item.Status is JobStatus.Failed);
+        var succeeded = processed.Count(item => item.Status is JobStatus.Succeeded);
+        await notifications
+            .ShowAsync(
+                Localizer.Instance["Notify_BatchTitle"],
+                Localizer.Instance.Format("Notify_BatchBody", succeeded, failed),
+                isError: failed > 0)
+            .ConfigureAwait(true);
     }
 
     private CompressionRequest BuildRequest(

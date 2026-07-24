@@ -21,7 +21,8 @@ public sealed class App : Avalonia.Application
             null,
             new UnconfiguredUpdateService(),
             new UnconfiguredClipboardImportService(),
-            []);
+            [],
+            new UnconfiguredNotificationService());
 
     private readonly AppServices services = serviceFactory();
 
@@ -35,7 +36,8 @@ public sealed class App : Avalonia.Application
         IPreviewRenderer? previewRenderer = null,
         IUpdateService? updateService = null,
         IClipboardImportService? clipboardImport = null,
-        IReadOnlyList<string>? initialInputs = null)
+        IReadOnlyList<string>? initialInputs = null,
+        INotificationService? notifications = null)
     {
         ArgumentNullException.ThrowIfNull(compressionService);
         ArgumentNullException.ThrowIfNull(engineCatalogService);
@@ -54,7 +56,8 @@ public sealed class App : Avalonia.Application
                 previewRenderer,
                 updateService ?? new UnconfiguredUpdateService(),
                 clipboardImport ?? new UnconfiguredClipboardImportService(),
-                initialInputs ?? []);
+                initialInputs ?? [],
+                notifications ?? new UnconfiguredNotificationService());
     }
 
     public override void Initialize() => AvaloniaXamlLoader.Load(this);
@@ -73,7 +76,8 @@ public sealed class App : Avalonia.Application
                 services.UpdateService,
                 services.FileActionService,
                 services.ClipboardImport,
-                services.InitialInputs);
+                services.InitialInputs,
+                services.Notifications);
 
             var window = new MainWindow { DataContext = viewModel };
             window.Opened += async (_, _) =>
@@ -95,5 +99,6 @@ public sealed class App : Avalonia.Application
         IPreviewRenderer? PreviewRenderer,
         IUpdateService UpdateService,
         IClipboardImportService ClipboardImport,
-        IReadOnlyList<string> InitialInputs);
+        IReadOnlyList<string> InitialInputs,
+        INotificationService Notifications);
 }
