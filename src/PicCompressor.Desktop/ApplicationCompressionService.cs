@@ -80,39 +80,44 @@ public sealed class ApplicationCompressionService(
         var jobs = new List<CompressionJob>(requests.Count);
         var jobIndexes = new Dictionary<Guid, int>(requests.Count);
         var reservedOutputPaths = new List<string>(requests.Count);
-        for (var index = 0; index < requests.Count; index++)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            var request = requests[index];
-            progress?.Report(new(index, new(JobStatus.Validating)));
-            try
+        await Task.Run(
+            () =>
             {
-                var job = jobFactory.Create(
-                    new(
-                        request.InputPath,
-                        request.EngineSettings,
-                        request.ExifPolicy,
-                        request.ColorProfilePolicy,
-                        request.AlphaBackground,
-                        request.CollisionPolicy,
-                        request.LargerOutputPolicy,
-                        request.OutputDirectory,
-                        request.Suffix,
-                        PredecessorJobId: request.PredecessorJobId),
-                    reservedOutputPaths);
-                jobs.Add(job);
-                jobIndexes.Add(job.Id, index);
-                reservedOutputPaths.Add(job.OutputPath);
-            }
-            catch (JobCreationException exception)
-            {
-                outcomes[index] = CompressionOutcome.Failed(
-                    request.InputPath,
-                    0,
-                    exception.Category,
-                    exception.Message);
-            }
-        }
+                for (var index = 0; index < requests.Count; index++)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    var request = requests[index];
+                    progress?.Report(new(index, new(JobStatus.Validating)));
+                    try
+                    {
+                        var job = jobFactory.Create(
+                            new(
+                                request.InputPath,
+                                request.EngineSettings,
+                                request.ExifPolicy,
+                                request.ColorProfilePolicy,
+                                request.AlphaBackground,
+                                request.CollisionPolicy,
+                                request.LargerOutputPolicy,
+                                request.OutputDirectory,
+                                request.Suffix,
+                                PredecessorJobId: request.PredecessorJobId),
+                            reservedOutputPaths);
+                        jobs.Add(job);
+                        jobIndexes.Add(job.Id, index);
+                        reservedOutputPaths.Add(job.OutputPath);
+                    }
+                    catch (JobCreationException exception)
+                    {
+                        outcomes[index] = CompressionOutcome.Failed(
+                            request.InputPath,
+                            0,
+                            exception.Category,
+                            exception.Message);
+                    }
+                }
+            },
+            cancellationToken).ConfigureAwait(false);
 
         var batchProgress = progress is null
             ? null

@@ -36,7 +36,7 @@ internal sealed record CliOptions(
         var colorProfilePolicy = ColorProfilePolicy.Preserve;
         var recursive = false;
         var dryRun = false;
-        var parallelism = 1;
+        var parallelism = Math.Max(1, Environment.ProcessorCount / 2);
         var json = false;
         var noHistory = false;
         string? logPath = null;

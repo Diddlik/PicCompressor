@@ -25,7 +25,7 @@ internal static class CliApplication
           --color-profile <preserve|srgb|remove>
           --recursive                   Scan input directories recursively
           --dry-run                     Validate and plan without writing
-          --parallelism <1-256>         Maximum concurrent jobs (default: 1)
+          --parallelism <1-256>         Maximum concurrent jobs (default: half the logical CPUs)
           --timeout <0-86400>           Encoder time limit in seconds (default: 0 = no limit)
           --min-savings <0-99>          Discard output saving less than this percent (default: 0)
           --json                        Emit schema-versioned JSON

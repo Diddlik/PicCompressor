@@ -14,6 +14,7 @@ public sealed class CliOptionsTests
         Assert.Equal(
             PicCompressor.Domain.ColorProfilePolicy.Preserve,
             options.ColorProfilePolicy);
+        Assert.Equal(Math.Max(1, Environment.ProcessorCount / 2), options.Parallelism);
     }
 
     [Fact]

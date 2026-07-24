@@ -91,6 +91,31 @@ public sealed class ApplicationCompressionServiceTests
         Assert.All(outcomes, outcome => Assert.Equal(JobStatus.Succeeded, outcome.Status));
     }
 
+    [Fact]
+    public async Task CompressBatchAsync_validates_inputs_off_the_calling_thread()
+    {
+        var input = Path.GetFullPath("input.png");
+        var inspector = new ThreadTrackingInspector();
+        var service = new ApplicationCompressionService(
+            new CompressionJobFactory(
+                new StubFileSystem(input),
+                inspector,
+                new InputValidationLimits(1_000, 1_000),
+                TimeProvider.System),
+            new StubExecutor());
+        var callingThread = Environment.CurrentManagedThreadId;
+
+        await service.CompressBatchAsync(
+            [CreateRequest(
+                input,
+                new JpegliSettings(80, JpegliChromaSubsampling.Subsampling420, 2))],
+            1,
+            null,
+            CancellationToken.None);
+
+        Assert.NotEqual(callingThread, inspector.ThreadId);
+    }
+
     private static CompressionRequest CreateRequest(
         string inputPath,
         CompressionEngineSettings settings) =>
@@ -117,6 +142,17 @@ public sealed class ApplicationCompressionServiceTests
     {
         public InputImageInfo Inspect(string path) =>
             new(InputImageFormat.Png, 10, 10, 100);
+    }
+
+    private sealed class ThreadTrackingInspector : IInputImageInspector
+    {
+        public int ThreadId { get; private set; }
+
+        public InputImageInfo Inspect(string path)
+        {
+            ThreadId = Environment.CurrentManagedThreadId;
+            return new(InputImageFormat.Png, 10, 10, 100);
+        }
     }
 
     private sealed class StubExecutor : ICompressionJobExecutor

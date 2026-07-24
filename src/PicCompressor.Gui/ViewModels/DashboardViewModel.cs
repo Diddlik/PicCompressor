@@ -16,9 +16,11 @@ public sealed class DashboardViewModel : ObservableObject
     private readonly ThumbnailCache? thumbnails;
     private readonly IClipboardImportService clipboardImport;
     private readonly INotificationService notifications;
+    private readonly HashSet<string> queuedPaths = new(StringComparer.OrdinalIgnoreCase);
 
     private CancellationTokenSource? runCancellation;
     private CancellationTokenSource? discoveryCancellation;
+    private bool deferQueueState;
     private bool recurseFolders = true;
     private bool isDiscovering;
     private int discoveredCount;
@@ -220,12 +222,21 @@ public sealed class DashboardViewModel : ObservableObject
             }
 
             var added = 0;
-            foreach (var input in found)
+            deferQueueState = true;
+            try
             {
-                if (AddFile(input.Path, input.FileSizeBytes))
+                foreach (var input in found)
                 {
-                    added++;
+                    if (AddFile(input.Path, input.FileSizeBytes))
+                    {
+                        added++;
+                    }
                 }
+            }
+            finally
+            {
+                deferQueueState = false;
+                RaiseQueueState();
             }
 
             DropHint = added == 0 ? Localizer.Instance["Dash_NoSupportedFiles"] : null;
@@ -261,13 +272,21 @@ public sealed class DashboardViewModel : ObservableObject
 
     private bool AddFile(string path, long size)
     {
-        if (Queue.Any(item => string.Equals(item.InputPath, path, StringComparison.OrdinalIgnoreCase)))
+        if (!queuedPaths.Add(path))
         {
             return false;
         }
 
-        Queue.Add(new QueueItemViewModel(path, Settings.EngineId, size, thumbnails));
-        return true;
+        try
+        {
+            Queue.Add(new QueueItemViewModel(path, Settings.EngineId, size, thumbnails));
+            return true;
+        }
+        catch
+        {
+            queuedPaths.Remove(path);
+            throw;
+        }
     }
 
     /// <summary>
@@ -447,15 +466,33 @@ public sealed class DashboardViewModel : ObservableObject
     {
         foreach (var item in e.NewItems?.OfType<QueueItemViewModel>() ?? [])
         {
+            queuedPaths.Add(item.InputPath);
             item.PropertyChanged += OnItemChanged;
         }
 
         foreach (var item in e.OldItems?.OfType<QueueItemViewModel>() ?? [])
         {
+            if (!Queue.Any(remaining => string.Equals(
+                    remaining.InputPath,
+                    item.InputPath,
+                    StringComparison.OrdinalIgnoreCase)))
+            {
+                queuedPaths.Remove(item.InputPath);
+            }
+
             item.PropertyChanged -= OnItemChanged;
         }
 
-        RaiseQueueState();
+        if (e.Action is NotifyCollectionChangedAction.Reset)
+        {
+            queuedPaths.Clear();
+            queuedPaths.UnionWith(Queue.Select(item => item.InputPath));
+        }
+
+        if (!deferQueueState)
+        {
+            RaiseQueueState();
+        }
     }
 
     private void OnItemChanged(object? sender, PropertyChangedEventArgs e)
