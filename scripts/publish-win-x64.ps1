@@ -58,6 +58,7 @@ Invoke-Checked {
         --runtime win-x64 `
         --self-contained true `
         --output $publishOutput `
+        "-p:Version=$Version" `
         "-p:PicCompressorNativeLibrary=$nativeLibrary"
 }
 Invoke-Checked {
@@ -66,11 +67,18 @@ Invoke-Checked {
         --runtime win-x64 `
         --self-contained true `
         --output $publishOutput `
+        "-p:Version=$Version" `
         "-p:PicCompressorNativeLibrary=$nativeLibrary"
 }
 
-if (-not (Test-Path -LiteralPath (Join-Path $publishOutput "PicCompressor.Desktop.exe"))) {
+$desktopExecutable = Join-Path $publishOutput "PicCompressor.Desktop.exe"
+$desktopAssembly = Join-Path $publishOutput "PicCompressor.Desktop.dll"
+if (-not (Test-Path -LiteralPath $desktopExecutable)) {
     throw "Desktop publish did not produce PicCompressor.Desktop.exe."
+}
+$publishedVersion = [Diagnostics.FileVersionInfo]::GetVersionInfo($desktopAssembly).ProductVersion
+if ($publishedVersion.Split("+", 2)[0] -ne $Version) {
+    throw "Desktop publish version '$publishedVersion' does not match release version '$Version'."
 }
 
 $licenseDirectory = Join-Path $publishOutput "licenses"

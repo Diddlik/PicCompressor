@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using Avalonia;
 using PicCompressor.Application;
 using PicCompressor.Domain;
@@ -15,7 +16,12 @@ internal static class Program
     [STAThread]
     public static int Main(string[] args)
     {
-        VelopackApp.Build().Run();
+        var velopack = VelopackApp.Build();
+        if (OperatingSystem.IsWindows())
+        {
+            velopack.OnAfterUpdateFastCallback(_ => WindowsShell.RefreshIcons());
+        }
+        velopack.Run();
         var comparer = OperatingSystem.IsWindows()
             ? StringComparer.OrdinalIgnoreCase
             : StringComparer.Ordinal;
@@ -125,4 +131,25 @@ internal static class Program
 
         return [.. candidates.Where(path => File.Exists(path) || Directory.Exists(path))];
     }
+}
+
+internal static partial class WindowsShell
+{
+    private const uint AssociationChanged = 0x08000000;
+    private const uint Flush = 0x1000;
+
+    internal static void RefreshIcons()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            SHChangeNotify(AssociationChanged, Flush, 0, 0);
+        }
+    }
+
+    [LibraryImport("shell32.dll")]
+    private static partial void SHChangeNotify(
+        uint eventId,
+        uint flags,
+        nint item1,
+        nint item2);
 }
