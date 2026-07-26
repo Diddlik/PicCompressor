@@ -45,7 +45,7 @@ function Invoke-CheckedProcess(
         }
         $startInfo.Environment[[string]$entry.Key] = [string]$entry.Value
     }
-    $startInfo.Environment["PATH"] = $env:PATH
+    $startInfo.Environment["Path"] = $env:PATH
 
     $process = [Diagnostics.Process]::Start($startInfo)
     $process.WaitForExit()
@@ -58,7 +58,6 @@ $configureArguments = @(
     "-S", (Join-Path $root "native"),
     "-B", $BuildDirectory,
     "-DPC_ENABLE_JPEGLI=ON",
-    "-DPC_ENABLE_GUETZLI=ON",
     "-DPC_OUTPUT_DIR=$($OutputDirectory.Replace('\', '/'))",
     "-DBUILD_TESTING=ON"
 )
@@ -93,7 +92,7 @@ Invoke-CheckedProcess $cmake @(
     "--target", "piccompressor_native", "piccompressor_native_tests",
     "piccompressor_exif_tests",
     "--config", $Configuration,
-    "--parallel", "4"
+    "--parallel", "1"
 )
 
 $testDirectory = if ($Toolchain -eq "Msvc") {

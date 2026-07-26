@@ -6,10 +6,11 @@
         xmlns:views="using:PicCompressor.Gui.Views"
         x:Class="PicCompressor.Gui.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
+        Design.DataContext="{x:Static vm:DesignData.MainWindow}"
         Title="{l:Localize App_Title}"
         Icon="/Assets/PicCompressor.ico"
         WindowStartupLocation="CenterScreen"
-        Width="1200" Height="920" MinWidth="960" MinHeight="920"
+        Width="1200" Height="920" MinWidth="960" MinHeight="620"
         Background="Transparent"
         TransparencyLevelHint="Transparent"
         Foreground="{DynamicResource InkBrush}"
@@ -185,10 +186,34 @@
 
         <!-- Genau eine Ansicht ist geladen; jede bringt ihr eigenes Scrollen mit. -->
         <Panel Grid.Column="1">
-          <views:DashboardView DataContext="{Binding Dashboard}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsDashboard}" />
-          <views:SettingsView DataContext="{Binding Settings}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsSettings}" />
-          <views:HistoryView DataContext="{Binding History}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsHistory}" />
-          <views:CompareView DataContext="{Binding Compare}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsCompare}" />
+          <ContentControl Content="{Binding Dashboard}" IsVisible="{Binding IsDashboard}">
+            <ContentControl.ContentTemplate>
+              <DataTemplate x:DataType="vm:DashboardViewModel">
+                <views:DashboardView />
+              </DataTemplate>
+            </ContentControl.ContentTemplate>
+          </ContentControl>
+          <ContentControl Content="{Binding Settings}" IsVisible="{Binding IsSettings}">
+            <ContentControl.ContentTemplate>
+              <DataTemplate x:DataType="vm:SettingsViewModel">
+                <views:SettingsView />
+              </DataTemplate>
+            </ContentControl.ContentTemplate>
+          </ContentControl>
+          <ContentControl Content="{Binding History}" IsVisible="{Binding IsHistory}">
+            <ContentControl.ContentTemplate>
+              <DataTemplate x:DataType="vm:HistoryViewModel">
+                <views:HistoryView />
+              </DataTemplate>
+            </ContentControl.ContentTemplate>
+          </ContentControl>
+          <ContentControl Content="{Binding Compare}" IsVisible="{Binding IsCompare}">
+            <ContentControl.ContentTemplate>
+              <DataTemplate x:DataType="vm:CompareViewModel">
+                <views:CompareView />
+              </DataTemplate>
+            </ContentControl.ContentTemplate>
+          </ContentControl>
         </Panel>
       </Grid>
 

@@ -3,11 +3,18 @@
              xmlns:vm="using:PicCompressor.Gui.ViewModels"
              xmlns:l="using:PicCompressor.Gui.Localization"
              x:Class="PicCompressor.Gui.Views.DashboardView"
-             x:DataType="vm:DashboardViewModel">
+             x:DataType="vm:DashboardViewModel"
+             Design.DataContext="{x:Static vm:DesignData.Dashboard}">
 
   <UserControl.KeyBindings>
     <KeyBinding Gesture="Ctrl+V" Command="{Binding PasteCommand}" />
   </UserControl.KeyBindings>
+
+  <UserControl.Styles>
+    <Style Selector="Button#BrowseButton.cta /template/ Border#shell">
+      <Setter Property="Margin" Value="0,0,4,4" />
+    </Style>
+  </UserControl.Styles>
 
   <UserControl.Resources>
 
@@ -143,17 +150,9 @@
 
           <StackPanel Spacing="8" DataContext="{Binding Settings}">
             <TextBlock Classes="capsLabel" Text="{l:Localize Common_Engine}" />
-            <Border Classes="segmentHost">
-              <UniformGrid Columns="2">
-                <RadioButton Classes="segment" GroupName="QuickEngine"
-                             Content="{l:Localize Engine_Jpegli}"
-                             IsChecked="{Binding IsJpegli}"
-                             AutomationProperties.Name="{l:Localize Engine_Jpegli}" />
-                <RadioButton Classes="segment" GroupName="QuickEngine"
-                             Content="{l:Localize Engine_Guetzli}"
-                             IsChecked="{Binding IsGuetzli}"
-                             AutomationProperties.Name="{l:Localize Engine_Guetzli}" />
-              </UniformGrid>
+            <Border Classes="insetRow">
+              <TextBlock Classes="bodyText" FontWeight="SemiBold"
+                         Text="{l:Localize Engine_Jpegli}" />
             </Border>
           </StackPanel>
 
@@ -169,9 +168,6 @@
                     IsSnapToTickEnabled="True" Value="{Binding Quality}"
                     AutomationProperties.Name="{l:Localize Common_Quality}" />
             <TextBlock Classes="captionText" Text="{Binding EngineDescription}" />
-            <TextBlock Classes="captionText" Foreground="{DynamicResource CoralTextBrush}"
-                       IsVisible="{Binding IsGuetzli}" TextWrapping="Wrap"
-                       Text="{l:Localize Engine_GuetzliFloor}" />
             <TextBlock Classes="captionText" Foreground="{DynamicResource CoralTextBrush}" TextWrapping="Wrap"
                        Text="{Binding EngineAvailabilityText}"
                        IsVisible="{Binding !IsSelectedEngineAvailable}" />
@@ -183,7 +179,7 @@
                   AutomationProperties.Name="{l:Localize Dash_CompressAll}" />
           <Button Classes="ghost violet" Content="{l:Localize Dash_CompareBeforeAfter}" Height="44" CornerRadius="14"
                   HorizontalAlignment="Stretch"
-                  Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ShowCompareCommand}"
+                  Command="{Binding ShowCompareCommand}"
                   AutomationProperties.Name="{l:Localize Dash_CompareBeforeAfter}" />
           <Button Classes="ghost coral" Content="{l:Localize Dash_Cancel}"
                   Command="{Binding CancelCommand}"
@@ -220,12 +216,15 @@
           <StackPanel Spacing="0" VerticalAlignment="Center" HorizontalAlignment="Left">
             <TextBlock Classes="heroTitle" FontSize="32" Text="{l:Localize Dash_DropHere}" />
             <TextBlock Classes="muted" Margin="0,8,0,0" Text="{l:Localize Dash_DropHint}" />
-            <StackPanel Orientation="Horizontal" Spacing="14" Margin="0,16,0,0">
-              <Button Classes="cta" x:Name="BrowseButton" Content="{l:Localize Dash_Browse}"
+            <StackPanel x:Name="BrowseActions" Orientation="Horizontal" Spacing="14"
+                        Margin="0,16,0,0" MinHeight="58">
+              <Button Classes="cta" x:Name="BrowseButton" MinHeight="50" VerticalAlignment="Center"
+                      Content="{l:Localize Dash_Browse}"
                       AutomationProperties.Name="{l:Localize Dash_Browse}" />
-              <Button Classes="ghost violet" x:Name="AddFolderButton" Content="{l:Localize Dash_AddFolder}"
+              <Button Classes="ghost violet" x:Name="AddFolderButton" VerticalAlignment="Center"
+                      Content="{l:Localize Dash_AddFolder}"
                       AutomationProperties.Name="{l:Localize Dash_AddFolder}" />
-              <Button Classes="ghost" Content="{l:Localize Dash_Paste}"
+              <Button Classes="ghost" VerticalAlignment="Center" Content="{l:Localize Dash_Paste}"
                       Command="{Binding PasteCommand}"
                       AutomationProperties.Name="{l:Localize Dash_Paste}" />
               <StackPanel Orientation="Horizontal" Spacing="9" VerticalAlignment="Center">
@@ -258,7 +257,7 @@
             <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="#4F6B1F"
                        Text="{l:Localize Stat_SavedAllTime}" />
             <TextBlock Classes="bigStat"
-                       Text="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).History.TotalSavedText}" />
+                       Text="{Binding History.TotalSavedText}" />
           </StackPanel>
         </Border>
         <Border Grid.Column="2" Classes="tile" Background="{DynamicResource VioletSoftBrush}">
@@ -266,7 +265,7 @@
             <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="#5B4BC0"
                        Text="{l:Localize Stat_FilesCompressed}" />
             <TextBlock Classes="bigStat"
-                       Text="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).History.FilesCompressedText}" />
+                       Text="{Binding History.FilesCompressedText}" />
           </StackPanel>
         </Border>
         <Border Grid.Column="4" Classes="tile" Background="{DynamicResource CoralSoftBrush}">
@@ -274,7 +273,7 @@
             <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="#C0492C"
                        Text="{l:Localize Stat_BestSaving}" />
             <TextBlock Classes="bigStat"
-                       Text="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).History.BestSavingText}" />
+                       Text="{Binding History.BestSavingText}" />
           </StackPanel>
         </Border>
       </Grid>
@@ -282,7 +281,7 @@
       <!-- Schmale Fenster stapeln Warteschlange und Schnelleinstellungen. -->
       <Panel>
         <Grid x:Name="WideLayout" ColumnDefinitions="*,16,320"
-              IsVisible="{Binding !$parent[Window].((vm:MainWindowViewModel)DataContext).IsNarrow}">
+              IsVisible="{Binding !IsNarrow}">
           <ContentControl Grid.Column="0" Content="{Binding}" ClipToBounds="False"
                           ContentTemplate="{StaticResource QueueCard}" />
           <ContentControl Grid.Column="2" Content="{Binding}" VerticalAlignment="Top" ClipToBounds="False"
@@ -290,7 +289,7 @@
         </Grid>
 
         <StackPanel x:Name="StackedLayout" Spacing="16"
-                    IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsNarrow}">
+                    IsVisible="{Binding IsNarrow}">
           <ContentControl Content="{Binding}" ContentTemplate="{StaticResource QuickSettingsCard}" />
           <ContentControl Content="{Binding}" ContentTemplate="{StaticResource QueueCard}" />
         </StackPanel>

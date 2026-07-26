@@ -17,6 +17,7 @@ foreach ($size in $sizes) {
     $background = $null
     $path = $null
     $pen = $null
+    $borderPen = $null
     $stream = $null
 
     try {
@@ -45,15 +46,19 @@ foreach ($size in $sizes) {
         $path.AddArc($bounds.Left, $bounds.Bottom - $diameter, $diameter, $diameter, 90, 90)
         $path.CloseFigure()
 
-        $background = [System.Drawing.Drawing2D.LinearGradientBrush]::new(
-            $bounds,
-            [System.Drawing.ColorTranslator]::FromHtml("#6895F4"),
-            [System.Drawing.ColorTranslator]::FromHtml("#406BCE"),
-            55)
+        # Cozy-neon bento: Lime-Fläche mit Ink-Rahmen (identisch zum Header-Badge in MainWindow.axaml).
+        $background = [System.Drawing.SolidBrush]::new(
+            [System.Drawing.ColorTranslator]::FromHtml("#B9EE43"))
         $graphics.FillPath($background, $path)
 
+        $borderPen = [System.Drawing.Pen]::new(
+            [System.Drawing.ColorTranslator]::FromHtml("#17140E"),
+            [single][Math]::Max(1.0, $size * 0.06))
+        $borderPen.LineJoin = [System.Drawing.Drawing2D.LineJoin]::Round
+        $graphics.DrawPath($borderPen, $path)
+
         $pen = [System.Drawing.Pen]::new(
-            [System.Drawing.Color]::White,
+            [System.Drawing.ColorTranslator]::FromHtml("#17140E"),
             [single][Math]::Max(1.5, $size * 0.105))
         $pen.StartCap = [System.Drawing.Drawing2D.LineCap]::Round
         $pen.EndCap = [System.Drawing.Drawing2D.LineCap]::Round
@@ -80,6 +85,7 @@ foreach ($size in $sizes) {
     finally {
         if ($null -ne $stream) { $stream.Dispose() }
         if ($null -ne $pen) { $pen.Dispose() }
+        if ($null -ne $borderPen) { $borderPen.Dispose() }
         if ($null -ne $background) { $background.Dispose() }
         if ($null -ne $path) { $path.Dispose() }
         $graphics.Dispose()

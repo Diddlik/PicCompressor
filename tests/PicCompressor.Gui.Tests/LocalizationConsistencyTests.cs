@@ -96,7 +96,7 @@ public sealed class LocalizationConsistencyTests
         // Eigennamen und Bezeichner sind absichtlich identisch; alles andere muss übersetzt sein.
         string[] intentionallyIdentical =
         [
-            "App_Title", "Engine_Jpegli", "Engine_Guetzli", "Common_Engine",
+            "App_Title", "Engine_Jpegli", "Common_Engine",
             "Set_Exif", "Set_LanguageSystem", "Set_ThemeSystem",
             "Hist_ColEngine", "Hist_ColStatus", "Cmp_Original",
             "Status_EnginesAvailable", "Set_EngineHeading",

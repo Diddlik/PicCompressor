@@ -48,7 +48,7 @@ public sealed class ApplicationCompressionServiceTests
         var service = new ApplicationEngineCatalogService(
             new StubCatalog(
                 EngineCapability.Available(JpegliSettings.JpegliEngineId, "0.12.0", "revision"),
-                EngineCapability.Unavailable("guetzli", "Not packaged.")));
+                EngineCapability.Unavailable("alternate", "Not packaged.")));
 
         var engines = await service.GetEnginesAsync(CancellationToken.None);
 

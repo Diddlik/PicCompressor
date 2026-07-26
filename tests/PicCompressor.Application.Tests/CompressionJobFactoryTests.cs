@@ -57,6 +57,38 @@ public sealed class CompressionJobFactoryTests
     }
 
     [Fact]
+    public void Create_overwrites_the_original_jpeg_only_when_explicitly_requested()
+    {
+        var fileSystem = new StubFileSystem("source.jpg");
+        var inspector = new StubInspector(new InputImageInfo(InputImageFormat.Jpeg, 1, 1, 1));
+        var request = CreateRequest("source.jpg") with
+        {
+            CollisionPolicy = CollisionPolicy.Overwrite,
+            OverwriteOriginal = true
+        };
+
+        var job = CreateFactory(fileSystem, inspector).Create(request);
+
+        Assert.Equal(job.InputPath, job.OutputPath);
+    }
+
+    [Fact]
+    public void Create_rejects_png_when_overwriting_the_original()
+    {
+        var fileSystem = new StubFileSystem("source.png");
+        var request = CreateRequest("source.png") with
+        {
+            CollisionPolicy = CollisionPolicy.Overwrite,
+            OverwriteOriginal = true
+        };
+
+        var exception = Assert.Throws<JobCreationException>(
+            () => CreateFactory(fileSystem).Create(request));
+
+        Assert.Equal(CompressionErrorCategory.InvalidArguments, exception.Category);
+    }
+
+    [Fact]
     public void Create_renames_existing_output()
     {
         var fileSystem = new StubFileSystem("source.png", "source_compressed.jpg");

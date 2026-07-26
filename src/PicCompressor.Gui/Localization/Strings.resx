@@ -181,23 +181,8 @@
   <data name="Engine_Jpegli" xml:space="preserve">
     <value>Jpegli</value>
   </data>
-  <data name="Engine_Guetzli" xml:space="preserve">
-    <value>Guetzli</value>
-  </data>
   <data name="Engine_JpegliDescription" xml:space="preserve">
     <value>Default engine. Quality 1–100, chroma subsampling and progressive level are explicit parameters.</value>
-  </data>
-  <data name="Engine_GuetzliDescription" xml:space="preserve">
-    <value>Optional legacy engine. Very slow, high memory use, sequential JPEG only.</value>
-  </data>
-  <data name="Engine_GuetzliFloor" xml:space="preserve">
-    <value>Guetzli enforces a minimum quality of 84.</value>
-  </data>
-  <data name="Engine_GuetzliWarning" xml:space="preserve">
-    <value>Guetzli is an optional legacy engine: minimum quality 84, sequential JPEG only, high memory and time cost.</value>
-  </data>
-  <data name="Engine_QualityNotComparable" xml:space="preserve">
-    <value>Quality values of different engines are not comparable.</value>
   </data>
   <data name="Set_EngineHeading" xml:space="preserve">
     <value>Engine</value>
@@ -222,6 +207,12 @@
   </data>
   <data name="Set_TargetCustomHint" xml:space="preserve">
     <value>Relative directory structure of the inputs is preserved.</value>
+  </data>
+  <data name="Set_TargetOverwriteOriginal" xml:space="preserve">
+    <value>Replace original JPEG files</value>
+  </data>
+  <data name="Set_TargetOverwriteOriginalHint" xml:space="preserve">
+    <value>Caution: the validated compressed JPEG permanently replaces the original. PNG inputs are rejected for this option.</value>
   </data>
   <data name="Set_FolderPickerTitle" xml:space="preserve">
     <value>Choose output folder</value>
@@ -339,9 +330,6 @@
   </data>
   <data name="Set_TimeoutJpegli" xml:space="preserve">
     <value>Jpegli time limit (seconds)</value>
-  </data>
-  <data name="Set_TimeoutGuetzli" xml:space="preserve">
-    <value>Guetzli time limit (seconds)</value>
   </data>
   <data name="Set_TimeoutHint" xml:space="preserve">
     <value>0 disables the limit; applied on the next start.</value>

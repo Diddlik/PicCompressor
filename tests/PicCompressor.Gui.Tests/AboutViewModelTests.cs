@@ -23,7 +23,7 @@ public sealed class AboutViewModelTests
         Assert.NotEmpty(about.Components);
         // Die nativen Encoder und die UI-Basis müssen genannt sein.
         Assert.Contains(about.Components, entry => entry.Name == "Jpegli");
-        Assert.Contains(about.Components, entry => entry.Name == "Guetzli");
+        Assert.DoesNotContain(about.Components, entry => entry.Name == "Guetzli");
         Assert.Contains(about.Components, entry => entry.Name == "Avalonia");
         Assert.All(about.Components, entry =>
         {

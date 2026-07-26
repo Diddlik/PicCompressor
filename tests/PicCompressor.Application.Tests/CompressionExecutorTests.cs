@@ -73,18 +73,18 @@ public sealed class CompressionExecutorTests
     {
         var fileSystem = new StubFileSystem();
         var jpegli = new StubEngine(EngineEncodingResult.Succeeded(TimeSpan.Zero));
-        var guetzli = new StubEngine(
+        var alternate = new StubEngine(
             EngineEncodingResult.Succeeded(TimeSpan.Zero),
-            GuetzliSettings.GuetzliEngineId);
+            AlternateSettings.EngineIdValue);
         var executor = new CompressionExecutor(
-            [jpegli, guetzli],
+            [jpegli, alternate],
             new SafeOutputPublisher(fileSystem, fileSystem));
 
-        var result = await executor.ExecuteAsync(CreateGuetzliJob(), CancellationToken.None);
+        var result = await executor.ExecuteAsync(CreateAlternateJob(), CancellationToken.None);
 
         Assert.Equal(JobStatus.Succeeded, result.Status);
-        Assert.Equal(GuetzliSettings.GuetzliEngineId, result.EngineId);
-        Assert.True(guetzli.WasInvoked);
+        Assert.Equal(AlternateSettings.EngineIdValue, result.EngineId);
+        Assert.True(alternate.WasInvoked);
         Assert.False(jpegli.WasInvoked);
     }
 
@@ -96,11 +96,11 @@ public sealed class CompressionExecutorTests
             new StubEngine(EngineEncodingResult.Succeeded(TimeSpan.Zero)),
             new SafeOutputPublisher(fileSystem, fileSystem));
 
-        var result = await executor.ExecuteAsync(CreateGuetzliJob(), CancellationToken.None);
+        var result = await executor.ExecuteAsync(CreateAlternateJob(), CancellationToken.None);
 
         Assert.Equal(JobStatus.Failed, result.Status);
         Assert.Equal(CompressionErrorCategory.EngineUnavailable, result.ErrorCategory);
-        Assert.Equal(GuetzliSettings.GuetzliEngineId, result.EngineId);
+        Assert.Equal(AlternateSettings.EngineIdValue, result.EngineId);
     }
 
     [Fact]
@@ -241,12 +241,12 @@ public sealed class CompressionExecutorTests
             new StubEngine(encodingResult),
             new SafeOutputPublisher(fileSystem, fileSystem));
 
-    private static CompressionJob CreateGuetzliJob() =>
+    private static CompressionJob CreateAlternateJob() =>
         new(
             Guid.NewGuid(),
             Path.GetFullPath("input.png"),
             Path.GetFullPath("output.jpg"),
-            new GuetzliSettings(90),
+            new AlternateSettings(),
             ExifPolicy.Remove,
             ColorProfilePolicy.Preserve,
             RgbColor.White,
@@ -254,6 +254,12 @@ public sealed class CompressionExecutorTests
             LargerOutputPolicy.Discard,
             DateTimeOffset.UtcNow,
             new InputImageInfo(InputImageFormat.Png, 10, 10, 100));
+
+    private sealed class AlternateSettings()
+        : CompressionEngineSettings(EngineIdValue, 90)
+    {
+        public const string EngineIdValue = "alternate";
+    }
 
     private static CompressionJob CreateJob() =>
         new(

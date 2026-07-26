@@ -1,6 +1,62 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
+  <Styles.Resources>
+    <!-- Eigenes ButtonSpinner-Aussehen (Basis von NumericUpDown): runde FieldBrush-Fläche,
+         Ink-Rahmen, Ink-Chevrons, ohne Trennlinien. ClipToBounds rundet die inneren Ecken —
+         das Standard-Theme ließ ein eckiges Rechteck in der runden Umrandung stehen und setzt
+         die Trennlinien-BorderThickness per Converter (lokaler Wert, per Style nicht abschaltbar).
+         Implizit über x:Type gesetzt; ButtonSpinner wird hier nur in NumericUpDown genutzt. -->
+    <ControlTheme x:Key="{x:Type ButtonSpinner}" TargetType="ButtonSpinner">
+      <Setter Property="Background" Value="{DynamicResource FieldBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource InkBrush}" />
+      <Setter Property="BorderThickness" Value="2" />
+      <Setter Property="CornerRadius" Value="12" />
+      <Setter Property="Foreground" Value="{DynamicResource InkBrush}" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <DataValidationErrors>
+            <Border Background="{TemplateBinding Background}"
+                    BorderBrush="{TemplateBinding BorderBrush}"
+                    BorderThickness="{TemplateBinding BorderThickness}"
+                    CornerRadius="{TemplateBinding CornerRadius}"
+                    ClipToBounds="True">
+              <DockPanel>
+                <StackPanel Name="PART_SpinnerPanel" DockPanel.Dock="Right"
+                            Orientation="Horizontal"
+                            IsVisible="{TemplateBinding ShowButtonSpinner}">
+                  <RepeatButton Name="PART_IncreaseButton" Width="32" Padding="0"
+                                Focusable="False"
+                                Background="Transparent" BorderThickness="0"
+                                VerticalContentAlignment="Center" HorizontalContentAlignment="Center">
+                    <Path Data="M1,6 L7,1 L13,6" Stroke="{DynamicResource InkBrush}"
+                          StrokeThickness="2" StrokeLineCap="Round" StrokeJoin="Round"
+                          HorizontalAlignment="Center" VerticalAlignment="Center" />
+                  </RepeatButton>
+                  <RepeatButton Name="PART_DecreaseButton" Width="32" Padding="0"
+                                Focusable="False"
+                                Background="Transparent" BorderThickness="0"
+                                VerticalContentAlignment="Center" HorizontalContentAlignment="Center">
+                    <Path Data="M1,1 L7,6 L13,1" Stroke="{DynamicResource InkBrush}"
+                          StrokeThickness="2" StrokeLineCap="Round" StrokeJoin="Round"
+                          HorizontalAlignment="Center" VerticalAlignment="Center" />
+                  </RepeatButton>
+                </StackPanel>
+                <ContentPresenter Name="PART_ContentPresenter"
+                                  Content="{TemplateBinding Content}"
+                                  VerticalContentAlignment="Center"
+                                  HorizontalContentAlignment="Stretch" />
+              </DockPanel>
+            </Border>
+          </DataValidationErrors>
+        </ControlTemplate>
+      </Setter>
+      <Style Selector="^ /template/ RepeatButton:pointerover">
+        <Setter Property="Background" Value="{DynamicResource NeutralPillBrush}" />
+      </Style>
+    </ControlTheme>
+  </Styles.Resources>
+
   <Style Selector="TextBlock.h1">
     <Setter Property="FontSize" Value="18" />
     <Setter Property="FontWeight" Value="SemiBold" />
@@ -107,6 +163,9 @@
     <Setter Property="FontSize" Value="15" />
     <Setter Property="FontWeight" Value="SemiBold" />
     <Setter Property="Padding" Value="0" />
+    <!-- Volle Railbreite, damit die Ink-Auswahl bei allen Einträgen gleich groß ist. -->
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
     <Setter Property="Template">
       <ControlTemplate>
         <Border Name="root" Background="Transparent" CornerRadius="16" Padding="12,0" MinHeight="52">
@@ -179,6 +238,24 @@
     <Setter Property="CornerRadius" Value="12" />
     <Setter Property="FontSize" Value="13" />
     <Setter Property="Padding" Value="11,8" />
+    <!-- Auswahl im Bento-Look: Lime-Markierung statt dunklem Default-Rechteck (u. a. beim
+         Erst-Klick in NumericUpDown, wo der Wert markiert wird). Caret in Ink. -->
+    <Setter Property="SelectionBrush" Value="{DynamicResource LimeBrush}" />
+    <Setter Property="SelectionForegroundBrush" Value="{DynamicResource InkBrush}" />
+    <Setter Property="CaretBrush" Value="{DynamicResource InkBrush}" />
+  </Style>
+  <!-- Fokus/Hover: Feldfläche + Ink-Schrift beibehalten. Fluent würde sonst auf dunkle
+       Theme-Brushes (TextControlBackgroundFocused) wechseln → schwarzes Feld mit schwarzer Schrift. -->
+  <Style Selector="TextBox:pointerover /template/ Border#PART_BorderElement">
+    <Setter Property="Background" Value="{DynamicResource FieldBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource InkBrush}" />
+  </Style>
+  <Style Selector="TextBox:focus /template/ Border#PART_BorderElement">
+    <Setter Property="Background" Value="{DynamicResource FieldBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource InkBrush}" />
+  </Style>
+  <Style Selector="TextBox:focus, TextBox:pointerover">
+    <Setter Property="Foreground" Value="{DynamicResource InkBrush}" />
   </Style>
 
   <!-- Zahleneingabe (MinSaving, Timeouts …) im Bento-Look. -->
@@ -189,6 +266,47 @@
     <Setter Property="CornerRadius" Value="12" />
     <Setter Property="Foreground" Value="{DynamicResource InkBrush}" />
     <Setter Property="FontFamily" Value="{DynamicResource PcMonoFont}" />
+  </Style>
+  <!-- Inneres Textfeld nicht selbst rahmen — sonst überlagert es den Ink-Rahmen des Spinners
+       (Rahmen wirkte abgeschnitten, nur bei Hover korrekt). -->
+  <Style Selector="NumericUpDown /template/ TextBox#PART_TextBox">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="CornerRadius" Value="0" />
+    <Setter Property="Foreground" Value="{DynamicResource InkBrush}" />
+    <!-- NumericUpDown markiert den Wert bei jeder Änderung → sonst bleibt ein eckiges
+         Auswahlrechteck im Feld stehen. In Zahlenfeldern die Markierung unsichtbar halten. -->
+    <Setter Property="SelectionBrush" Value="Transparent" />
+  </Style>
+  <Style Selector="NumericUpDown /template/ TextBox#PART_TextBox /template/ Border#PART_BorderElement">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="CornerRadius" Value="0" />
+  </Style>
+  <Style Selector="NumericUpDown /template/ TextBox#PART_TextBox:pointerover /template/ Border#PART_BorderElement">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+  </Style>
+  <Style Selector="NumericUpDown /template/ TextBox#PART_TextBox:focus /template/ Border#PART_BorderElement">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+  </Style>
+  <!-- Pfeil-Glyphen erben die Foreground des ButtonSpinners; Default ist hell → auf Feldfläche unsichtbar. -->
+  <Style Selector="NumericUpDown /template/ ButtonSpinner">
+    <Setter Property="Foreground" Value="{DynamicResource InkBrush}" />
+  </Style>
+  <!-- Spinner-Tasten transparent: ihre deckende Default-Fläche überdeckte sonst die runde
+       rechte Ecke des Ink-Rahmens (rechte Seite wirkte abgeschnitten). -->
+  <Style Selector="NumericUpDown /template/ ButtonSpinner /template/ RepeatButton">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Foreground" Value="{DynamicResource InkBrush}" />
+  </Style>
+  <Style Selector="NumericUpDown /template/ ButtonSpinner /template/ RepeatButton:pointerover">
+    <Setter Property="Background" Value="{DynamicResource NeutralPillBrush}" />
   </Style>
 
   <Style Selector="Border.pill">
@@ -293,18 +411,18 @@
     <Setter Property="BorderBrush" Value="{DynamicResource InkBrush}" />
     <Setter Property="BorderThickness" Value="2.5" />
     <Setter Property="CornerRadius" Value="999" />
-    <Setter Property="Padding" Value="20,11" />
-    <Setter Property="MinHeight" Value="44" />
-    <Setter Property="FontFamily" Value="{DynamicResource PcDisplayFont}" />
-    <Setter Property="FontSize" Value="14.5" />
-    <Setter Property="FontWeight" Value="ExtraBold" />
+    <Setter Property="Padding" Value="24,0" />
+    <Setter Property="MinHeight" Value="46" />
+    <Setter Property="FontFamily" Value="{DynamicResource PcUiFont}" />
+    <Setter Property="FontSize" Value="15" />
+    <Setter Property="FontWeight" Value="Bold" />
     <Setter Property="HorizontalContentAlignment" Value="Center" />
     <Setter Property="RenderTransform" Value="none" />
     <Setter Property="Template">
       <ControlTemplate>
         <Border Name="shell" Background="{TemplateBinding Background}"
                 BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"
-                CornerRadius="{TemplateBinding CornerRadius}" BoxShadow="4 4 0 0 #E617140E">
+                CornerRadius="{TemplateBinding CornerRadius}" BoxShadow="3 3 0 0 #FF17140E">
           <ContentPresenter Content="{TemplateBinding Content}"
                             ContentTemplate="{TemplateBinding ContentTemplate}"
                             TextElement.Foreground="{TemplateBinding Foreground}"
@@ -315,7 +433,7 @@
     </Setter>
   </Style>
   <Style Selector="Button.cta:pointerover /template/ Border#shell">
-    <Setter Property="BoxShadow" Value="5 5 0 0 #E617140E" />
+    <Setter Property="BoxShadow" Value="4 4 0 0 #FF17140E" />
   </Style>
   <Style Selector="Button.cta:pointerover">
     <Setter Property="RenderTransform" Value="translateY(-1px)" />
@@ -501,6 +619,54 @@
   </Style>
   <Style Selector="Border.badge.mint">
     <Setter Property="Background" Value="{DynamicResource MintTileBrush}" />
+  </Style>
+
+  <!-- Bildlaufleiste: schlanke Overlay-Leiste im Bento-Look (Ink-Griff auf transparenter Spur).
+       Teilenamen aus dem Avalonia-Fluent-Theme: Container VerticalRoot/HorizontalRoot,
+       Spur ist ein Rectangle#TrackRect, Pfeiltasten PART_LineUp/DownButton. Deren dunkle
+       Default-Fläche (ScrollBarBackground) erzeugte sonst das schwarze Rechteck. -->
+  <Style Selector="ScrollBar">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="AllowAutoHide" Value="True" />
+  </Style>
+  <Style Selector="ScrollBar:vertical">
+    <Setter Property="Width" Value="10" />
+  </Style>
+  <Style Selector="ScrollBar:horizontal">
+    <Setter Property="Height" Value="10" />
+  </Style>
+  <Style Selector="ScrollBar /template/ Border#VerticalRoot">
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+  <Style Selector="ScrollBar /template/ Border#HorizontalRoot">
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+  <Style Selector="ScrollBar /template/ Rectangle#TrackRect">
+    <Setter Property="IsVisible" Value="False" />
+  </Style>
+  <!-- Pfeil-/Zeilentasten ganz weg. -->
+  <Style Selector="ScrollBar /template/ RepeatButton#PART_LineUpButton">
+    <Setter Property="IsVisible" Value="False" />
+  </Style>
+  <Style Selector="ScrollBar /template/ RepeatButton#PART_LineDownButton">
+    <Setter Property="IsVisible" Value="False" />
+  </Style>
+  <!-- Seiten-Repeatbuttons transparent, Klickfläche bleibt erhalten. -->
+  <Style Selector="ScrollBar /template/ RepeatButton#PART_PageUpButton">
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+  <Style Selector="ScrollBar /template/ RepeatButton#PART_PageDownButton">
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+  <!-- Griff im Ink-Look. -->
+  <Style Selector="ScrollBar /template/ Thumb">
+    <Setter Property="Background" Value="{DynamicResource MutedTextBrush}" />
+  </Style>
+  <Style Selector="ScrollBar /template/ Thumb:pointerover">
+    <Setter Property="Background" Value="{DynamicResource InkBrush}" />
+  </Style>
+  <Style Selector="ScrollBar /template/ Thumb:pressed">
+    <Setter Property="Background" Value="{DynamicResource InkBrush}" />
   </Style>
 
 </Styles>

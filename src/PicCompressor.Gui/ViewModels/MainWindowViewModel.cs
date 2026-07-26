@@ -59,6 +59,7 @@ public sealed class MainWindowViewModel : ObservableObject
             clipboardImport,
             notifications);
         History = new HistoryViewModel(historyService);
+        Dashboard.History = History;
         Compare = new CompareViewModel(previewRenderer, Settings);
         Compare.AttachQueue(Dashboard.Queue);
 
@@ -75,6 +76,7 @@ public sealed class MainWindowViewModel : ObservableObject
         ShowSettingsCommand = new RelayCommand(() => View = AppView.Settings);
         ShowHistoryCommand = new RelayCommand(() => View = AppView.History);
         ShowCompareCommand = new RelayCommand(() => View = AppView.Compare);
+        Dashboard.ShowCompareCommand = ShowCompareCommand;
 
         About = new AboutViewModel(() => IsAboutOpen = false);
         ShowAboutCommand = new RelayCommand(() => IsAboutOpen = true);
@@ -170,6 +172,7 @@ public sealed class MainWindowViewModel : ObservableObject
     {
         IsCompact = width < CompactWidthThreshold;
         IsNarrow = width < NarrowWidthThreshold;
+        Dashboard.IsNarrow = IsNarrow;
     }
 
     /// <summary>

@@ -30,11 +30,4 @@ public interface INativeCodecBridge
         ColorProfilePolicy colorProfilePolicy,
         CancellationToken cancellationToken);
 
-    Task<NativeCodecResult> EncodeGuetzliAsync(
-        string inputPath,
-        string outputPath,
-        int quality,
-        RgbColor alphaBackground,
-        ColorProfilePolicy colorProfilePolicy,
-        CancellationToken cancellationToken);
 }

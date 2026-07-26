@@ -21,7 +21,7 @@ public sealed record ApplicationSettings
     /// Version des Dateiformats. Änderungen sind additiv; eine nicht
     /// abwärtskompatible Änderung erhöht die Version.
     /// </summary>
-    public const int CurrentSchemaVersion = 1;
+    public const int CurrentSchemaVersion = 2;
 
     public int SchemaVersion { get; init; } = CurrentSchemaVersion;
 
@@ -52,6 +52,11 @@ public sealed record ApplicationSettings
 
     public string? OutputDirectory { get; init; }
 
+    /// <summary>
+    /// Ersetzt JPEG-Eingaben nach erfolgreicher Validierung ausdrücklich durch die Ausgabe.
+    /// </summary>
+    public bool OverwriteOriginal { get; init; }
+
     public int ParallelJobs { get; init; } = 1;
 
     /// <summary>Aufbewahrungsdauer des Verlaufs in Tagen (Abschnitt 13.1).</summary>
@@ -68,9 +73,6 @@ public sealed record ApplicationSettings
     /// <c>0</c> bedeutet „kein Limit“ und erhält das heutige Verhalten.
     /// </summary>
     public int JpegliTimeoutSeconds { get; init; }
-
-    /// <summary>Encoder-Zeitlimit für Guetzli in Sekunden; <c>0</c> = kein Limit (MP-004).</summary>
-    public int GuetzliTimeoutSeconds { get; init; }
 
     /// <summary>
     /// Geforderte Mindesteinsparung in Prozent (MP-004). <c>0</c> = keine Mindestgrenze;

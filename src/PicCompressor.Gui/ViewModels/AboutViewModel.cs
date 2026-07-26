@@ -60,7 +60,6 @@ public sealed class AboutViewModel : ObservableObject
     public IReadOnlyList<CreditEntry> Components { get; } =
     [
         new("Jpegli", "JPEG encoder", "BSD-3-Clause"),
-        new("Guetzli", "Legacy JPEG encoder", "Apache-2.0"),
         new("Highway", "SIMD runtime", "Apache-2.0"),
         new("skcms", "Color management", "BSD-3-Clause"),
         new("libpng", "PNG decoding", "libpng"),

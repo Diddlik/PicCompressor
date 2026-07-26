@@ -22,6 +22,7 @@ public sealed class SettingsViewModel : ObservableObject
     private string suffix = "_compressed";
     private string? outputDirectory;
     private CollisionPolicy collisionPolicy = CollisionPolicy.Skip;
+    private CollisionPolicy collisionPolicyBeforeOverwrite = CollisionPolicy.Skip;
     private LargerOutputPolicy largerOutputPolicy = LargerOutputPolicy.Discard;
     private ExifPolicy exifPolicy = ExifPolicy.Remove;
     private ColorProfilePolicy colorProfilePolicy = ColorProfilePolicy.Preserve;
@@ -31,7 +32,6 @@ public sealed class SettingsViewModel : ObservableObject
     private int logMaxFileMegabytes = 5;
     private int logRetainedFiles = 5;
     private int jpegliTimeoutSeconds;
-    private int guetzliTimeoutSeconds;
     private int minimumSavingsPercent;
 
     private readonly IApplicationSettingsStore settingsStore;
@@ -70,12 +70,8 @@ public sealed class SettingsViewModel : ObservableObject
             if (SetProperty(ref engineId, value))
             {
                 Raise(nameof(IsJpegli));
-                Raise(nameof(IsGuetzli));
-                Raise(nameof(MinQuality));
-                Raise(nameof(EngineDescription));
                 Raise(nameof(IsSelectedEngineAvailable));
                 Raise(nameof(EngineAvailabilityText));
-                Quality = Math.Max(MinQuality, Quality);
             }
         }
     }
@@ -86,17 +82,9 @@ public sealed class SettingsViewModel : ObservableObject
         set { if (value) { EngineId = EngineIds.Jpegli; } }
     }
 
-    public bool IsGuetzli
-    {
-        get => EngineId == EngineIds.Guetzli;
-        set { if (value) { EngineId = EngineIds.Guetzli; } }
-    }
+    public int MinQuality => 1;
 
-    /// <summary>Guetzli-Untergrenze nach Abschnitt 5.2; der reale Wert kommt aus der Engine-Capability.</summary>
-    public int MinQuality => IsGuetzli ? EngineIds.GuetzliMinimumQuality : 1;
-
-    public string EngineDescription => Localizer.Instance[
-        IsGuetzli ? "Engine_GuetzliDescription" : "Engine_JpegliDescription"];
+    public string EngineDescription => Localizer.Instance["Engine_JpegliDescription"];
 
     public int Quality
     {
@@ -155,10 +143,26 @@ public sealed class SettingsViewModel : ObservableObject
         get => outputTarget;
         set
         {
+            var previousTarget = outputTarget;
             if (SetProperty(ref outputTarget, value))
             {
+                if (value is OutputTarget.OverwriteOriginal)
+                {
+                    if (collisionPolicy is not CollisionPolicy.Overwrite)
+                    {
+                        collisionPolicyBeforeOverwrite = collisionPolicy;
+                    }
+                    CollisionPolicy = CollisionPolicy.Overwrite;
+                }
+                else if (previousTarget is OutputTarget.OverwriteOriginal)
+                {
+                    CollisionPolicy = collisionPolicyBeforeOverwrite;
+                }
+
                 Raise(nameof(UsesSuffix));
                 Raise(nameof(UsesCustomDirectory));
+                Raise(nameof(UsesOverwriteOriginal));
+                Raise(nameof(CanChooseCollisionPolicy));
             }
         }
     }
@@ -174,6 +178,14 @@ public sealed class SettingsViewModel : ObservableObject
         get => OutputTarget is OutputTarget.CustomDirectory;
         set { if (value) { OutputTarget = OutputTarget.CustomDirectory; } }
     }
+
+    public bool UsesOverwriteOriginal
+    {
+        get => OutputTarget is OutputTarget.OverwriteOriginal;
+        set { if (value) { OutputTarget = OutputTarget.OverwriteOriginal; } }
+    }
+
+    public bool CanChooseCollisionPolicy => !UsesOverwriteOriginal;
 
     public string Suffix
     {
@@ -192,6 +204,11 @@ public sealed class SettingsViewModel : ObservableObject
         get => collisionPolicy;
         set
         {
+            if (UsesOverwriteOriginal)
+            {
+                value = CollisionPolicy.Overwrite;
+            }
+
             if (SetProperty(ref collisionPolicy, value))
             {
                 Raise(nameof(CollisionSkip));
@@ -363,13 +380,6 @@ public sealed class SettingsViewModel : ObservableObject
         set => SetProperty(ref jpegliTimeoutSeconds, Math.Clamp(value, 0, 86_400));
     }
 
-    /// <summary>Encoder-Zeitlimit für Guetzli in Sekunden; <c>0</c> = kein Limit (MP-004).</summary>
-    public int GuetzliTimeoutSeconds
-    {
-        get => guetzliTimeoutSeconds;
-        set => SetProperty(ref guetzliTimeoutSeconds, Math.Clamp(value, 0, 86_400));
-    }
-
     /// <summary>
     /// Geforderte Mindesteinsparung in Prozent (MP-004); <c>0</c> = keine Mindestgrenze. Ein
     /// Ergebnis darunter wird verworfen und als erfolgreicher Job ohne Ausgabe mit Warnung gemeldet.
@@ -391,8 +401,7 @@ public sealed class SettingsViewModel : ObservableObject
         applyingStoredSettings = true;
         try
         {
-            // Die Engine zuerst: ihr Setter zieht die Qualität auf die Engine-Untergrenze.
-            EngineId = settings.EngineId;
+            EngineId = EngineIds.Jpegli;
             Quality = settings.Quality;
             ChromaSubsampling = settings.ChromaSubsampling;
             ProgressiveLevel = settings.ProgressiveLevel;
@@ -402,15 +411,16 @@ public sealed class SettingsViewModel : ObservableObject
             LargerOutputPolicy = settings.LargerOutputPolicy;
             Suffix = settings.Suffix;
             OutputDirectory = settings.OutputDirectory;
-            OutputTarget = string.IsNullOrWhiteSpace(settings.OutputDirectory)
-                ? OutputTarget.SuffixNextToInput
-                : OutputTarget.CustomDirectory;
+            OutputTarget = settings.OverwriteOriginal
+                ? OutputTarget.OverwriteOriginal
+                : string.IsNullOrWhiteSpace(settings.OutputDirectory)
+                    ? OutputTarget.SuffixNextToInput
+                    : OutputTarget.CustomDirectory;
             ParallelJobs = settings.ParallelJobs;
             HistoryRetentionDays = settings.HistoryRetentionDays;
             LogMaxFileMegabytes = settings.LogMaxFileMegabytes;
             LogRetainedFiles = settings.LogRetainedFiles;
             JpegliTimeoutSeconds = settings.JpegliTimeoutSeconds;
-            GuetzliTimeoutSeconds = settings.GuetzliTimeoutSeconds;
             MinimumSavingsPercent = settings.MinimumSavingsPercent;
             Appearance.Language = Parse(settings.Language, AppLanguage.System);
             Appearance.Theme = Parse(settings.Theme, AppTheme.System);
@@ -446,12 +456,12 @@ public sealed class SettingsViewModel : ObservableObject
             OutputDirectory = OutputTarget is OutputTarget.CustomDirectory
                 ? OutputDirectory
                 : null,
+            OverwriteOriginal = UsesOverwriteOriginal,
             ParallelJobs = ParallelJobs,
             HistoryRetentionDays = HistoryRetentionDays,
             LogMaxFileMegabytes = LogMaxFileMegabytes,
             LogRetainedFiles = LogRetainedFiles,
             JpegliTimeoutSeconds = JpegliTimeoutSeconds,
-            GuetzliTimeoutSeconds = GuetzliTimeoutSeconds,
             MinimumSavingsPercent = MinimumSavingsPercent
         };
         settingsStore.Save(stored);
@@ -498,17 +508,13 @@ public sealed class SettingsViewModel : ObservableObject
     /// </summary>
     public CompressionEngineSettings? TryBuildEngineSettings()
     {
-        if (IsJpegli)
-        {
-            return new JpegliSettings(Quality, ChromaSubsampling, ProgressiveLevel);
-        }
-
-        return IsGuetzli ? new GuetzliSettings(Quality) : null;
+        return new JpegliSettings(Quality, ChromaSubsampling, ProgressiveLevel);
     }
 }
 
 public enum OutputTarget
 {
     SuffixNextToInput,
-    CustomDirectory
+    CustomDirectory,
+    OverwriteOriginal
 }

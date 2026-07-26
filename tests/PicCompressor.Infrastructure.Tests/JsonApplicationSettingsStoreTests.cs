@@ -37,7 +37,6 @@ public sealed class JsonApplicationSettingsStoreTests : IDisposable
             LogMaxFileMegabytes = 20,
             LogRetainedFiles = 3,
             JpegliTimeoutSeconds = 120,
-            GuetzliTimeoutSeconds = 600,
             MinimumSavingsPercent = 12
         };
 
@@ -92,7 +91,6 @@ public sealed class JsonApplicationSettingsStoreTests : IDisposable
     [InlineData("\"LogMaxFileMegabytes\": 5000")]
     [InlineData("\"LogRetainedFiles\": 0")]
     [InlineData("\"JpegliTimeoutSeconds\": -5")]
-    [InlineData("\"GuetzliTimeoutSeconds\": 999999")]
     [InlineData("\"MinimumSavingsPercent\": -1")]
     [InlineData("\"MinimumSavingsPercent\": 100")]
     [InlineData("\"Suffix\": \"\"")]
@@ -115,12 +113,25 @@ public sealed class JsonApplicationSettingsStoreTests : IDisposable
         Assert.InRange(settings.LogMaxFileMegabytes, 1, 1024);
         Assert.InRange(settings.LogRetainedFiles, 1, 100);
         Assert.InRange(settings.JpegliTimeoutSeconds, 0, 86_400);
-        Assert.InRange(settings.GuetzliTimeoutSeconds, 0, 86_400);
         Assert.InRange(settings.MinimumSavingsPercent, 0, 99);
         Assert.False(string.IsNullOrWhiteSpace(settings.Suffix));
         Assert.False(string.IsNullOrWhiteSpace(settings.EngineId));
         Assert.Equal(defaults.SchemaVersion, settings.SchemaVersion);
         Assert.Contains(log.Entries, entry => entry.Message.Contains("replaced by defaults"));
+    }
+
+    [Fact]
+    public void Schema_1_guetzli_selection_is_migrated_to_jpegli()
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(SettingsPath)!);
+        File.WriteAllText(SettingsPath, """{ "SchemaVersion": 1, "EngineId": "guetzli" }""");
+        var log = new RecordingDiagnosticLog();
+
+        var settings = new JsonApplicationSettingsStore(SettingsPath, log).Load();
+
+        Assert.Equal(JpegliSettings.JpegliEngineId, settings.EngineId);
+        Assert.Equal(ApplicationSettings.CurrentSchemaVersion, settings.SchemaVersion);
+        Assert.Contains(log.Entries, entry => entry.Message.Contains("EngineId"));
     }
 
     [Fact]

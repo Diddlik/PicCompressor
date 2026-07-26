@@ -3,7 +3,8 @@
              xmlns:vm="using:PicCompressor.Gui.ViewModels"
              xmlns:l="using:PicCompressor.Gui.Localization"
              x:Class="PicCompressor.Gui.Views.CompareView"
-             x:DataType="vm:CompareViewModel">
+             x:DataType="vm:CompareViewModel"
+             Design.DataContext="{x:Static vm:DesignData.Compare}">
 
   <!-- Raster: die Vorschau bekommt die Sternzeile und damit allen Platz, den Kopfzeile,
        Bedienung und Ergebnisliste übrig lassen. Abstände in den Rändern der Kinder, damit
@@ -100,7 +101,7 @@
           <Grid ColumnDefinitions="*,Auto,Auto">
             <TextBlock Foreground="{DynamicResource InkTextInverse}" FontWeight="Bold" FontSize="14"
                        VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
-                       Text="{Binding Selected.FileName}" />
+                       Text="{Binding SelectedFileName}" />
             <Border Grid.Column="1" Classes="badge lime" Margin="10,0,0,0" VerticalAlignment="Center">
               <TextBlock Text="{Binding EngineText}" FontWeight="Bold" />
             </Border>
@@ -114,7 +115,7 @@
       <!-- Vorher/Nachher-Tabelle (Issue #4); nur Groesse, Format, Masse und Einsparung. -->
       <Border Classes="card" IsVisible="{Binding HasComparison}">
         <StackPanel Spacing="10">
-          <TextBlock Classes="cardTitle" Text="{Binding Selected.FileName}" />
+          <TextBlock Classes="cardTitle" Text="{Binding SelectedFileName}" />
           <Grid ColumnDefinitions="*,*,*" RowDefinitions="Auto,Auto,Auto,Auto"
                 RowSpacing="6" ColumnSpacing="12">
             <TextBlock Grid.Row="0" Grid.Column="0" Classes="capsLabel" Text="{l:Localize Cmp_TblAttribute}" />

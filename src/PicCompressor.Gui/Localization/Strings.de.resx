@@ -181,23 +181,8 @@
   <data name="Engine_Jpegli" xml:space="preserve">
     <value>Jpegli</value>
   </data>
-  <data name="Engine_Guetzli" xml:space="preserve">
-    <value>Guetzli</value>
-  </data>
   <data name="Engine_JpegliDescription" xml:space="preserve">
     <value>Standard-Engine. Qualität 1–100, Chroma-Subsampling und Progressive-Level sind explizite Parameter.</value>
-  </data>
-  <data name="Engine_GuetzliDescription" xml:space="preserve">
-    <value>Optionale Legacy-Engine. Sehr langsam, hoher Speicherbedarf, nur sequenzielle JPEGs.</value>
-  </data>
-  <data name="Engine_GuetzliFloor" xml:space="preserve">
-    <value>Guetzli erzwingt eine Mindestqualität von 84.</value>
-  </data>
-  <data name="Engine_GuetzliWarning" xml:space="preserve">
-    <value>Guetzli ist optionale Legacy-Engine: Mindestqualität 84, nur sequenzielle JPEGs, hoher Speicher- und Zeitbedarf.</value>
-  </data>
-  <data name="Engine_QualityNotComparable" xml:space="preserve">
-    <value>Qualitätswerte verschiedener Engines sind nicht vergleichbar.</value>
   </data>
   <data name="Set_EngineHeading" xml:space="preserve">
     <value>Engine</value>
@@ -222,6 +207,12 @@
   </data>
   <data name="Set_TargetCustomHint" xml:space="preserve">
     <value>Relative Verzeichnisstruktur der Eingaben bleibt erhalten.</value>
+  </data>
+  <data name="Set_TargetOverwriteOriginal" xml:space="preserve">
+    <value>Originale JPEG-Dateien ersetzen</value>
+  </data>
+  <data name="Set_TargetOverwriteOriginalHint" xml:space="preserve">
+    <value>Vorsicht: Das validierte komprimierte JPEG ersetzt das Original dauerhaft. PNG-Eingaben werden mit dieser Option abgelehnt.</value>
   </data>
   <data name="Set_FolderPickerTitle" xml:space="preserve">
     <value>Zielordner wählen</value>
@@ -339,9 +330,6 @@
   </data>
   <data name="Set_TimeoutJpegli" xml:space="preserve">
     <value>Jpegli-Zeitlimit (Sekunden)</value>
-  </data>
-  <data name="Set_TimeoutGuetzli" xml:space="preserve">
-    <value>Guetzli-Zeitlimit (Sekunden)</value>
   </data>
   <data name="Set_TimeoutHint" xml:space="preserve">
     <value>0 deaktiviert das Limit; wirkt beim nächsten Start.</value>

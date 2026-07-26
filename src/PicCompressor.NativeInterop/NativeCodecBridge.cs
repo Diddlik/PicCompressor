@@ -76,39 +76,6 @@ public sealed class NativeCodecBridge(TimeProvider timeProvider)
             CancellationToken.None);
     }
 
-    public Task<NativeCodecResult> EncodeGuetzliAsync(
-        string inputPath,
-        string outputPath,
-        int quality,
-        RgbColor alphaBackground,
-        ColorProfilePolicy colorProfilePolicy,
-        CancellationToken cancellationToken)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(inputPath);
-        ArgumentException.ThrowIfNullOrWhiteSpace(outputPath);
-        ArgumentOutOfRangeException.ThrowIfLessThan(quality, 1);
-        ArgumentOutOfRangeException.ThrowIfGreaterThan(quality, 100);
-
-        if (cancellationToken.IsCancellationRequested)
-        {
-            return Task.FromResult(
-                new NativeCodecResult(
-                    NativeCodecStatus.Canceled,
-                    "Encoding was canceled.",
-                    TimeSpan.Zero));
-        }
-
-        return Task.Run(
-            () => EncodeGuetzli(
-                inputPath,
-                outputPath,
-                quality,
-                alphaBackground,
-                colorProfilePolicy,
-                cancellationToken),
-            CancellationToken.None);
-    }
-
     public Task<PreviewResult> RenderPreviewAsync(
         string inputPath,
         int maxEdge,
@@ -295,37 +262,6 @@ public sealed class NativeCodecBridge(TimeProvider timeProvider)
             : new PreviewResult(image, null);
     }
 
-    private unsafe NativeCodecResult EncodeGuetzli(
-        string inputPath,
-        string outputPath,
-        int quality,
-        RgbColor alphaBackground,
-        ColorProfilePolicy colorProfilePolicy,
-        CancellationToken cancellationToken)
-    {
-        return Encode(
-            (cancelHandle, error, errorCapacity) =>
-            {
-                var options = new NativeGuetzliOptions
-                {
-                    StructSize = (uint)sizeof(NativeGuetzliOptions),
-                    Quality = quality,
-                    AlphaRed = alphaBackground.Red,
-                    AlphaGreen = alphaBackground.Green,
-                    AlphaBlue = alphaBackground.Blue,
-                    ColorProfilePolicy = ToNativeColorProfilePolicy(colorProfilePolicy)
-                };
-                return NativeMethods.EncodeGuetzli(
-                    inputPath,
-                    outputPath,
-                    in options,
-                    cancelHandle,
-                    error,
-                    errorCapacity);
-            },
-            cancellationToken);
-    }
-
     private unsafe NativeCodecResult EncodeJpegli(
         string inputPath,
         string outputPath,
@@ -449,7 +385,6 @@ public sealed class NativeCodecBridge(TimeProvider timeProvider)
         engineId switch
         {
             JpegliSettings.JpegliEngineId => NativeEngine.Jpegli,
-            "guetzli" => NativeEngine.Guetzli,
             _ => throw new ArgumentException($"Unknown engine ID: {engineId}", nameof(engineId))
         };
 

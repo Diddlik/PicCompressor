@@ -88,21 +88,6 @@ public sealed class MainWindowViewModelTests
     }
 
     [Fact]
-    public async Task Engine_selection_is_never_switched_silently()
-    {
-        var main = new MainWindowViewModel(
-            new UnconfiguredCompressionService(),
-            FakeEngineCatalogService.JpegliAvailable(),
-            new InMemoryHistoryService());
-        await main.InitializeAsync(CancellationToken.None);
-
-        main.Settings.IsGuetzli = true;
-
-        Assert.Equal(EngineIds.Guetzli, main.Settings.EngineId);
-        Assert.False(main.Settings.IsSelectedEngineAvailable);
-    }
-
-    [Fact]
     public void Status_summary_is_localized_and_counts_terminal_jobs()
     {
         var previous = Localizer.Instance.Language;

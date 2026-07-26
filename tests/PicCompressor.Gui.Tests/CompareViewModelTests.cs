@@ -186,6 +186,30 @@ public sealed class CompareViewModelTests
     }
 
     [Fact]
+    public void A_selected_live_preview_switches_to_the_published_output_when_the_job_finishes()
+    {
+        var renderer = new FakePreviewRenderer(PreviewResult.Failed("stop"));
+        var queued = new QueueItemViewModel("a.jpg", EngineIds.Jpegli, 1000);
+        WithQueue(renderer, queued, new SettingsViewModel());
+        Assert.Equal(1, renderer.EncodedCalls);
+        Assert.Equal(0, renderer.OutputPathCalls);
+
+        queued.ApplyOutcome(
+            new CompressionOutcome(
+                JobStatus.Succeeded,
+                "a.jpg",
+                "a_compressed.jpg",
+                1000,
+                500,
+                true,
+                null,
+                null,
+                null));
+
+        Assert.Equal(1, renderer.OutputPathCalls);
+    }
+
+    [Fact]
     public void Changing_a_setting_renews_the_trial_compression()
     {
         var renderer = new FakePreviewRenderer(PreviewResult.Failed("stop"));

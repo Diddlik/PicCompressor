@@ -89,12 +89,10 @@ public sealed class CliApplicationTests : IDisposable
     }
 
     [Fact]
-    public async Task RunAsync_uses_the_guetzli_engine_when_selected()
+    public async Task RunAsync_rejects_the_removed_guetzli_engine()
     {
         using var output = new StringWriter();
         using var error = new StringWriter();
-        var store = new RecordingHistoryStore();
-
         var exitCode = await CliApplication.RunAsync(
             [
                 Path.Combine(directory, "input.png"),
@@ -103,24 +101,7 @@ public sealed class CliApplicationTests : IDisposable
             ],
             output,
             error,
-            store);
-
-        Assert.Equal(0, exitCode);
-        var entry = Assert.Single(store.Entries);
-        Assert.Equal("guetzli", entry.EngineId);
-        Assert.Equal(PicCompressor.Domain.JobStatus.Succeeded, entry.Status);
-    }
-
-    [Fact]
-    public async Task RunAsync_rejects_guetzli_below_its_quality_floor()
-    {
-        using var output = new StringWriter();
-        using var error = new StringWriter();
-
-        var exitCode = await CliApplication.RunAsync(
-            [Path.Combine(directory, "input.png"), "--engine", "guetzli", "--quality", "50"],
-            output,
-            error);
+            historyStore: null);
 
         Assert.Equal(2, exitCode);
     }

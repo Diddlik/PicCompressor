@@ -14,7 +14,8 @@ public sealed record CompressionJobRequest(
     string Suffix = "_compressed",
     string? ProfileName = null,
     Guid? PredecessorJobId = null,
-    int MinimumSavingsPercent = 0);
+    int MinimumSavingsPercent = 0,
+    bool OverwriteOriginal = false);
 
 public sealed class CompressionJobFactory(
     IFileSystem fileSystem,
@@ -48,13 +49,24 @@ public sealed class CompressionJobFactory(
                 "Input file exceeds the configured file-size or pixel limit.");
         }
 
+        if (request.OverwriteOriginal
+            && (request.CollisionPolicy is not CollisionPolicy.Overwrite
+                || inputImageInfo.Format is not InputImageFormat.Jpeg))
+        {
+            throw new JobCreationException(
+                CompressionErrorCategory.InvalidArguments,
+                "Overwriting the original requires explicit overwrite permission and a JPEG input.");
+        }
+
         var outputDirectory = request.OutputDirectory is null
             ? Path.GetDirectoryName(inputPath)!
             : GetCanonicalPath(request.OutputDirectory, nameof(request.OutputDirectory));
         var inputName = Path.GetFileNameWithoutExtension(inputPath);
-        var desiredOutputPath = GetCanonicalPath(
-            Path.Combine(outputDirectory, $"{inputName}{request.Suffix}.jpg"),
-            nameof(request.OutputDirectory));
+        var desiredOutputPath = request.OverwriteOriginal
+            ? inputPath
+            : GetCanonicalPath(
+                Path.Combine(outputDirectory, $"{inputName}{request.Suffix}.jpg"),
+                nameof(request.OutputDirectory));
         var outputPath = outputPathPlanner.Plan(
             desiredOutputPath,
             request.CollisionPolicy,

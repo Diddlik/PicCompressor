@@ -16,44 +16,25 @@ public sealed class CompressionBatchExecutor(
         CancellationToken cancellationToken) =>
         ExecuteAsync(jobs, maxParallelism, null, cancellationToken);
 
-    public Task<IReadOnlyList<CompressionExecutionResult>> ExecuteAsync(
-        IReadOnlyList<CompressionJob> jobs,
-        int maxParallelism,
-        IProgress<CompressionJobProgress>? progress,
-        CancellationToken cancellationToken) =>
-        ExecuteAsync(jobs, CompressionResourceLimits.CpuOnly(maxParallelism), progress, cancellationToken);
-
-    public Task<IReadOnlyList<CompressionExecutionResult>> ExecuteAsync(
-        IReadOnlyList<CompressionJob> jobs,
-        CompressionResourceLimits limits,
-        CancellationToken cancellationToken) =>
-        ExecuteAsync(jobs, limits, null, cancellationToken);
-
     public async Task<IReadOnlyList<CompressionExecutionResult>> ExecuteAsync(
         IReadOnlyList<CompressionJob> jobs,
-        CompressionResourceLimits limits,
+        int maxParallelism,
         IProgress<CompressionJobProgress>? progress,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(jobs);
-        ArgumentNullException.ThrowIfNull(limits);
+        ArgumentOutOfRangeException.ThrowIfLessThan(maxParallelism, 1);
 
-        var gate = new CompressionResourceGate(limits);
+        using var gate = new SemaphoreSlim(maxParallelism, maxParallelism);
         var tasks = jobs.Select(ExecuteJobAsync).ToArray();
         return await Task.WhenAll(tasks).ConfigureAwait(false);
 
         async Task<CompressionExecutionResult> ExecuteJobAsync(CompressionJob job)
         {
-            var guetzli = string.Equals(
-                job.EngineSettings.EngineId,
-                GuetzliSettings.GuetzliEngineId,
-                StringComparison.Ordinal);
-            var memory = guetzli ? job.InputImageInfo.PixelCount * limits.GuetzliBytesPerPixel : 0;
-
             progress?.Report(new(job.Id, JobStatus.WaitingForResources));
             try
             {
-                await gate.AcquireAsync(guetzli, memory, cancellationToken).ConfigureAwait(false);
+                await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
@@ -87,7 +68,7 @@ public sealed class CompressionBatchExecutor(
             }
             finally
             {
-                gate.Release(guetzli, memory);
+                gate.Release();
             }
         }
     }

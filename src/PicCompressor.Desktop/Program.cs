@@ -1,7 +1,6 @@
 using Avalonia;
 using PicCompressor.Application;
 using PicCompressor.Domain;
-using PicCompressor.Engine.Guetzli;
 using PicCompressor.Engine.Jpegli;
 using PicCompressor.Gui;
 using PicCompressor.Gui.Services;
@@ -24,7 +23,6 @@ internal static class Program
         var inspector = new PhysicalInputImageInspector();
         var bridge = new NativeCodecBridge(TimeProvider.System);
         var jpegli = new JpegliEngineAdapter(bridge);
-        var guetzli = new GuetzliEngineAdapter(bridge);
         // Vorablesen der Rotationsgrenzen: der Log braucht sie schon bei der Konstruktion,
         // bevor der Speicher mit ihm Korrekturen melden kann. Diese Sondierung meldet nichts.
         var logPreferences = new JsonApplicationSettingsStore(
@@ -40,12 +38,11 @@ internal static class Program
         var settings = settingsStore.Load();
         // Enginespezifisches Zeitlimit (MP-004, Abschnitt 7.1); 0 = kein Limit.
         var executor = new CompressionExecutor(
-            [jpegli, guetzli],
+            [jpegli],
             new SafeOutputPublisher(fileSystem, inspector),
             TimeProvider.System,
             EngineRuntimeLimits.FromSeconds(
-                (JpegliSettings.JpegliEngineId, settings.JpegliTimeoutSeconds),
-                (GuetzliSettings.GuetzliEngineId, settings.GuetzliTimeoutSeconds)));
+                (JpegliSettings.JpegliEngineId, settings.JpegliTimeoutSeconds)));
         var historyStore = new SqliteCompressionHistoryStore(
             ApplicationDataPaths.HistoryDatabasePath);
 
@@ -85,7 +82,7 @@ internal static class Program
                     new InputValidationLimits(500 * 1024 * 1024, 250_000_000),
                     TimeProvider.System),
                 executor),
-            new ApplicationEngineCatalogService(new EngineCatalog([jpegli, guetzli])),
+            new ApplicationEngineCatalogService(new EngineCatalog([jpegli])),
             new PersistentHistoryService(historyStore),
             settingsStore,
             new PhysicalInputDiscovery(comparer),

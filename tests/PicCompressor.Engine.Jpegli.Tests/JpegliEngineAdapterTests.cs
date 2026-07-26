@@ -142,13 +142,5 @@ public sealed class JpegliEngineAdapterTests
             return Task.FromResult(Result);
         }
 
-        public Task<NativeCodecResult> EncodeGuetzliAsync(
-            string inputPath,
-            string outputPath,
-            int quality,
-            RgbColor alphaBackground,
-            ColorProfilePolicy colorProfilePolicy,
-            CancellationToken cancellationToken) =>
-            throw new NotSupportedException();
     }
 }

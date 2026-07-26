@@ -1,6 +1,7 @@
 bin/
 obj/
 .vs/
+*.csproj.user
 .dotnet-home/
 TestResults/
 artifacts/

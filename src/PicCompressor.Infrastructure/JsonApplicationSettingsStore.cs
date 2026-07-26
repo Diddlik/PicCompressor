@@ -122,9 +122,6 @@ public sealed class JsonApplicationSettingsStore(
         var jpegliTimeout = InRange(
             stored.JpegliTimeoutSeconds, 0, 86_400, defaults.JpegliTimeoutSeconds,
             "JpegliTimeoutSeconds", corrections);
-        var guetzliTimeout = InRange(
-            stored.GuetzliTimeoutSeconds, 0, 86_400, defaults.GuetzliTimeoutSeconds,
-            "GuetzliTimeoutSeconds", corrections);
         // 0 = keine Mindesteinsparung; Obergrenze 99 % (MP-004).
         var minimumSavings = InRange(
             stored.MinimumSavingsPercent, 0, 99, defaults.MinimumSavingsPercent,
@@ -140,11 +137,11 @@ public sealed class JsonApplicationSettingsStore(
             LogMaxFileMegabytes = logSize,
             LogRetainedFiles = logFiles,
             JpegliTimeoutSeconds = jpegliTimeout,
-            GuetzliTimeoutSeconds = guetzliTimeout,
             MinimumSavingsPercent = minimumSavings,
-            EngineId = string.IsNullOrWhiteSpace(stored.EngineId)
-                ? Corrected(defaults.EngineId, "EngineId", corrections)
-                : stored.EngineId,
+            EngineId = string.Equals(
+                stored.EngineId, JpegliSettings.JpegliEngineId, StringComparison.OrdinalIgnoreCase)
+                ? JpegliSettings.JpegliEngineId
+                : Corrected(defaults.EngineId, "EngineId", corrections),
             Suffix = string.IsNullOrWhiteSpace(stored.Suffix)
                 ? Corrected(defaults.Suffix, "Suffix", corrections)
                 : stored.Suffix,

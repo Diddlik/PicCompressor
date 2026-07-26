@@ -3,13 +3,12 @@
              xmlns:vm="using:PicCompressor.Gui.ViewModels"
              xmlns:l="using:PicCompressor.Gui.Localization"
              x:Class="PicCompressor.Gui.Views.HistoryView"
-             x:DataType="vm:HistoryViewModel">
+             x:DataType="vm:HistoryViewModel"
+             Design.DataContext="{x:Static vm:DesignData.History}">
 
-  <ScrollViewer Padding="2,2,12,16">
-    <StackPanel Spacing="16">
-
-      <!-- Kopf: Titel + Zusammenfassung, rechts Suche + Verlauf leeren. -->
-      <Grid ColumnDefinitions="*,Auto,Auto">
+  <Grid RowDefinitions="Auto,*">
+      <!-- Fester Kopf: Titel + Zusammenfassung, rechts Suche + Verlauf leeren. -->
+      <Grid x:Name="HistoryHeader" ColumnDefinitions="*,Auto,Auto" Margin="2,2,18,16">
         <StackPanel Spacing="4" VerticalAlignment="Center">
           <TextBlock Classes="pageTitle" Text="{l:Localize Hist_Title}" />
           <TextBlock Classes="muted" FontSize="13.5" Text="{Binding Summary}" />
@@ -23,6 +22,9 @@
                 Content="{l:Localize Hist_Clear}"
                 AutomationProperties.Name="{l:Localize Hist_Clear}" />
       </Grid>
+
+    <ScrollViewer x:Name="HistoryEntriesScroll" Grid.Row="1">
+      <StackPanel Spacing="16" Margin="2,0,18,16">
 
       <!-- Ohne verdrahteten Verlaufsspeicher wird das offen ausgewiesen (Abschnitt 13.1). -->
       <Border Classes="insetRow" Background="{DynamicResource CoralSoftBrush}"
@@ -44,13 +46,14 @@
                     AutomationProperties.Name="{l:Localize Hist_TableName}">
         <ItemsControl.ItemsPanel>
           <ItemsPanelTemplate>
-            <StackPanel Spacing="12" />
+            <VirtualizingStackPanel />
           </ItemsPanelTemplate>
         </ItemsControl.ItemsPanel>
         <ItemsControl.ItemTemplate>
           <DataTemplate x:DataType="vm:HistoryEntryViewModel">
             <Border Background="{DynamicResource PaperBrush}" BorderBrush="{DynamicResource InkBrush}"
-                    BorderThickness="2" CornerRadius="20" Padding="20,16" BoxShadow="4 5 0 0 #E617140E"
+                    BorderThickness="2" CornerRadius="20" Padding="20,16" Margin="0,0,6,18"
+                    BoxShadow="4 5 0 0 #E617140E"
                     AutomationProperties.Name="{Binding AccessibleSummary}">
               <Grid ColumnDefinitions="Auto,18,*,16,Auto,14,Auto,10,Auto" VerticalAlignment="Center">
                 <Border Width="48" Height="48" CornerRadius="14" Background="{DynamicResource VioletSoftBrush}"
@@ -99,6 +102,7 @@
         </ItemsControl.ItemTemplate>
       </ItemsControl>
 
-    </StackPanel>
-  </ScrollViewer>
+      </StackPanel>
+    </ScrollViewer>
+  </Grid>
 </UserControl>

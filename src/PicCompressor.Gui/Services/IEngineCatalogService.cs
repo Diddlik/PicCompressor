@@ -22,7 +22,7 @@ public interface IEngineCatalogService
 }
 
 /// <summary>
-/// Standardimplementierung ohne verdrahteten Adapter: beide Engines gelten als nicht verfügbar.
+/// Standardimplementierung ohne verdrahteten Adapter: Jpegli gilt als nicht verfügbar.
 /// Das verhindert den Start der Anwendung nicht (Abschnitt 4.2).
 /// </summary>
 public sealed class UnconfiguredEngineCatalogService : IEngineCatalogService
@@ -34,10 +34,7 @@ public sealed class UnconfiguredEngineCatalogService : IEngineCatalogService
         var reason = Localizer.Instance["Error_NoEngineCatalog"];
 
         IReadOnlyList<EngineAvailability> engines =
-        [
-            EngineAvailability.Unavailable(EngineIds.Jpegli, reason),
-            EngineAvailability.Unavailable(EngineIds.Guetzli, reason)
-        ];
+            [EngineAvailability.Unavailable(EngineIds.Jpegli, reason)];
 
         return Task.FromResult(engines);
     }

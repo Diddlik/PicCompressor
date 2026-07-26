@@ -17,19 +17,26 @@ public sealed class SettingsViewModelTests
         Assert.Equal(LargerOutputPolicy.Discard, settings.LargerOutputPolicy);
         Assert.Equal(RgbColor.White, settings.AlphaBackground);
         Assert.Equal("_compressed", settings.Suffix);
+        Assert.False(settings.UsesOverwriteOriginal);
     }
 
     [Fact]
-    public void Guetzli_raises_the_quality_floor_and_jpegli_releases_it()
+    public void Overwrite_original_forces_overwrite_and_restores_the_previous_collision_policy()
     {
-        var settings = new SettingsViewModel { Quality = 10 };
+        var settings = new SettingsViewModel
+        {
+            CollisionPolicy = CollisionPolicy.Rename
+        };
 
-        settings.IsGuetzli = true;
-        Assert.Equal(EngineIds.GuetzliMinimumQuality, settings.MinQuality);
-        Assert.True(settings.Quality >= EngineIds.GuetzliMinimumQuality);
+        settings.UsesOverwriteOriginal = true;
 
-        settings.IsJpegli = true;
-        Assert.Equal(1, settings.MinQuality);
+        Assert.Equal(CollisionPolicy.Overwrite, settings.CollisionPolicy);
+        Assert.False(settings.CanChooseCollisionPolicy);
+
+        settings.UsesSuffix = true;
+
+        Assert.Equal(CollisionPolicy.Rename, settings.CollisionPolicy);
+        Assert.True(settings.CanChooseCollisionPolicy);
     }
 
     [Theory]
@@ -110,23 +117,20 @@ public sealed class SettingsViewModelTests
     {
         var settings = new SettingsViewModel
         {
-            JpegliTimeoutSeconds = requested,
-            GuetzliTimeoutSeconds = requested
+            JpegliTimeoutSeconds = requested
         };
 
         Assert.Equal(expected, settings.JpegliTimeoutSeconds);
-        Assert.Equal(expected, settings.GuetzliTimeoutSeconds);
     }
 
     [Fact]
     public void Encoder_timeout_survives_a_restart()
     {
         var store = new PicCompressor.Application.InMemoryApplicationSettingsStore();
-        _ = new SettingsViewModel(store) { JpegliTimeoutSeconds = 90, GuetzliTimeoutSeconds = 300 };
+        _ = new SettingsViewModel(store) { JpegliTimeoutSeconds = 90 };
 
         var restarted = new SettingsViewModel(store);
         Assert.Equal(90, restarted.JpegliTimeoutSeconds);
-        Assert.Equal(300, restarted.GuetzliTimeoutSeconds);
     }
 
     [Theory]
@@ -163,16 +167,6 @@ public sealed class SettingsViewModelTests
         Assert.Equal(77, built.Quality);
         Assert.Equal(1, built.ProgressiveLevel);
         Assert.Equal(JpegliChromaSubsampling.Subsampling440, built.ChromaSubsampling);
-    }
-
-    [Fact]
-    public void Guetzli_settings_carry_the_clamped_quality()
-    {
-        var settings = new SettingsViewModel { IsGuetzli = true };
-
-        var built = Assert.IsType<GuetzliSettings>(settings.TryBuildEngineSettings());
-        Assert.True(built.Quality >= GuetzliSettings.MinimumQuality);
-        Assert.Equal(GuetzliSettings.GuetzliEngineId, built.EngineId);
     }
 
     [Fact]
@@ -329,6 +323,7 @@ public sealed class QueueItemViewModelTests
                 Suffix = "_klein",
                 ParallelJobs = 2
             };
+            first.UsesOverwriteOriginal = true;
             first.Appearance.Theme = AppTheme.Dark;
             first.Appearance.Language = AppLanguage.German;
 
@@ -338,9 +333,10 @@ public sealed class QueueItemViewModelTests
             Assert.Equal(JpegliChromaSubsampling.Subsampling444, restarted.ChromaSubsampling);
             Assert.Equal(ExifPolicy.Private, restarted.ExifPolicy);
             Assert.Equal(ColorProfilePolicy.Srgb, restarted.ColorProfilePolicy);
-            Assert.Equal(CollisionPolicy.Rename, restarted.CollisionPolicy);
             Assert.Equal("_klein", restarted.Suffix);
             Assert.Equal(2, restarted.ParallelJobs);
+            Assert.True(restarted.UsesOverwriteOriginal);
+            Assert.Equal(CollisionPolicy.Overwrite, restarted.CollisionPolicy);
             Assert.Equal(AppTheme.Dark, restarted.Appearance.Theme);
             Assert.Equal(AppLanguage.German, restarted.Appearance.Language);
         }

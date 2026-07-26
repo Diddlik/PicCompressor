@@ -2,39 +2,58 @@
 
 # PicCompressor
 
-Local, privacy-friendly JPEG compression for desktop and command line.
+Fast, local, privacy-friendly JPEG compression for desktop and command line.
 
 ## About
 
-PicCompressor converts JPEG and PNG images to compact JPEG files with Jpegli. Processing stays on your computer; images are not uploaded.
+PicCompressor converts JPEG and PNG images to compact JPEG files using Jpegli.
+All processing stays on your computer—images are never uploaded.
 
 The desktop application and CLI share the same compression pipeline and safety rules.
 
-## Features
+## Highlights
 
-- Jpegli-based JPEG compression
+- Fast Jpegli-based JPEG compression
 - Desktop GUI and scriptable CLI
 - Single files, batches, and recursive folders
-- Drag and drop, cancellation, retry, and local history
+- Drag and drop, clipboard import, cancellation, and retry
+- Before/after preview, queue thumbnails, statistics, and update checks
 - Configurable quality, chroma subsampling, and progressive encoding
 - EXIF privacy and color-profile policies
-- Validated temporary output before publishing the final file
-- Collision protection and explicit overwrite behavior
+- Local history and structured diagnostic logs
+- Validated temporary output, collision protection, and explicit overwrite behavior
 - Human-readable and versioned JSON CLI output
+
+> [!CAUTION]
+> **Replace original JPEG files** is an optional setting. The compressed file is
+> fully validated before publication, but once published it permanently replaces
+> the original. PNG inputs are rejected when this option is selected.
+
+## Screenshots
 
 <img width="1849" height="1226" alt="image" src="https://github.com/user-attachments/assets/4b5f3fda-08f2-4c7b-9e16-4ab48acdcd15" />
 <img width="1849" height="1226" alt="image" src="https://github.com/user-attachments/assets/986824b4-e1fb-4fd5-bad5-53cbc2c4b089" />
 
+## Download
+
+[Open GitHub Releases](../../releases) and choose either the Windows x64
+one-click installer or the portable ZIP. The package contains both the desktop
+application and CLI.
+
+> [!WARNING]
+> PicCompressor is currently in alpha. Release packages are unsigned and may
+> trigger a Windows SmartScreen warning.
 
 ## Current status
 
-PicCompressor is in alpha development. Windows x64 is currently verified. macOS, Linux, and additional architectures are planned but not yet verified.
+- Windows x64 GUI, CLI, and native Jpegli pipeline are verified.
+- Jpegli is the sole encoder. The former Guetzli integration was removed because
+  of its excessive runtime and resource usage.
+- Full macOS, Linux, and additional architecture packages are planned but not yet verified.
+- The application UI supports English and German. The Russian README is documentation only.
+- Signing, installation/update rollback tests, and the remaining release-security gates are still open.
 
-The application UI currently supports English and German. This Russian README translation does not imply Russian UI support.
-
-Public installers are not yet offered because release signing and the remaining security gates are still open.
-
-## Quick start
+## Build from source
 
 Requirements for the current Windows development build:
 
@@ -49,20 +68,6 @@ dotnet run --project src/PicCompressor.Desktop/PicCompressor.Desktop.csproj
 ```
 
 The first build downloads and compiles the pinned Jpegli sources.
-
-## Releasing
-
-Releases are hosted on GitHub Releases. Pushing a version tag builds the win-x64
-package and publishes it through the `release` workflow
-(`.github/workflows/release.yml`):
-
-```powershell
-git tag v0.2.0-alpha.1
-git push origin v0.2.0-alpha.1
-```
-
-Releases are currently unsigned, so installation triggers a SmartScreen warning
-until Authenticode signing is in place.
 
 ## CLI
 
@@ -81,3 +86,7 @@ Show all options:
 ```powershell
 piccompressor --help
 ```
+
+## License
+
+PicCompressor is licensed under the [Apache License 2.0](LICENSE).

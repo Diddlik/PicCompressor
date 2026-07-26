@@ -1,4 +1,6 @@
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
+using System.ComponentModel;
 using PicCompressor.Domain;
 using PicCompressor.Gui.Localization;
 using PicCompressor.Gui.Services;
@@ -75,6 +77,8 @@ public sealed class HistoryEntryViewModel : ObservableObject
 public sealed class HistoryViewModel : ObservableObject
 {
     private readonly IHistoryService historyService;
+    private readonly RangeObservableCollection<HistoryEntryViewModel> entries = [];
+    private IReadOnlyList<HistoryEntryViewModel>? visibleEntries;
     private string search = string.Empty;
 
     public HistoryViewModel(IHistoryService historyService)
@@ -86,7 +90,7 @@ public sealed class HistoryViewModel : ObservableObject
             () => Entries.Count > 0);
     }
 
-    public ObservableCollection<HistoryEntryViewModel> Entries { get; } = [];
+    public ObservableCollection<HistoryEntryViewModel> Entries => entries;
 
     public AsyncRelayCommand ClearCommand { get; }
 
@@ -97,16 +101,15 @@ public sealed class HistoryViewModel : ObservableObject
         {
             if (SetProperty(ref search, value))
             {
+                visibleEntries = null;
                 Raise(nameof(VisibleEntries));
                 Raise(nameof(IsEmpty));
             }
         }
     }
 
-    public IReadOnlyList<HistoryEntryViewModel> VisibleEntries => string.IsNullOrWhiteSpace(Search)
-        ? Entries
-        : [.. Entries.Where(entry =>
-            entry.FileName.Contains(Search, StringComparison.CurrentCultureIgnoreCase))];
+    public IReadOnlyList<HistoryEntryViewModel> VisibleEntries =>
+        visibleEntries ??= CreateVisibleEntries();
 
     public bool IsEmpty => VisibleEntries.Count == 0;
 
@@ -147,8 +150,7 @@ public sealed class HistoryViewModel : ObservableObject
         {
             var best = Entries
                 .Where(entry => entry.Record.OutputSizeBytes is long size && entry.Record.InputSizeBytes > 0)
-                .OrderBy(entry => (double)entry.Record.OutputSizeBytes!.Value / entry.Record.InputSizeBytes)
-                .FirstOrDefault();
+                .MinBy(entry => (double)entry.Record.OutputSizeBytes!.Value / entry.Record.InputSizeBytes);
             return best?.Savings ?? "0%";
         }
     }
@@ -157,11 +159,7 @@ public sealed class HistoryViewModel : ObservableObject
     {
         var records = await historyService.GetAsync(cancellationToken).ConfigureAwait(true);
 
-        Entries.Clear();
-        foreach (var record in records)
-        {
-            Entries.Add(CreateEntry(record));
-        }
+        entries.ReplaceAll(records.Select(CreateEntry));
 
         RaiseAll();
     }
@@ -200,8 +198,15 @@ public sealed class HistoryViewModel : ObservableObject
     private HistoryEntryViewModel CreateEntry(HistoryRecord record) =>
         new(record, entry => DeleteAsync(entry, CancellationToken.None));
 
+    private IReadOnlyList<HistoryEntryViewModel> CreateVisibleEntries() =>
+        string.IsNullOrWhiteSpace(Search)
+            ? Entries
+            : [.. Entries.Where(entry =>
+                entry.FileName.Contains(Search, StringComparison.CurrentCultureIgnoreCase))];
+
     private void RaiseAll()
     {
+        visibleEntries = null;
         Raise(nameof(VisibleEntries));
         Raise(nameof(IsEmpty));
         Raise(nameof(Summary));
@@ -209,5 +214,21 @@ public sealed class HistoryViewModel : ObservableObject
         Raise(nameof(FilesCompressedText));
         Raise(nameof(BestSavingText));
         ClearCommand.RaiseCanExecuteChanged();
+    }
+
+    private sealed class RangeObservableCollection<T> : ObservableCollection<T>
+    {
+        public void ReplaceAll(IEnumerable<T> items)
+        {
+            Items.Clear();
+            foreach (var item in items)
+            {
+                Items.Add(item);
+            }
+
+            OnPropertyChanged(new PropertyChangedEventArgs(nameof(Count)));
+            OnPropertyChanged(new PropertyChangedEventArgs("Item[]"));
+            OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
+        }
     }
 }

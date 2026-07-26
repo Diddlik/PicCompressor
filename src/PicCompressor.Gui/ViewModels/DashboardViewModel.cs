@@ -25,6 +25,9 @@ public sealed class DashboardViewModel : ObservableObject
     private bool isDiscovering;
     private int discoveredCount;
     private string? dropHint;
+    private HistoryViewModel? history;
+    private RelayCommand? showCompareCommand;
+    private bool isNarrow;
 
     public DashboardViewModel(
         SettingsViewModel settings,
@@ -81,6 +84,24 @@ public sealed class DashboardViewModel : ObservableObject
     public SettingsViewModel Settings { get; }
 
     public ObservableCollection<QueueItemViewModel> Queue { get; } = [];
+
+    public HistoryViewModel? History
+    {
+        get => history;
+        internal set => SetProperty(ref history, value);
+    }
+
+    public RelayCommand? ShowCompareCommand
+    {
+        get => showCompareCommand;
+        internal set => SetProperty(ref showCompareCommand, value);
+    }
+
+    public bool IsNarrow
+    {
+        get => isNarrow;
+        internal set => SetProperty(ref isNarrow, value);
+    }
 
     public AsyncRelayCommand CompressAllCommand { get; }
 
@@ -422,7 +443,8 @@ public sealed class DashboardViewModel : ObservableObject
             Settings.UsesCustomDirectory ? Settings.OutputDirectory : null,
             Settings.Suffix,
             item.PredecessorJobId,
-            Settings.MinimumSavingsPercent);
+            Settings.MinimumSavingsPercent,
+            Settings.UsesOverwriteOriginal);
     }
 
     private void Cancel() => runCancellation?.Cancel();

@@ -12,7 +12,7 @@ public sealed class EngineCatalogTests
             new StubEngine(
                 "jpegli",
                 EngineCapability.Available("jpegli", "1", "abc")),
-            new StubEngine("guetzli", new IOException("probe failed"))
+            new StubEngine("alternate", new IOException("probe failed"))
         ]);
 
         var capabilities = await catalog.DetectCapabilitiesAsync(CancellationToken.None);

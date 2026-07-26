@@ -13,8 +13,7 @@ internal enum NativeStatus
 
 internal enum NativeEngine
 {
-    Jpegli = 1,
-    Guetzli = 2
+    Jpegli = 1
 }
 
 [StructLayout(LayoutKind.Sequential)]
@@ -28,17 +27,6 @@ internal struct NativeJpegliOptions
     internal int AlphaGreen;
     internal int AlphaBlue;
     internal int ExifPolicy;
-    internal int ColorProfilePolicy;
-}
-
-[StructLayout(LayoutKind.Sequential)]
-internal struct NativeGuetzliOptions
-{
-    internal uint StructSize;
-    internal int Quality;
-    internal int AlphaRed;
-    internal int AlphaGreen;
-    internal int AlphaBlue;
     internal int ColorProfilePolicy;
 }
 
@@ -67,7 +55,7 @@ internal struct NativePreview
 internal static partial class NativeMethods
 {
     internal const string LibraryName = "piccompressor_native";
-    internal const uint AbiVersion = 7;
+    internal const uint AbiVersion = 8;
 
     [LibraryImport(LibraryName, EntryPoint = "pc_abi_version")]
     internal static partial uint GetAbiVersion();
@@ -134,15 +122,4 @@ internal static partial class NativeMethods
     [LibraryImport(LibraryName, EntryPoint = "pc_preview_release")]
     internal static partial void ReleasePreview(ref NativePreview preview);
 
-    [LibraryImport(
-        LibraryName,
-        EntryPoint = "pc_encode_guetzli",
-        StringMarshalling = StringMarshalling.Utf8)]
-    internal static unsafe partial NativeStatus EncodeGuetzli(
-        string inputPath,
-        string outputPath,
-        in NativeGuetzliOptions options,
-        nint cancelHandle,
-        byte* error,
-        nuint errorCapacity);
 }

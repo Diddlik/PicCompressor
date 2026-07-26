@@ -28,7 +28,6 @@ internal sealed record CliOptions(
         var engineId = JpegliSettings.JpegliEngineId;
         string? outputDirectory = null;
         var quality = 80;
-        var qualityExplicit = false;
         var suffix = "_compressed";
         var collisionPolicy = CollisionPolicy.Skip;
         var largerOutputPolicy = LargerOutputPolicy.Discard;
@@ -77,7 +76,6 @@ internal sealed record CliOptions(
                     break;
                 case "--quality":
                     quality = ParseQuality(NextValue(args, ref index, "--quality"));
-                    qualityExplicit = true;
                     break;
                 case "--output-dir":
                     outputDirectory = NextValue(args, ref index, "--output-dir");
@@ -116,22 +114,6 @@ internal sealed record CliOptions(
             }
         }
 
-        // Guetzli's effective quality floor follows its revision (Abschnitt 5.2). An
-        // unset quality defaults up to the floor; an explicit value below it is a
-        // usage error rather than a silent change.
-        if (engineId == GuetzliSettings.GuetzliEngineId)
-        {
-            if (!qualityExplicit)
-            {
-                quality = GuetzliSettings.MinimumQuality;
-            }
-            else if (quality < GuetzliSettings.MinimumQuality)
-            {
-                throw new CliUsageException(
-                    $"--engine guetzli requires --quality {GuetzliSettings.MinimumQuality} or higher.");
-            }
-        }
-
         return new(
             inputPaths.Count > 0
                 ? inputPaths
@@ -158,10 +140,9 @@ internal sealed record CliOptions(
     {
         var normalized = value.ToLowerInvariant();
         return normalized == JpegliSettings.JpegliEngineId
-            || normalized == GuetzliSettings.GuetzliEngineId
             ? normalized
             : throw new CliUsageException(
-                $"--engine must be {JpegliSettings.JpegliEngineId} or {GuetzliSettings.GuetzliEngineId}.");
+                $"--engine must be {JpegliSettings.JpegliEngineId}.");
     }
 
     private static int ParseQuality(string value) =>

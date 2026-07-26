@@ -3,7 +3,6 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using PicCompressor.Application;
 using PicCompressor.Domain;
-using PicCompressor.Engine.Guetzli;
 using PicCompressor.Engine.Jpegli;
 using PicCompressor.Infrastructure;
 using PicCompressor.NativeInterop;
@@ -15,7 +14,7 @@ internal static class CliApplication
     private const string Usage =
         """
         Usage: piccompressor <input> [<input> ...] [options]
-          --engine <jpegli|guetzli>     Engine (default: jpegli; guetzli needs quality >= 84)
+          --engine <jpegli>             Engine (default: jpegli)
           --quality <1-100>             JPEG quality (default: 80)
           --output-dir <path>           Output directory
           --suffix <text>               Output suffix (default: _compressed)
@@ -229,7 +228,7 @@ internal static class CliApplication
             // Enginespezifisches Zeitlimit (MP-004): --timeout gilt für die gewählte Engine;
             // 0 bedeutet kein Limit.
             var executor = new CompressionExecutor(
-                [new JpegliEngineAdapter(bridge), new GuetzliEngineAdapter(bridge)],
+                [new JpegliEngineAdapter(bridge)],
                 new SafeOutputPublisher(fileSystem, inspector),
                 TimeProvider.System,
                 EngineRuntimeLimits.FromSeconds((options.EngineId, options.TimeoutSeconds)));
@@ -237,13 +236,8 @@ internal static class CliApplication
                 .Where(plan => plan.Job is not null)
                 .Select(plan => plan.Job!)
                 .ToArray();
-            // CPU- und speichergewichtete Budgets (Abschnitt 10.1); der verfügbare Speicher
-            // stammt aus der Laufzeitinformation des Hosts.
-            var limits = CompressionResourceLimits.Default(
-                options.Parallelism,
-                GC.GetGCMemoryInfo().TotalAvailableMemoryBytes);
             var results = await new CompressionBatchExecutor(executor)
-                .ExecuteAsync(jobs, limits, cancellationSource.Token)
+                .ExecuteAsync(jobs, options.Parallelism, cancellationSource.Token)
                 .ConfigureAwait(false);
             var exitCode = MapBatchExitCode(plans, results);
             var historyWarning = options.NoHistory
@@ -385,16 +379,11 @@ internal static class CliApplication
             _ => 5
         };
 
-    // Guetzli only exposes quality; Jpegli carries the chroma and progressive
-    // defaults. The quality has already been validated against the engine floor
-    // during option parsing.
     private static CompressionEngineSettings BuildEngineSettings(CliOptions options) =>
-        options.EngineId == GuetzliSettings.GuetzliEngineId
-            ? new GuetzliSettings(options.Quality)
-            : new JpegliSettings(
-                options.Quality,
-                JpegliChromaSubsampling.Subsampling420,
-                2);
+        new JpegliSettings(
+            options.Quality,
+            JpegliChromaSubsampling.Subsampling420,
+            2);
 
     private static int MapBatchExitCode(
         IReadOnlyList<CompressionJobPlan> plans,

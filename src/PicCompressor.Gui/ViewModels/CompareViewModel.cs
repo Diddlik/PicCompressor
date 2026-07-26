@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
+using System.ComponentModel;
 using System.Globalization;
 using Avalonia.Media.Imaging;
 using PicCompressor.Application;
@@ -264,6 +265,7 @@ public sealed class CompareViewModel : ObservableObject
         foreach (var item in queue)
         {
             Candidates.Add(item);
+            item.PropertyChanged += OnCandidatePropertyChanged;
         }
 
         queue.CollectionChanged += OnQueueChanged;
@@ -275,6 +277,7 @@ public sealed class CompareViewModel : ObservableObject
     {
         foreach (var removed in e.OldItems?.OfType<QueueItemViewModel>() ?? [])
         {
+            removed.PropertyChanged -= OnCandidatePropertyChanged;
             Candidates.Remove(removed);
             if (ReferenceEquals(Selected, removed))
             {
@@ -285,10 +288,30 @@ public sealed class CompareViewModel : ObservableObject
         foreach (var added in e.NewItems?.OfType<QueueItemViewModel>() ?? [])
         {
             Candidates.Add(added);
+            added.PropertyChanged += OnCandidatePropertyChanged;
         }
 
         Selected ??= Candidates.FirstOrDefault();
         Raise(nameof(HasCandidates));
+    }
+
+    private void OnCandidatePropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (!ReferenceEquals(sender, Selected))
+        {
+            return;
+        }
+
+        switch (e.PropertyName)
+        {
+            case nameof(QueueItemViewModel.CanCompare):
+                _ = LoadPreviewsAsync();
+                break;
+            case nameof(QueueItemViewModel.OutputSizeBytes):
+                Raise(nameof(SizeSummary));
+                RaiseComparison();
+                break;
+        }
     }
 
     /// <summary>
@@ -310,8 +333,12 @@ public sealed class CompareViewModel : ObservableObject
     /// </summary>
     private async Task LoadPreviewsAsync()
     {
-        previewCancellation?.Cancel();
-        previewCancellation?.Dispose();
+        if (previewCancellation is not null)
+        {
+            await previewCancellation.CancelAsync().ConfigureAwait(true);
+            previewCancellation.Dispose();
+        }
+
         previewCancellation = null;
 
         OriginalPreview = null;
@@ -436,17 +463,39 @@ public sealed class CompareViewModel : ObservableObject
     /// <summary>Eine Auswahl liegt vor; die Tabelle hat Inhalt.</summary>
     public bool HasComparison => Selected is not null;
 
+    public string? SelectedFileName => Selected?.FileName;
+
     /// <summary>Die Ausgabegrösse ist eine Probekompression im Speicher, keine veröffentlichte Datei.</summary>
     public bool IsEstimate => Selected is { CanCompare: false };
 
-    private long? EffectiveOutputSizeBytes => Selected is { } item
-        ? item.CanCompare ? item.OutputSizeBytes : livePreviewSizeBytes
-        : null;
+    private long? EffectiveOutputSizeBytes
+    {
+        get
+        {
+            if (Selected is not QueueItemViewModel item)
+            {
+                return null;
+            }
+
+            return item.CanCompare ? item.OutputSizeBytes : livePreviewSizeBytes;
+        }
+    }
 
     /// <summary>Eingabeformat aus der Endung; ein stabiler Bezeichner, unübersetzt (Abschnitt 4.3).</summary>
-    public string? BeforeFormat => Selected is { } item
-        ? Path.GetExtension(item.InputPath).ToLowerInvariant() == ".png" ? "PNG" : "JPEG"
-        : null;
+    public string? BeforeFormat
+    {
+        get
+        {
+            if (Selected is not QueueItemViewModel item)
+            {
+                return null;
+            }
+
+            return Path.GetExtension(item.InputPath).Equals(".png", StringComparison.OrdinalIgnoreCase)
+                ? "PNG"
+                : "JPEG";
+        }
+    }
 
     /// <summary>Die Ausgabe ist immer JPEG (Abschnitt 8.1).</summary>
     public string? AfterFormat => Selected is null ? null : "JPEG";
@@ -480,6 +529,7 @@ public sealed class CompareViewModel : ObservableObject
     private void RaiseComparison()
     {
         Raise(nameof(HasComparison));
+        Raise(nameof(SelectedFileName));
         Raise(nameof(IsEstimate));
         Raise(nameof(BeforeFormat));
         Raise(nameof(AfterFormat));

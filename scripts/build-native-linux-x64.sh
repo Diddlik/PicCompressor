@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Builds the native wrapper (Jpegli + Guetzli) for linux-x64 and runs its ABI and
+# Builds the native Jpegli wrapper for linux-x64 and runs its ABI and
 # EXIF tests. Mirrors scripts/build-native-win-x64.ps1. Requires cmake >= 3.25, a
 # C/C++ toolchain (gcc or clang) and git. The compiler is never invoked through a
 # shell interpreter.
@@ -17,7 +17,6 @@ cmake -S "$ROOT/native" -B "$BUILD_DIRECTORY" \
   -G "Unix Makefiles" \
   -DCMAKE_BUILD_TYPE="$CONFIGURATION" \
   -DPC_ENABLE_JPEGLI=ON \
-  -DPC_ENABLE_GUETZLI=ON \
   -DPC_OUTPUT_DIR="$OUTPUT_DIRECTORY" \
   -DBUILD_TESTING=ON
 

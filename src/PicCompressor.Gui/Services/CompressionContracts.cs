@@ -18,7 +18,8 @@ public sealed record CompressionRequest(
     string? OutputDirectory,
     string Suffix,
     Guid? PredecessorJobId = null,
-    int MinimumSavingsPercent = 0);
+    int MinimumSavingsPercent = 0,
+    bool OverwriteOriginal = false);
 
 /// <summary>
 /// Fortschritt eines Jobs. <paramref name="Percent"/> bleibt <c>null</c>, solange die Engine

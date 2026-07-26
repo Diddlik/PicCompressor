@@ -134,23 +134,6 @@ public sealed class DashboardViewModelTests : IDisposable
     }
 
     [Fact]
-    public async Task Guetzli_jobs_are_submitted_with_guetzli_settings()
-    {
-        var service = FakeCompressionService.Succeeding();
-        var dashboard = Create(service);
-        dashboard.Settings.IsGuetzli = true;
-        await dashboard.AddPathsAsync([TempFiles.CreateImage(directory, "a.jpg")]);
-
-        await RunAsync(dashboard);
-
-        // Guetzli ist eine echte Engine mit Domain-Modell; die Oberfläche reicht den Job ein.
-        // Ob die Engine ausführbar ist, entscheidet die Engine-Capability im Executor
-        // (Abschnitt 4.2), nicht das ViewModel.
-        var request = Assert.Single(service.Requests);
-        Assert.IsType<GuetzliSettings>(request.EngineSettings);
-    }
-
-    [Fact]
     public async Task Request_carries_the_configured_policies()
     {
         var service = FakeCompressionService.Succeeding();
@@ -185,6 +168,22 @@ public sealed class DashboardViewModelTests : IDisposable
         await RunAsync(dashboard);
 
         Assert.Equal(directory, Assert.Single(service.Requests).OutputDirectory);
+    }
+
+    [Fact]
+    public async Task Overwrite_original_is_explicitly_sent_with_overwrite_permission()
+    {
+        var service = FakeCompressionService.Succeeding();
+        var dashboard = Create(service);
+        dashboard.Settings.UsesOverwriteOriginal = true;
+        await dashboard.AddPathsAsync([TempFiles.CreateImage(directory, "a.jpg")]);
+
+        await RunAsync(dashboard);
+
+        var request = Assert.Single(service.Requests);
+        Assert.True(request.OverwriteOriginal);
+        Assert.Equal(CollisionPolicy.Overwrite, request.CollisionPolicy);
+        Assert.Null(request.OutputDirectory);
     }
 
     [Fact]

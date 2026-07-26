@@ -3,10 +3,12 @@
              xmlns:vm="using:PicCompressor.Gui.ViewModels"
              xmlns:l="using:PicCompressor.Gui.Localization"
              x:Class="PicCompressor.Gui.Views.SettingsView"
-             x:DataType="vm:SettingsViewModel">
+             x:DataType="vm:SettingsViewModel"
+             Design.DataContext="{x:Static vm:DesignData.Settings}">
 
-  <ScrollViewer Padding="2,2,12,16">
-    <StackPanel Spacing="16" MaxWidth="860" HorizontalAlignment="Left">
+  <ScrollViewer x:Name="SettingsScrollViewer">
+    <StackPanel x:Name="SettingsContent" Spacing="16" Margin="2,2,22,22"
+                MaxWidth="860" HorizontalAlignment="Left">
 
       <StackPanel Spacing="4">
         <TextBlock Classes="pageTitle" Text="{l:Localize Set_Title}" />
@@ -39,6 +41,14 @@
                 </Grid>
               </StackPanel>
             </RadioButton>
+            <RadioButton Classes="optioncard" GroupName="Target" IsChecked="{Binding UsesOverwriteOriginal}">
+              <StackPanel Spacing="3">
+                <TextBlock Classes="bodyText" FontWeight="SemiBold"
+                           Text="{l:Localize Set_TargetOverwriteOriginal}" />
+                <TextBlock Classes="captionText" Foreground="{DynamicResource CoralTextBrush}"
+                           Text="{l:Localize Set_TargetOverwriteOriginalHint}" TextWrapping="Wrap" />
+              </StackPanel>
+            </RadioButton>
           </StackPanel>
         </StackPanel>
       </Border>
@@ -50,7 +60,7 @@
             <TextBlock Classes="cardTitle" Text="{l:Localize Set_Collision}" />
             <TextBlock Classes="captionText" Text="{l:Localize Set_CollisionHint}" />
           </StackPanel>
-          <StackPanel Spacing="10">
+          <StackPanel Spacing="10" IsEnabled="{Binding CanChooseCollisionPolicy}">
             <RadioButton Classes="optioncard" GroupName="Collision" IsChecked="{Binding CollisionSkip}">
               <StackPanel Spacing="2">
                 <TextBlock Classes="bodyText" FontWeight="SemiBold" Text="{l:Localize Set_CollisionSkip}" />
@@ -89,7 +99,8 @@
               <TextBlock Classes="bodyText" FontWeight="SemiBold" Text="{l:Localize Set_MinSavings}" />
               <TextBlock Classes="captionText" Text="{l:Localize Set_MinSavingsHint}" />
             </StackPanel>
-            <NumericUpDown Grid.Column="1" Width="150" Minimum="0" Maximum="99" Increment="1"
+            <NumericUpDown x:Name="MinimumSavingsInput" Grid.Column="1" Width="150"
+                           Minimum="0" Maximum="99" Increment="1"
                            FormatString="0" VerticalAlignment="Center"
                            Value="{Binding MinimumSavingsPercent}"
                            AutomationProperties.Name="{l:Localize Set_MinSavings}" />
@@ -146,15 +157,9 @@
       <Border Classes="card">
         <StackPanel Spacing="14">
           <TextBlock Classes="cardTitle" Text="{l:Localize Set_EngineHeading}" />
-          <Border Classes="segmentHost">
-            <UniformGrid Columns="2">
-              <RadioButton Classes="segment" GroupName="Engine" Content="{l:Localize Engine_Jpegli}"
-                           AutomationProperties.Name="{l:Localize Engine_Jpegli}"
-                           IsChecked="{Binding IsJpegli}" />
-              <RadioButton Classes="segment" GroupName="Engine" Content="{l:Localize Engine_Guetzli}"
-                           AutomationProperties.Name="{l:Localize Engine_Guetzli}"
-                           IsChecked="{Binding IsGuetzli}" />
-            </UniformGrid>
+          <Border Classes="insetRow">
+            <TextBlock Classes="bodyText" FontWeight="SemiBold"
+                       Text="{l:Localize Engine_Jpegli}" />
           </Border>
           <TextBlock Classes="captionText" Text="{Binding EngineDescription}" />
 
@@ -169,10 +174,9 @@
             <Slider Minimum="{Binding MinQuality}" Maximum="100" TickFrequency="1"
                     IsSnapToTickEnabled="True" Value="{Binding Quality}"
                     AutomationProperties.Name="{l:Localize Common_Quality}" />
-            <TextBlock Classes="captionText" Text="{l:Localize Engine_QualityNotComparable}" />
           </StackPanel>
 
-          <StackPanel Spacing="9" IsVisible="{Binding IsJpegli}">
+          <StackPanel Spacing="9">
             <TextBlock Classes="capsLabel" Text="{l:Localize Set_Chroma}" />
             <Border Classes="segmentHost">
               <UniformGrid Columns="4">
@@ -196,11 +200,6 @@
                     TickPlacement="BottomRight" Value="{Binding ProgressiveLevel}"
                     AutomationProperties.Name="{l:Localize Set_Progressive}" />
           </StackPanel>
-
-          <Border Classes="insetRow" Background="{DynamicResource CoralSoftBrush}" IsVisible="{Binding IsGuetzli}">
-            <TextBlock Classes="bodyText" Foreground="{DynamicResource CoralTextBrush}" TextWrapping="Wrap"
-                       Text="{l:Localize Engine_GuetzliWarning}" />
-          </Border>
         </StackPanel>
       </Border>
 
@@ -284,16 +283,6 @@
                            Value="{Binding JpegliTimeoutSeconds}"
                            AutomationProperties.Name="{l:Localize Set_TimeoutJpegli}" />
           </Grid>
-          <Grid ColumnDefinitions="*,Auto">
-            <StackPanel Spacing="2">
-              <TextBlock Classes="bodyText" FontWeight="SemiBold" Text="{l:Localize Set_TimeoutGuetzli}" />
-              <TextBlock Classes="captionText" Text="{l:Localize Set_TimeoutHint}" />
-            </StackPanel>
-            <NumericUpDown Grid.Column="1" Width="150" Minimum="0" Maximum="86400" Increment="10"
-                           FormatString="0" VerticalAlignment="Center"
-                           Value="{Binding GuetzliTimeoutSeconds}"
-                           AutomationProperties.Name="{l:Localize Set_TimeoutGuetzli}" />
-          </Grid>
         </StackPanel>
       </Border>
 
@@ -342,7 +331,7 @@
       </Border>
 
       <!-- Updates (MP-006) -->
-      <Border Classes="card">
+      <Border x:Name="UpdateCard" Classes="card">
         <StackPanel Spacing="12">
           <TextBlock Classes="cardTitle" Text="{l:Localize Update_Section}" />
           <TextBlock Classes="captionText" Text="{l:Localize Update_NotSupported}"
