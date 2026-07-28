@@ -11,8 +11,6 @@ on:
   push:
     branches:
       - main
-      # Vorübergehend, solange der Dauerbetrieb auf dem Feature-Branch geprüft wird.
-      - feature/docker-watch-daemon
     tags:
       - "v*"
   workflow_dispatch:
