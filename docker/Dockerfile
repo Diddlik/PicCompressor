@@ -8,8 +8,11 @@ ARG DOTNET_VERSION=10.0
 FROM mcr.microsoft.com/dotnet/sdk:${DOTNET_VERSION} AS build
 # TARGETARCH füllt buildx; ohne buildx ist es die Architektur des Build-Rechners.
 ARG TARGETARCH=amd64
+# build-native-linux.sh erzeugt „Unix Makefiles“ und übersetzt neben C++ auch C (zlib, libpng):
+# `make` und `gcc` gehören deshalb genauso dazu wie `g++`.
 RUN apt-get update \
-    && apt-get install --yes --no-install-recommends cmake g++ git ca-certificates \
+    && apt-get install --yes --no-install-recommends \
+        cmake make gcc g++ git ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /src
 COPY . .
