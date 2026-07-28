@@ -35,7 +35,6 @@ RUN set -eu; \
         --configuration Release \
         --runtime "$runtime" \
         --self-contained true \
-        --artifacts-path "/tmp/build/$runtime" \
         --output /app \
         "-p:PicCompressorNativeLibrary=/src/artifacts/native/$runtime/piccompressor_native.so"; \
     test -x /app/PicCompressor.Cli; \
