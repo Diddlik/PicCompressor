@@ -128,17 +128,21 @@ public sealed class PhysicalInputDiscovery(StringComparer pathComparer) : IInput
         }
 
         long size;
+        DateTimeOffset lastWriteTimeUtc;
         try
         {
-            size = new FileInfo(canonicalPath).Length;
+            var info = new FileInfo(canonicalPath);
+            size = info.Length;
+            lastWriteTimeUtc = info.LastWriteTimeUtc;
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
             // Die belastbare Prüfung folgt beim Ausführen; die Größe ist hier nur für die Anzeige.
             size = 0;
+            lastWriteTimeUtc = default;
         }
 
-        results.Add(new(canonicalPath, relativeDirectory, size));
+        results.Add(new(canonicalPath, relativeDirectory, size, lastWriteTimeUtc));
         progress?.Report(results.Count);
     }
 }

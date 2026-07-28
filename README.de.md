@@ -27,7 +27,7 @@ Desktop-Anwendung und CLI verwenden dieselbe Kompressionspipeline und dieselben 
 
 ## Aktueller Stand
 
-PicCompressor befindet sich in der Alpha-Entwicklung. GUI, CLI und die native Jpegli-Pipeline sind derzeit unter Windows x64 verifiziert. Vollständige Pakete für macOS, Linux und weitere Architekturen sind geplant, aber noch nicht verifiziert.
+PicCompressor befindet sich in der Alpha-Entwicklung. GUI, CLI und die native Jpegli-Pipeline sind derzeit unter Windows x64 verifiziert. Ein selbstenthaltendes Linux-x64-CLI-Paket lässt sich bauen und besteht seine Tests; GUI-, macOS- und `linux-arm64`-Pakete sind geplant, aber noch nicht verifiziert.
 
 Die Anwendung unterstützt aktuell Englisch und Deutsch. Die russische README-Übersetzung bedeutet nicht, dass die Benutzeroberfläche bereits Russisch unterstützt.
 
@@ -74,4 +74,14 @@ Alle Optionen anzeigen:
 
 ```powershell
 piccompressor --help
+```
+
+Für wiederkehrende Ordnerscans (etwa als NAS-Aufgabe) überspringt `--state` unveränderte
+Eingaben als erfolgreichen No-op, `--lock` verhindert überlappende Läufe, und `--stable-for`
+lässt noch hochgeladene Dateien für einen späteren Lauf liegen:
+
+```bash
+piccompressor /volume1/photo --recursive --output-dir /volume1/photo-compressed \
+  --state /var/piccompressor/scan-state.json --lock /var/piccompressor/scan.lock \
+  --stable-for 120 --parallelism 2 --timeout 300 --no-history
 ```

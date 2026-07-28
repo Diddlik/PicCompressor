@@ -4,17 +4,23 @@ namespace PicCompressor.Application;
 
 public sealed class OutputPathPlanner(IFileSystem fileSystem)
 {
+    /// <param name="replaceable">
+    /// Der Zielpfad ist eine in einem früheren Lauf selbst erzeugte und aufgezeichnete Ausgabe
+    /// (MP-005). Sie darf ersetzt werden, ohne dass die Kollisionsrichtlinie das Überschreiben
+    /// fremder Dateien erlaubt.
+    /// </param>
     public string Plan(
         string desiredPath,
         CollisionPolicy policy,
-        IReadOnlyCollection<string>? reservedPaths = null)
+        IReadOnlyCollection<string>? reservedPaths = null,
+        bool replaceable = false)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(desiredPath);
         reservedPaths ??= [];
 
         var reserved = IsReserved(desiredPath, reservedPaths);
         var exists = fileSystem.FileExists(desiredPath);
-        if (!reserved && !exists)
+        if (!reserved && (!exists || replaceable))
         {
             return desiredPath;
         }

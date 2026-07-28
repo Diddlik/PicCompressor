@@ -16,7 +16,8 @@ public sealed class CompressionJob
         InputImageInfo inputImageInfo,
         string? profileName = null,
         Guid? predecessorJobId = null,
-        int minimumSavingsPercent = 0)
+        int minimumSavingsPercent = 0,
+        bool replacesRecordedOutput = false)
     {
         if (id == Guid.Empty)
         {
@@ -54,6 +55,7 @@ public sealed class CompressionJob
         ProfileName = profileName;
         PredecessorJobId = predecessorJobId;
         MinimumSavingsPercent = minimumSavingsPercent;
+        ReplacesRecordedOutput = replacesRecordedOutput;
     }
 
     public Guid Id { get; }
@@ -76,4 +78,11 @@ public sealed class CompressionJob
     /// Ergebnis mit geringerer Einsparung wird verworfen statt veröffentlicht.
     /// </summary>
     public int MinimumSavingsPercent { get; }
+
+    /// <summary>
+    /// Der Zielpfad ist die in einem früheren Lauf für genau diese Eingabe erzeugte und
+    /// aufgezeichnete Ausgabe (MP-005). Sie darf ersetzt werden, ohne dass die
+    /// Kollisionsrichtlinie das Überschreiben fremder Dateien erlaubt.
+    /// </summary>
+    public bool ReplacesRecordedOutput { get; }
 }

@@ -6,7 +6,10 @@
     <ProjectReference Include="..\PicCompressor.Engine.Jpegli\PicCompressor.Engine.Jpegli.csproj" />
     <ProjectReference Include="..\PicCompressor.Gui\PicCompressor.Gui.csproj" />
     <ProjectReference Include="..\PicCompressor.Infrastructure\PicCompressor.Infrastructure.csproj" />
-    <ProjectReference Include="..\PicCompressor.NativeInterop\PicCompressor.NativeInterop.csproj" />
+    <ProjectReference Include="..\PicCompressor.NativeInterop\PicCompressor.NativeInterop.csproj">
+      <AdditionalProperties
+          Condition="'$(RuntimeIdentifier)' != ''">PicCompressorTargetRid=$(RuntimeIdentifier)</AdditionalProperties>
+    </ProjectReference>
   </ItemGroup>
 
   <ItemGroup>
@@ -21,7 +24,8 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <PlatformTarget Condition="$([MSBuild]::IsOSPlatform('Windows'))">x64</PlatformTarget>
+    <!-- Siehe PicCompressor.Cli.csproj: mit RID leitet das SDK die Zielarchitektur ab. -->
+    <PlatformTarget Condition="'$(RuntimeIdentifier)' == '' and $([MSBuild]::IsOSPlatform('Windows'))">x64</PlatformTarget>
   </PropertyGroup>
 
 </Project>

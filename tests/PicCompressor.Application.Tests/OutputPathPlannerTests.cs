@@ -59,6 +59,37 @@ public sealed class OutputPathPlannerTests
         Assert.Equal(CompressionErrorCategory.OutputConflict, exception.Category);
     }
 
+    [Fact]
+    public void Plan_replaces_an_own_recorded_output_without_overwrite_policy()
+    {
+        var fileSystem = new StubFileSystem("image.jpg");
+        var desired = fileSystem.Canonical("image.jpg");
+
+        var result = new OutputPathPlanner(fileSystem).Plan(
+            desired,
+            CollisionPolicy.Skip,
+            reservedPaths: null,
+            replaceable: true);
+
+        Assert.Equal(desired, result);
+    }
+
+    [Fact]
+    public void Plan_rejects_a_replaceable_target_reserved_by_another_job()
+    {
+        var fileSystem = new StubFileSystem("image.jpg");
+        var desired = fileSystem.Canonical("image.jpg");
+
+        var exception = Assert.Throws<JobCreationException>(
+            () => new OutputPathPlanner(fileSystem).Plan(
+                desired,
+                CollisionPolicy.Skip,
+                [desired],
+                replaceable: true));
+
+        Assert.Equal(CompressionErrorCategory.OutputConflict, exception.Category);
+    }
+
     private sealed class StubFileSystem(params string[] existingFiles) : IFileSystem
     {
         private readonly HashSet<string> existing = new(

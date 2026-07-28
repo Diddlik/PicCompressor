@@ -15,7 +15,8 @@ public sealed record CompressionJobRequest(
     string? ProfileName = null,
     Guid? PredecessorJobId = null,
     int MinimumSavingsPercent = 0,
-    bool OverwriteOriginal = false);
+    bool OverwriteOriginal = false,
+    string? ReplaceableOutputPath = null);
 
 public sealed class CompressionJobFactory(
     IFileSystem fileSystem,
@@ -67,10 +68,14 @@ public sealed class CompressionJobFactory(
             : GetCanonicalPath(
                 Path.Combine(outputDirectory, $"{inputName}{request.Suffix}.jpg"),
                 nameof(request.OutputDirectory));
+        // Nur genau die aufgezeichnete eigene Ausgabe dieser Eingabe darf ersetzt werden.
+        var replacesRecordedOutput = request.ReplaceableOutputPath is string replaceable
+            && fileSystem.PathsEqual(desiredOutputPath, replaceable);
         var outputPath = outputPathPlanner.Plan(
             desiredOutputPath,
             request.CollisionPolicy,
-            reservedOutputPaths);
+            reservedOutputPaths,
+            replacesRecordedOutput);
 
         if (fileSystem.PathsEqual(inputPath, outputPath)
             && request.CollisionPolicy is not CollisionPolicy.Overwrite)
@@ -94,7 +99,8 @@ public sealed class CompressionJobFactory(
             inputImageInfo,
             request.ProfileName,
             request.PredecessorJobId,
-            request.MinimumSavingsPercent);
+            request.MinimumSavingsPercent,
+            replacesRecordedOutput);
     }
 
     private InputImageInfo InspectInput(string inputPath)

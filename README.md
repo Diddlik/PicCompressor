@@ -49,7 +49,8 @@ application and CLI.
 - Windows x64 GUI, CLI, and native Jpegli pipeline are verified.
 - Jpegli is the sole encoder. The former Guetzli integration was removed because
   of its excessive runtime and resource usage.
-- Full macOS, Linux, and additional architecture packages are planned but not yet verified.
+- A self-contained Linux x64 CLI package can be built and passes its tests; the GUI, macOS, and
+  `linux-arm64` packages are planned but not yet verified.
 - The application UI supports English and German. The Russian README is documentation only.
 - Signing, installation/update rollback tests, and the remaining release-security gates are still open.
 
@@ -85,6 +86,16 @@ Show all options:
 
 ```powershell
 piccompressor --help
+```
+
+For scheduled folder scans (for example a NAS task), `--state` skips unchanged inputs as a
+successful no-op, `--lock` prevents overlapping runs, and `--stable-for` leaves files that are
+still being uploaded for a later run:
+
+```bash
+piccompressor /volume1/photo --recursive --output-dir /volume1/photo-compressed \
+  --state /var/piccompressor/scan-state.json --lock /var/piccompressor/scan.lock \
+  --stable-for 120 --parallelism 2 --timeout 300 --no-history
 ```
 
 ## License

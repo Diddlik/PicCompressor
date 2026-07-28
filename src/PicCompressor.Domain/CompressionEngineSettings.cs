@@ -11,6 +11,13 @@ public abstract class CompressionEngineSettings
 
     public string EngineId { get; }
     public int Quality { get; }
+
+    /// <summary>
+    /// Die wirksamen Encodereinstellungen als stabile Zeichenkette. Ein wiederkehrender Scan
+    /// erkennt daran eine geänderte Einstellung (MP-005); jede Engine legt ihre eigenen
+    /// Parameter offen (Abschnitt 8.1).
+    /// </summary>
+    public virtual string Fingerprint => $"{EngineId};quality={Quality}";
 }
 
 public enum JpegliChromaSubsampling
@@ -52,4 +59,7 @@ public sealed class JpegliSettings : CompressionEngineSettings
 
     public JpegliChromaSubsampling ChromaSubsampling { get; }
     public int ProgressiveLevel { get; }
+
+    public override string Fingerprint =>
+        $"{base.Fingerprint};chroma={ChromaSubsampling};progressive={ProgressiveLevel}";
 }

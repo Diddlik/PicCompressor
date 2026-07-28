@@ -11,14 +11,25 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
-  <PropertyGroup Condition="$([MSBuild]::IsOSPlatform('Windows'))">
-    <PicCompressorNativeFileName>piccompressor_native.dll</PicCompressorNativeFileName>
+  <!-- Die native Bibliothek wird nach Ziel-RID gewählt, nicht nach dem Betriebssystem des
+       Build-Rechners. Ohne explizites RID (normaler Build, Tests) gilt das RID des Hosts. -->
+  <PropertyGroup>
+    <PicCompressorTargetRid
+        Condition="'$(PicCompressorTargetRid)' == ''">$(RuntimeIdentifier)</PicCompressorTargetRid>
+    <PicCompressorTargetRid
+        Condition="'$(PicCompressorTargetRid)' == ''">$(NETCoreSdkPortableRuntimeIdentifier)</PicCompressorTargetRid>
     <PicCompressorNativeLibraryWasSpecified
         Condition="'$(PicCompressorNativeLibrary)' != ''">true</PicCompressorNativeLibraryWasSpecified>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(PicCompressorTargetRid)' == 'win-x64'">
+    <PicCompressorNativeFileName>piccompressor_native.dll</PicCompressorNativeFileName>
     <PicCompressorNativeLibrary
-        Condition="'$(PicCompressorNativeLibrary)' == ''">$([MSBuild]::NormalizePath('$(MSBuildThisFileDirectory)', '..', '..', 'artifacts', 'native', 'win-x64', '$(Configuration)', 'piccompressor_native.dll'))</PicCompressorNativeLibrary>
+        Condition="'$(PicCompressorNativeLibrary)' == ''">$([MSBuild]::NormalizePath('$(MSBuildThisFileDirectory)', '..', '..', 'artifacts', 'native', '$(PicCompressorTargetRid)', '$(Configuration)', 'piccompressor_native.dll'))</PicCompressorNativeLibrary>
+    <!-- Der eingebettete Native-Build läuft nur auf einem Windows-Host; es gibt keine
+         Cross-Kompilierung im Build. -->
     <PicCompressorBuildNative
-        Condition="'$(PicCompressorBuildNative)' == '' and '$(PicCompressorNativeLibraryWasSpecified)' != 'true'">true</PicCompressorBuildNative>
+        Condition="'$(PicCompressorBuildNative)' == '' and '$(PicCompressorNativeLibraryWasSpecified)' != 'true' and $([MSBuild]::IsOSPlatform('Windows'))">true</PicCompressorBuildNative>
     <PicCompressorBuildNative
         Condition="'$(PicCompressorBuildNative)' == ''">false</PicCompressorBuildNative>
     <PicCompressorNativeToolchainRoot
@@ -30,20 +41,21 @@
     <PicCompressorNativeConfiguration
         Condition="'$(PicCompressorNativeConfiguration)' == ''">$(Configuration)</PicCompressorNativeConfiguration>
     <PicCompressorNativeSymbols
-        Condition="'$(PicCompressorBuildNative)' == 'true'">$([System.IO.Path]::ChangeExtension('$(PicCompressorNativeLibrary)', '.pdb'))</PicCompressorNativeSymbols>
+        Condition="'$(PicCompressorBuildNative)' == 'true' and '$(PicCompressorNativeConfiguration)' != 'Release'">$([System.IO.Path]::ChangeExtension('$(PicCompressorNativeLibrary)', '.pdb'))</PicCompressorNativeSymbols>
   </PropertyGroup>
 
-  <!-- Non-Windows RIDs consume a prebuilt native library (scripts/build-native-linux-x64.sh);
-       there is no in-build cross-compilation here. -->
-  <PropertyGroup Condition="$([MSBuild]::IsOSPlatform('Linux'))">
+  <!-- Linux-RIDs verbrauchen eine vorgebaute Bibliothek (scripts/build-native-linux.sh);
+       im Build wird nicht cross-kompiliert. Eine PDB gibt es dort nicht. -->
+  <PropertyGroup Condition="'$(PicCompressorTargetRid)' == 'linux-x64' or '$(PicCompressorTargetRid)' == 'linux-arm64'">
     <PicCompressorNativeFileName>piccompressor_native.so</PicCompressorNativeFileName>
     <PicCompressorNativeLibrary
-        Condition="'$(PicCompressorNativeLibrary)' == ''">$([MSBuild]::NormalizePath('$(MSBuildThisFileDirectory)', '..', '..', 'artifacts', 'native', 'linux-x64', 'piccompressor_native.so'))</PicCompressorNativeLibrary>
+        Condition="'$(PicCompressorNativeLibrary)' == ''">$([MSBuild]::NormalizePath('$(MSBuildThisFileDirectory)', '..', '..', 'artifacts', 'native', '$(PicCompressorTargetRid)', 'piccompressor_native.so'))</PicCompressorNativeLibrary>
   </PropertyGroup>
 
   <ItemGroup Condition="'$(PicCompressorNativeLibrary)' != ''">
     <None Include="$(PicCompressorNativeLibrary)"
           Link="$(PicCompressorNativeFileName)"
+          TargetPath="$(PicCompressorNativeFileName)"
           CopyToOutputDirectory="PreserveNewest"
           CopyToPublishDirectory="PreserveNewest" />
     <None Include="$(PicCompressorNativeSymbols)"
@@ -76,8 +88,11 @@
   <Target Name="ValidatePicCompressorNative"
           BeforeTargets="Build"
           DependsOnTargets="BuildPicCompressorNative"
-          Condition="'$(DesignTimeBuild)' != 'true' and '$(PicCompressorNativeLibrary)' != '' and !Exists('$(PicCompressorNativeLibrary)')">
-    <Error Text="PicCompressorNativeLibrary does not exist: $(PicCompressorNativeLibrary)" />
+          Condition="'$(DesignTimeBuild)' != 'true'">
+    <Error Condition="'$(PicCompressorNativeLibrary)' == ''"
+           Text="No native library is configured for runtime identifier '$(PicCompressorTargetRid)'." />
+    <Error Condition="!Exists('$(PicCompressorNativeLibrary)')"
+           Text="PicCompressorNativeLibrary does not exist: $(PicCompressorNativeLibrary)" />
   </Target>
 
 </Project>

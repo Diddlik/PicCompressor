@@ -21,9 +21,14 @@ public sealed record CompressionJobPlan(
 
 public sealed class CompressionBatchPlanner(CompressionJobFactory jobFactory)
 {
+    /// <param name="replaceableOutputs">
+    /// Eingabepfad auf die dafür in einem früheren Lauf erzeugte Ausgabe (MP-005). Trifft der
+    /// geplante Zielpfad genau darauf, darf er ersetzt werden.
+    /// </param>
     public IReadOnlyList<CompressionJobPlan> Plan(
         IReadOnlyList<DiscoveredInput> inputs,
-        CompressionBatchSettings settings)
+        CompressionBatchSettings settings,
+        IReadOnlyDictionary<string, string>? replaceableOutputs = null)
     {
         ArgumentNullException.ThrowIfNull(inputs);
         ArgumentNullException.ThrowIfNull(settings);
@@ -46,7 +51,11 @@ public sealed class CompressionBatchPlanner(CompressionJobFactory jobFactory)
                         settings.LargerOutputPolicy,
                         outputDirectory,
                         settings.Suffix,
-                        MinimumSavingsPercent: settings.MinimumSavingsPercent),
+                        MinimumSavingsPercent: settings.MinimumSavingsPercent,
+                        ReplaceableOutputPath: replaceableOutputs is not null
+                            && replaceableOutputs.TryGetValue(input.Path, out var replaceable)
+                                ? replaceable
+                                : null),
                     reservedOutputPaths);
                 reservedOutputPaths.Add(job.OutputPath);
                 plans.Add(new(input, job, null, null));

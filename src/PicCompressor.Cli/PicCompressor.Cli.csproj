@@ -5,7 +5,10 @@
     <ProjectReference Include="..\PicCompressor.Domain\PicCompressor.Domain.csproj" />
     <ProjectReference Include="..\PicCompressor.Engine.Jpegli\PicCompressor.Engine.Jpegli.csproj" />
     <ProjectReference Include="..\PicCompressor.Infrastructure\PicCompressor.Infrastructure.csproj" />
-    <ProjectReference Include="..\PicCompressor.NativeInterop\PicCompressor.NativeInterop.csproj" />
+    <ProjectReference Include="..\PicCompressor.NativeInterop\PicCompressor.NativeInterop.csproj">
+      <AdditionalProperties
+          Condition="'$(RuntimeIdentifier)' != ''">PicCompressorTargetRid=$(RuntimeIdentifier)</AdditionalProperties>
+    </ProjectReference>
   </ItemGroup>
 
   <PropertyGroup>
@@ -14,7 +17,9 @@
     <ApplicationIcon>..\..\assets\PicCompressor.ico</ApplicationIcon>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <PlatformTarget Condition="$([MSBuild]::IsOSPlatform('Windows'))">x64</PlatformTarget>
+    <!-- Ohne RID muss der Prozess zur nativen Windows-Bibliothek passen; mit RID leitet das
+         SDK die Zielarchitektur daraus ab (sonst kollidiert x64 mit linux-arm64). -->
+    <PlatformTarget Condition="'$(RuntimeIdentifier)' == '' and $([MSBuild]::IsOSPlatform('Windows'))">x64</PlatformTarget>
   </PropertyGroup>
 
 </Project>

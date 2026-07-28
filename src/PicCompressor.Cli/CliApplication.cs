@@ -30,6 +30,9 @@ internal static class CliApplication
           --json                        Emit schema-versioned JSON
           --no-history                  Do not record results in the local history
           --log <path>                  Write the JSONL log to this path
+          --state <path>                Track processed inputs there; unchanged ones are a no-op
+          --lock <path>                 Skip the run while another one holds this lock
+          --stable-for <0-86400>        Skip inputs modified within this many seconds
           --help                        Show help
         """;
 
@@ -46,7 +49,7 @@ internal static class CliApplication
         IDiagnosticLog log,
         IReadOnlyList<CompressionJobPlan> plans,
         IReadOnlyList<CompressionExecutionResult> results,
-        string? historyWarning)
+        IReadOnlyList<string> warnings)
     {
         const string Component = "Cli";
         var now = DateTimeOffset.UtcNow;
@@ -82,14 +85,14 @@ internal static class CliApplication
                     result.ErrorCategory));
         }
 
-        if (historyWarning is not null)
+        foreach (var warning in warnings)
         {
             log.Write(
                 new DiagnosticEntry(
                     now,
                     DiagnosticSeverity.Warning,
                     Component,
-                    historyWarning));
+                    warning));
         }
     }
 
@@ -140,6 +143,62 @@ internal static class CliApplication
         }
     }
 
+    /// <summary>
+    /// Schreibt den Zustand des wiederkehrenden Scans (MP-005). Aufgezeichnet werden die
+    /// unveränderten Eingaben dieses Laufs und jeder erfolgreiche Job; ein Erfolg ohne Ausgabe
+    /// wird mit leerem Ausgabepfad vermerkt, damit er nicht in jedem Lauf erneut kodiert wird.
+    /// Ein Schreibfehler ist wie beim Verlauf eine eigene Warnung und kein Kompressionsfehler
+    /// (Abschnitt 14.4).
+    /// </summary>
+    private static string? SaveScanState(
+        JsonScanStateStore? stateStore,
+        IReadOnlyList<ScanStateEntry> previousState,
+        IReadOnlyList<DiscoveredInput> discoveredInputs,
+        ScanSelection selection,
+        IReadOnlyList<CompressionExecutionResult> results,
+        string fingerprint,
+        IFileSystem fileSystem,
+        StringComparer pathComparer)
+    {
+        if (stateStore is null)
+        {
+            return null;
+        }
+
+        var inputsByPath = new Dictionary<string, DiscoveredInput>(pathComparer);
+        foreach (var input in discoveredInputs)
+        {
+            inputsByPath[input.Path] = input;
+        }
+
+        var current = new List<ScanStateEntry>(selection.Unchanged);
+        foreach (var result in results.Where(result => result.Status is JobStatus.Succeeded))
+        {
+            if (inputsByPath.TryGetValue(result.InputPath, out var input))
+            {
+                current.Add(
+                    new(
+                        input.Path,
+                        input.FileSizeBytes,
+                        input.LastWriteTimeUtc.UtcTicks,
+                        fingerprint,
+                        result.OutputPublished ? result.OutputPath : ""));
+            }
+        }
+
+        try
+        {
+            stateStore.Save(
+                IncrementalScan.Merge(previousState, discoveredInputs, current, fileSystem, pathComparer));
+            return null;
+        }
+        catch (Exception exception) when (
+            exception is IOException or UnauthorizedAccessException or NotSupportedException)
+        {
+            return $"The scan state was not written: {exception.Message}";
+        }
+    }
+
     internal static async Task<int> RunAsync(
         string[] args,
         TextWriter standardOutput,
@@ -180,6 +239,20 @@ internal static class CliApplication
 
         try
         {
+            // Ein zweiter gleichzeitiger Lauf ist ein erfolgreicher No-op statt eines zweiten
+            // Workerpools (MP-005). Der Lock wird beim Prozessende freigegeben, auch nach Absturz.
+            using var runLock = options.LockPath is null ? null : RunLock.TryAcquire(options.LockPath);
+            if (options.LockPath is not null && runLock is null)
+            {
+                await standardOutput.WriteLineAsync(
+                    options.Json
+                        ? JsonSerializer.Serialize(
+                            new { schemaVersion = 1, skippedBecauseLocked = true },
+                            JsonOptions)
+                        : "Another run holds the lock; nothing to do.").ConfigureAwait(false);
+                return 0;
+            }
+
             var comparer = OperatingSystem.IsWindows()
                 ? StringComparer.OrdinalIgnoreCase
                 : StringComparer.Ordinal;
@@ -205,18 +278,40 @@ internal static class CliApplication
                 inspector,
                 new InputValidationLimits(500 * 1024 * 1024, 250_000_000),
                 TimeProvider.System);
-            var plans = new CompressionBatchPlanner(jobFactory).Plan(
+            var settings = new CompressionBatchSettings(
+                BuildEngineSettings(options),
+                options.ExifPolicy,
+                options.ColorProfilePolicy,
+                RgbColor.White,
+                options.CollisionPolicy,
+                options.LargerOutputPolicy,
+                options.OutputDirectory,
+                options.Suffix,
+                options.MinimumSavingsPercent);
+
+            // Wiederkehrender Scan (MP-005): unveränderte Eingaben mit gültiger Ausgabe werden
+            // übersprungen, noch wachsende Dateien bleiben für einen späteren Lauf liegen.
+            var stateStore = options.StatePath is null ? null : new JsonScanStateStore(options.StatePath);
+            var previousState = stateStore?.Load() ?? [];
+            var fingerprint = IncrementalScan.Fingerprint(settings);
+            var selection = IncrementalScan.Select(
                 discoveredInputs,
-                new CompressionBatchSettings(
-                    BuildEngineSettings(options),
-                    options.ExifPolicy,
-                    options.ColorProfilePolicy,
-                    RgbColor.White,
-                    options.CollisionPolicy,
-                    options.LargerOutputPolicy,
-                    options.OutputDirectory,
-                    options.Suffix,
-                    options.MinimumSavingsPercent));
+                previousState,
+                fingerprint,
+                TimeSpan.FromSeconds(options.StableForSeconds),
+                DateTimeOffset.UtcNow,
+                fileSystem,
+                comparer);
+            var replaceableOutputs = new Dictionary<string, string>(comparer);
+            foreach (var entry in previousState.Where(entry => entry.OutputPath.Length > 0))
+            {
+                replaceableOutputs[entry.InputPath] = entry.OutputPath;
+            }
+
+            var plans = new CompressionBatchPlanner(jobFactory).Plan(
+                selection.Inputs,
+                settings,
+                replaceableOutputs);
             if (options.DryRun)
             {
                 await WriteDryRunAsync(standardOutput, standardError, options.Json, plans)
@@ -243,8 +338,21 @@ internal static class CliApplication
             var historyWarning = options.NoHistory
                 ? null
                 : await RecordHistoryAsync(historyStore, results).ConfigureAwait(false);
+            var stateWarning = SaveScanState(
+                stateStore,
+                previousState,
+                discoveredInputs,
+                selection,
+                results,
+                fingerprint,
+                fileSystem,
+                comparer);
 
-            LogOutcome(log, plans, results, historyWarning);
+            LogOutcome(
+                log,
+                plans,
+                results,
+                new[] { historyWarning, stateWarning }.OfType<string>().ToArray());
 
             if (options.Json)
             {
@@ -260,16 +368,32 @@ internal static class CliApplication
                             planningErrors = plans
                                 .Where(plan => plan.ErrorCategory is not null)
                                 .Select(ToPlanOutput),
-                            historyWarning
+                            unchangedCount = selection.Unchanged.Count,
+                            unstableCount = selection.UnstableCount,
+                            historyWarning,
+                            stateWarning
                         },
                         JsonOptions))
                     .ConfigureAwait(false);
             }
             else
             {
-                if (historyWarning is not null)
+                foreach (var warning in new[] { historyWarning, stateWarning }.OfType<string>())
                 {
-                    await standardError.WriteLineAsync(historyWarning).ConfigureAwait(false);
+                    await standardError.WriteLineAsync(warning).ConfigureAwait(false);
+                }
+
+                if (selection.Unchanged.Count > 0)
+                {
+                    await standardOutput.WriteLineAsync(
+                        $"Unchanged: {selection.Unchanged.Count}").ConfigureAwait(false);
+                }
+
+                if (selection.UnstableCount > 0)
+                {
+                    await standardOutput.WriteLineAsync(
+                        $"Still changing, retried later: {selection.UnstableCount}")
+                        .ConfigureAwait(false);
                 }
 
                 foreach (var plan in plans.Where(plan => plan.ErrorCategory is not null))
@@ -332,7 +456,7 @@ internal static class CliApplication
             return 3;
         }
         catch (Exception exception) when (
-            exception is IOException or UnauthorizedAccessException)
+            exception is IOException or UnauthorizedAccessException or InvalidDataException)
         {
             await WriteErrorAsync(
                 standardError,

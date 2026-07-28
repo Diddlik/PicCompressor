@@ -27,7 +27,7 @@ PicCompressor преобразует изображения JPEG и PNG в ко�
 
 ## Текущее состояние
 
-PicCompressor находится на стадии альфа-разработки. GUI, CLI и нативный конвейер Jpegli сейчас проверены под Windows x64. Полные пакеты для macOS, Linux и других архитектур запланированы, но ещё не проверены.
+PicCompressor находится на стадии альфа-разработки. GUI, CLI и нативный конвейер Jpegli сейчас проверены под Windows x64. Самодостаточный пакет CLI для Linux x64 собирается и проходит свои тесты; пакеты GUI, macOS и `linux-arm64` запланированы, но ещё не проверены.
 
 Интерфейс приложения сейчас поддерживает английский и немецкий языки. Перевод README на русский язык не означает, что интерфейс уже локализован на русский.
 
@@ -74,4 +74,14 @@ piccompressor "C:\Images" --recursive --quality 80 --output-dir "C:\Images\compr
 
 ```powershell
 piccompressor --help
+```
+
+Для повторяющихся сканирований папки (например, задача на NAS): `--state` пропускает
+неизменённые файлы как успешный no-op, `--lock` предотвращает одновременные запуски, а
+`--stable-for` оставляет ещё загружающиеся файлы до следующего запуска:
+
+```bash
+piccompressor /volume1/photo --recursive --output-dir /volume1/photo-compressed \
+  --state /var/piccompressor/scan-state.json --lock /var/piccompressor/scan.lock \
+  --stable-for 120 --parallelism 2 --timeout 300 --no-history
 ```

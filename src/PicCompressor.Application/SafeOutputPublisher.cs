@@ -106,7 +106,10 @@ public sealed class SafeOutputPublisher(
                 outputInfo.FileSizeBytes);
         }
 
-        var overwrite = job.CollisionPolicy is CollisionPolicy.Overwrite;
+        // Die eigene aufgezeichnete Ausgabe eines früheren Laufs darf ersetzt werden (MP-005),
+        // ohne dass dafür fremde Dateien überschreibbar werden.
+        var overwrite = job.CollisionPolicy is CollisionPolicy.Overwrite
+            || job.ReplacesRecordedOutput;
         if (!overwrite && fileSystem.FileExists(job.OutputPath))
         {
             throw Failure(

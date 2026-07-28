@@ -1,6 +1,14 @@
 namespace PicCompressor.Application;
 
-public sealed record DiscoveredInput(string Path, string RelativeDirectory, long FileSizeBytes = 0);
+/// <summary>
+/// Eine gefundene Eingabedatei. Größe und Änderungszeit stammen aus der Discovery, damit
+/// Anzeige und wiederkehrender Scan (MP-005) kein zusätzliches Datei-I/O brauchen.
+/// </summary>
+public sealed record DiscoveredInput(
+    string Path,
+    string RelativeDirectory,
+    long FileSizeBytes = 0,
+    DateTimeOffset LastWriteTimeUtc = default);
 
 public interface IInputDiscovery
 {

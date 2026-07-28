@@ -19,7 +19,10 @@ internal sealed record CliOptions(
     bool NoHistory,
     string? LogPath,
     int TimeoutSeconds,
-    int MinimumSavingsPercent)
+    int MinimumSavingsPercent,
+    string? StatePath,
+    string? LockPath,
+    int StableForSeconds)
 {
     internal static CliOptions Parse(string[] args)
     {
@@ -41,6 +44,9 @@ internal sealed record CliOptions(
         string? logPath = null;
         var timeoutSeconds = 0;
         var minimumSavingsPercent = 0;
+        string? statePath = null;
+        string? lockPath = null;
+        var stableForSeconds = 0;
 
         for (var index = 0; index < args.Length; index++)
         {
@@ -60,6 +66,15 @@ internal sealed record CliOptions(
                     break;
                 case "--log":
                     logPath = NextValue(args, ref index, "--log");
+                    break;
+                case "--state":
+                    statePath = NextValue(args, ref index, "--state");
+                    break;
+                case "--lock":
+                    lockPath = NextValue(args, ref index, "--lock");
+                    break;
+                case "--stable-for":
+                    stableForSeconds = ParseStableFor(NextValue(args, ref index, "--stable-for"));
                     break;
                 case "--parallelism":
                     parallelism = ParseParallelism(NextValue(args, ref index, "--parallelism"));
@@ -133,7 +148,10 @@ internal sealed record CliOptions(
             noHistory,
             logPath,
             timeoutSeconds,
-            minimumSavingsPercent);
+            minimumSavingsPercent,
+            statePath,
+            lockPath,
+            stableForSeconds);
     }
 
     private static string ParseEngine(string value)
@@ -160,6 +178,13 @@ internal sealed record CliOptions(
         int.TryParse(value, out var seconds) && seconds is >= 0 and <= 86_400
             ? seconds
             : throw new CliUsageException("--timeout must be an integer from 0 to 86400 seconds (0 = no limit).");
+
+    // 0 = keine Stabilitätsprüfung (MP-005); Obergrenze 24 Stunden.
+    private static int ParseStableFor(string value) =>
+        int.TryParse(value, out var seconds) && seconds is >= 0 and <= 86_400
+            ? seconds
+            : throw new CliUsageException(
+                "--stable-for must be an integer from 0 to 86400 seconds (0 = no check).");
 
     // 0 = keine Mindesteinsparung (MP-004); ein Ergebnis darunter wird verworfen.
     private static int ParseMinimumSavings(string value) =>

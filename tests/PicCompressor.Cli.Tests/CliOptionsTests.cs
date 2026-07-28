@@ -18,6 +18,26 @@ public sealed class CliOptionsTests
     }
 
     [Fact]
+    public void Parse_reads_the_recurring_scan_options()
+    {
+        var options = CliOptions.Parse(
+            ["input.png", "--state", "scan.json", "--lock", "scan.lock", "--stable-for", "120"]);
+
+        Assert.Equal("scan.json", options.StatePath);
+        Assert.Equal("scan.lock", options.LockPath);
+        Assert.Equal(120, options.StableForSeconds);
+    }
+
+    [Fact]
+    public void Parse_rejects_a_stable_for_value_outside_the_allowed_range()
+    {
+        var exception = Assert.Throws<CliUsageException>(
+            () => CliOptions.Parse(["input.png", "--stable-for", "86401"]));
+
+        Assert.Contains("--stable-for", exception.Message);
+    }
+
+    [Fact]
     public void Parse_accepts_metadata_policies()
     {
         var options = CliOptions.Parse(
