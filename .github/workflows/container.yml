@@ -11,6 +11,8 @@ on:
   push:
     branches:
       - main
+      # Vorübergehend, solange der Dauerbetrieb auf dem Feature-Branch geprüft wird.
+      - feature/docker-watch-daemon
     tags:
       - "v*"
   workflow_dispatch:
@@ -61,7 +63,8 @@ jobs:
           labels: ${{ steps.metadata.outputs.labels }}
           # Der native Jpegli-Build dominiert die Laufzeit; ohne Cache läuft er bei jedem Push neu.
           cache-from: type=gha
-          cache-to: type=gha,mode=max
+          # ignore-error: ein nicht schreibbarer Cache darf den Build nicht scheitern lassen.
+          cache-to: type=gha,mode=max,ignore-error=true
 
       - name: Smoke test the pushed image
         run: |
