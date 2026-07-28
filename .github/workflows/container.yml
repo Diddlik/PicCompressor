@@ -1,0 +1,70 @@
+# Builds the Docker image and pushes it to the GitHub Container Registry (ghcr.io).
+# Triggers: every push to main (tag `main`) and every version tag (`X.Y.Z`, `X.Y`, and `latest`
+# for a final release). A pre-release tag such as v1.2.0-alpha.1 never becomes `latest`.
+#
+# The package is created private on first push. Make it public once under
+# https://github.com/users/Diddlik/packages/container/piccompressor/settings — otherwise
+# `docker pull` requires a login.
+name: container
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: container-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  image:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Derive tags
+        id: metadata
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') && !contains(github.ref_name, '-') }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile
+          # Nur linux/amd64 ist gebaut und geprüft; arm64 bleibt vorbereitet (TARGETARCH),
+          # bräuchte hier aber QEMU-Emulation für den nativen C++-Build.
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.metadata.outputs.tags }}
+          labels: ${{ steps.metadata.outputs.labels }}
+          # Der native Jpegli-Build dominiert die Laufzeit; ohne Cache läuft er bei jedem Push neu.
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Smoke test the pushed image
+        run: |
+          set -eu
+          image="$(printf '%s' '${{ steps.metadata.outputs.tags }}' | head -n 1)"
+          docker run --rm "$image" --help

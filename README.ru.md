@@ -85,3 +85,41 @@ piccompressor /volume1/photo --recursive --output-dir /volume1/photo-compressed 
   --state /var/piccompressor/scan-state.json --lock /var/piccompressor/scan.lock \
   --stable-for 120 --parallelism 2 --timeout 300 --no-history
 ```
+
+## Docker
+
+`--config <путь>` запускает CLI в постоянном режиме по любому числу отслеживаемых папок; у каждой
+свой выходной каталог, свой файл состояния и при необходимости свои настройки сжатия. `mode`
+задаёт источник запуска: `Interval` пересканирует каждые `intervalSeconds`, `Watch` дополнительно
+реагирует на события файловой системы с подавлением дребезга и всё равно сканирует периодически,
+потому что `inotify` не выдаёт событий на подключённых ресурсах SMB/NFS. `docker stop` завершает
+контейнер штатно: текущее задание доводится до конца, непроверенных выходных файлов не остаётся.
+
+Готовый образ публикуется в GitHub Container Registry и пересобирается при каждом push в `main`
+и при каждом теге версии (`.github/workflows/container.yml`):
+
+```bash
+docker pull ghcr.io/diddlik/piccompressor:latest
+docker compose -f docker/docker-compose.yml up -d
+```
+
+Доступные теги: `latest` (последний окончательный выпуск), `X.Y.Z` и `X.Y` для тега версии и
+`main` — текущее состояние разработки. Docker сам ничего не обновляет; новый образ забирает
+`docker compose pull && docker compose up -d` — по расписанию или через службу Watchtower,
+подготовленную в [docker/docker-compose.yml](docker/docker-compose.yml).
+
+Собрать локально вместо загрузки:
+
+```bash
+docker build -f docker/Dockerfile -t piccompressor .
+```
+
+Образ ожидает конфигурацию в `/config/piccompressor.json`, отслеживаемые папки внутри `/data` и
+доступный для записи `/state` для состояния, блокировки и журнала. Полный пример файла:
+[docker/piccompressor.example.json](docker/piccompressor.example.json). Собирайте и запускайте
+образ с тем UID/GID, которому принадлежат подключённые папки; в контейнере никогда не работает
+`root`. `--once` выполняет ровно один цикл по всем папкам и завершается — так ту же конфигурацию
+запускает внешний планировщик.
+
+Собрана и проверена только `linux/amd64`; `linux/arm64` подготовлена через `TARGETARCH`, но не
+проверена. В контейнере работает CLI, а не графический интерфейс.

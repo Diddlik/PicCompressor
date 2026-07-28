@@ -1,0 +1,12 @@
+# Der Buildkontext ist das Repository-Wurzelverzeichnis. Ohne diese Ausschlüsse wandern die
+# ausgecheckten Jpegli-Quellen und die Buildausgaben früherer Läufe mit in den Kontext.
+.git/
+.vs/
+.dotnet-home/
+artifacts/
+native/build*/
+native/*.o
+**/bin/
+**/obj/
+TestResults/
+docs/

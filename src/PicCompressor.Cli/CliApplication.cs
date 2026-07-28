@@ -1,4 +1,4 @@
-using System.Data.Common;
+using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using PicCompressor.Application;
@@ -33,6 +33,8 @@ internal static class CliApplication
           --state <path>                Track processed inputs there; unchanged ones are a no-op
           --lock <path>                 Skip the run while another one holds this lock
           --stable-for <0-86400>        Skip inputs modified within this many seconds
+          --config <path>               Watch the folders of this configuration file continuously
+          --once                        With --config: run one cycle over every folder and exit
           --help                        Show help
         """;
 
@@ -45,7 +47,7 @@ internal static class CliApplication
     /// Writes the structured record of this run. Only file names are logged;
     /// full paths count as unnecessary detail (requirement 13.3).
     /// </summary>
-    private static void LogOutcome(
+    internal static void LogOutcome(
         IDiagnosticLog log,
         IReadOnlyList<CompressionJobPlan> plans,
         IReadOnlyList<CompressionExecutionResult> results,
@@ -96,109 +98,6 @@ internal static class CliApplication
         }
     }
 
-    /// <summary>
-    /// Records finished jobs in the shared local history. A persistence failure
-    /// must not turn a correctly encoded image into a compression error, so it
-    /// is reported as a separate warning instead (requirement 14.4).
-    /// </summary>
-    private static async Task<string?> RecordHistoryAsync(
-        ICompressionHistoryStore? historyStore,
-        IReadOnlyList<CompressionExecutionResult> results)
-    {
-        if (results.Count == 0)
-        {
-            return null;
-        }
-
-        try
-        {
-            var store = historyStore
-                ?? new SqliteCompressionHistoryStore(
-                    ApplicationDataPaths.HistoryDatabasePath);
-            foreach (var result in results)
-            {
-                // The history stores the file name only; absolute paths count as
-                // potentially sensitive data (requirement 13.1).
-                await store.AppendAsync(
-                    new CompressionHistoryEntry(
-                        result.EndedAt,
-                        Path.GetFileName(result.InputPath),
-                        result.EngineId,
-                        result.InputSizeBytes,
-                        result.EncodedSizeBytes,
-                        result.Status,
-                        result.ErrorCategory),
-                    CancellationToken.None).ConfigureAwait(false);
-            }
-
-            return null;
-        }
-        catch (Exception exception) when (
-            exception is DbException
-                or IOException
-                or InvalidDataException
-                or UnauthorizedAccessException)
-        {
-            return $"Results were not recorded in the history: {exception.Message}";
-        }
-    }
-
-    /// <summary>
-    /// Schreibt den Zustand des wiederkehrenden Scans (MP-005). Aufgezeichnet werden die
-    /// unveränderten Eingaben dieses Laufs und jeder erfolgreiche Job; ein Erfolg ohne Ausgabe
-    /// wird mit leerem Ausgabepfad vermerkt, damit er nicht in jedem Lauf erneut kodiert wird.
-    /// Ein Schreibfehler ist wie beim Verlauf eine eigene Warnung und kein Kompressionsfehler
-    /// (Abschnitt 14.4).
-    /// </summary>
-    private static string? SaveScanState(
-        JsonScanStateStore? stateStore,
-        IReadOnlyList<ScanStateEntry> previousState,
-        IReadOnlyList<DiscoveredInput> discoveredInputs,
-        ScanSelection selection,
-        IReadOnlyList<CompressionExecutionResult> results,
-        string fingerprint,
-        IFileSystem fileSystem,
-        StringComparer pathComparer)
-    {
-        if (stateStore is null)
-        {
-            return null;
-        }
-
-        var inputsByPath = new Dictionary<string, DiscoveredInput>(pathComparer);
-        foreach (var input in discoveredInputs)
-        {
-            inputsByPath[input.Path] = input;
-        }
-
-        var current = new List<ScanStateEntry>(selection.Unchanged);
-        foreach (var result in results.Where(result => result.Status is JobStatus.Succeeded))
-        {
-            if (inputsByPath.TryGetValue(result.InputPath, out var input))
-            {
-                current.Add(
-                    new(
-                        input.Path,
-                        input.FileSizeBytes,
-                        input.LastWriteTimeUtc.UtcTicks,
-                        fingerprint,
-                        result.OutputPublished ? result.OutputPath : ""));
-            }
-        }
-
-        try
-        {
-            stateStore.Save(
-                IncrementalScan.Merge(previousState, discoveredInputs, current, fileSystem, pathComparer));
-            return null;
-        }
-        catch (Exception exception) when (
-            exception is IOException or UnauthorizedAccessException or NotSupportedException)
-        {
-            return $"The scan state was not written: {exception.Message}";
-        }
-    }
-
     internal static async Task<int> RunAsync(
         string[] args,
         TextWriter standardOutput,
@@ -225,203 +124,37 @@ internal static class CliApplication
             return 2;
         }
 
-        var log = diagnosticLog
-            ?? new JsonLinesDiagnosticLog(
-                options.LogPath ?? ApplicationDataPaths.DiagnosticLogPath);
-
         using var cancellationSource = new CancellationTokenSource();
+        // Das erste Signal löst den geordneten Abbruch aus, ein zweites überlässt das Beenden
+        // wieder dem Betriebssystem (Abschnitt 12). SIGTERM ist der Weg, auf dem ein Container
+        // gestoppt wird (D-057).
         ConsoleCancelEventHandler cancelHandler = (_, eventArgs) =>
         {
-            eventArgs.Cancel = true;
+            eventArgs.Cancel = !cancellationSource.IsCancellationRequested;
             cancellationSource.Cancel();
         };
         Console.CancelKeyPress += cancelHandler;
+        using var terminationSignal = CreateTerminationSignal(cancellationSource);
 
         try
         {
-            // Ein zweiter gleichzeitiger Lauf ist ein erfolgreicher No-op statt eines zweiten
-            // Workerpools (MP-005). Der Lock wird beim Prozessende freigegeben, auch nach Absturz.
-            using var runLock = options.LockPath is null ? null : RunLock.TryAcquire(options.LockPath);
-            if (options.LockPath is not null && runLock is null)
-            {
-                await standardOutput.WriteLineAsync(
-                    options.Json
-                        ? JsonSerializer.Serialize(
-                            new { schemaVersion = 1, skippedBecauseLocked = true },
-                            JsonOptions)
-                        : "Another run holds the lock; nothing to do.").ConfigureAwait(false);
-                return 0;
-            }
-
-            var comparer = OperatingSystem.IsWindows()
-                ? StringComparer.OrdinalIgnoreCase
-                : StringComparer.Ordinal;
-            var fileSystem = new PhysicalFileSystem(comparer);
-            var inspector = new PhysicalInputImageInspector();
-            var discoveredInputs = new PhysicalInputDiscovery(comparer).Discover(
-                options.InputPaths,
-                options.Recursive,
-                options.OutputDirectory);
-            if (discoveredInputs.Count == 0)
-            {
-                await WriteErrorAsync(
-                    standardError,
-                    options.Json,
-                    3,
-                    CompressionErrorCategory.InputNotFound.ToString(),
-                    "No supported JPEG or PNG input was found.").ConfigureAwait(false);
-                return 3;
-            }
-
-            var jobFactory = new CompressionJobFactory(
-                fileSystem,
-                inspector,
-                new InputValidationLimits(500 * 1024 * 1024, 250_000_000),
-                TimeProvider.System);
-            var settings = new CompressionBatchSettings(
-                BuildEngineSettings(options),
-                options.ExifPolicy,
-                options.ColorProfilePolicy,
-                RgbColor.White,
-                options.CollisionPolicy,
-                options.LargerOutputPolicy,
-                options.OutputDirectory,
-                options.Suffix,
-                options.MinimumSavingsPercent);
-
-            // Wiederkehrender Scan (MP-005): unveränderte Eingaben mit gültiger Ausgabe werden
-            // übersprungen, noch wachsende Dateien bleiben für einen späteren Lauf liegen.
-            var stateStore = options.StatePath is null ? null : new JsonScanStateStore(options.StatePath);
-            var previousState = stateStore?.Load() ?? [];
-            var fingerprint = IncrementalScan.Fingerprint(settings);
-            var selection = IncrementalScan.Select(
-                discoveredInputs,
-                previousState,
-                fingerprint,
-                TimeSpan.FromSeconds(options.StableForSeconds),
-                DateTimeOffset.UtcNow,
-                fileSystem,
-                comparer);
-            var replaceableOutputs = new Dictionary<string, string>(comparer);
-            foreach (var entry in previousState.Where(entry => entry.OutputPath.Length > 0))
-            {
-                replaceableOutputs[entry.InputPath] = entry.OutputPath;
-            }
-
-            var plans = new CompressionBatchPlanner(jobFactory).Plan(
-                selection.Inputs,
-                settings,
-                replaceableOutputs);
-            if (options.DryRun)
-            {
-                await WriteDryRunAsync(standardOutput, standardError, options.Json, plans)
+            return options.ConfigPath is null
+                ? await RunSingleAsync(
+                        options,
+                        standardOutput,
+                        standardError,
+                        historyStore,
+                        diagnosticLog,
+                        cancellationSource.Token)
+                    .ConfigureAwait(false)
+                : await RunConfiguredAsync(
+                        options,
+                        standardOutput,
+                        standardError,
+                        historyStore,
+                        diagnosticLog,
+                        cancellationSource.Token)
                     .ConfigureAwait(false);
-                return MapBatchExitCode(plans, []);
-            }
-
-            var bridge = new NativeCodecBridge(TimeProvider.System);
-            // Enginespezifisches Zeitlimit (MP-004): --timeout gilt für die gewählte Engine;
-            // 0 bedeutet kein Limit.
-            var executor = new CompressionExecutor(
-                [new JpegliEngineAdapter(bridge)],
-                new SafeOutputPublisher(fileSystem, inspector),
-                TimeProvider.System,
-                EngineRuntimeLimits.FromSeconds((options.EngineId, options.TimeoutSeconds)));
-            var jobs = plans
-                .Where(plan => plan.Job is not null)
-                .Select(plan => plan.Job!)
-                .ToArray();
-            var results = await new CompressionBatchExecutor(executor)
-                .ExecuteAsync(jobs, options.Parallelism, cancellationSource.Token)
-                .ConfigureAwait(false);
-            var exitCode = MapBatchExitCode(plans, results);
-            var historyWarning = options.NoHistory
-                ? null
-                : await RecordHistoryAsync(historyStore, results).ConfigureAwait(false);
-            var stateWarning = SaveScanState(
-                stateStore,
-                previousState,
-                discoveredInputs,
-                selection,
-                results,
-                fingerprint,
-                fileSystem,
-                comparer);
-
-            LogOutcome(
-                log,
-                plans,
-                results,
-                new[] { historyWarning, stateWarning }.OfType<string>().ToArray());
-
-            if (options.Json)
-            {
-                await standardOutput.WriteLineAsync(
-                    JsonSerializer.Serialize(
-                        new
-                        {
-                            schemaVersion = 1,
-                            result = results.Count == 1 && plans.All(plan => plan.Job is not null)
-                                ? results[0]
-                                : null,
-                            results,
-                            planningErrors = plans
-                                .Where(plan => plan.ErrorCategory is not null)
-                                .Select(ToPlanOutput),
-                            unchangedCount = selection.Unchanged.Count,
-                            unstableCount = selection.UnstableCount,
-                            historyWarning,
-                            stateWarning
-                        },
-                        JsonOptions))
-                    .ConfigureAwait(false);
-            }
-            else
-            {
-                foreach (var warning in new[] { historyWarning, stateWarning }.OfType<string>())
-                {
-                    await standardError.WriteLineAsync(warning).ConfigureAwait(false);
-                }
-
-                if (selection.Unchanged.Count > 0)
-                {
-                    await standardOutput.WriteLineAsync(
-                        $"Unchanged: {selection.Unchanged.Count}").ConfigureAwait(false);
-                }
-
-                if (selection.UnstableCount > 0)
-                {
-                    await standardOutput.WriteLineAsync(
-                        $"Still changing, retried later: {selection.UnstableCount}")
-                        .ConfigureAwait(false);
-                }
-
-                foreach (var plan in plans.Where(plan => plan.ErrorCategory is not null))
-                {
-                    await standardError.WriteLineAsync(
-                        $"{plan.Input.Path}: {plan.ErrorCategory}: {plan.ErrorText}")
-                        .ConfigureAwait(false);
-                }
-
-                foreach (var result in results)
-                {
-                    if (result.Status is JobStatus.Succeeded)
-                    {
-                        var message = result.OutputPublished
-                            ? $"Compressed: {result.OutputPath}"
-                            : result.Warning!;
-                        await standardOutput.WriteLineAsync(message).ConfigureAwait(false);
-                    }
-                    else
-                    {
-                        await standardError.WriteLineAsync(
-                            $"{result.InputPath}: {result.ErrorCategory}: {result.ErrorText}")
-                            .ConfigureAwait(false);
-                    }
-                }
-            }
-
-            return exitCode;
         }
         catch (JobCreationException exception)
         {
@@ -482,12 +215,294 @@ internal static class CliApplication
         }
     }
 
-    private static int MapExitCode(CompressionExecutionResult result) =>
-        result.Status is JobStatus.Succeeded
-            ? 0
-            : result.Status is JobStatus.Canceled
-                ? 6
-                : MapExitCode(result.ErrorCategory ?? CompressionErrorCategory.Unexpected);
+    /// <summary>
+    /// Ein einzelner Lauf über die Eingaben der Befehlszeile.
+    /// </summary>
+    private static async Task<int> RunSingleAsync(
+        CliOptions options,
+        TextWriter standardOutput,
+        TextWriter standardError,
+        ICompressionHistoryStore? historyStore,
+        IDiagnosticLog? diagnosticLog,
+        CancellationToken cancellationToken)
+    {
+        var log = diagnosticLog
+            ?? new JsonLinesDiagnosticLog(
+                options.LogPath ?? ApplicationDataPaths.DiagnosticLogPath);
+
+        // Ein zweiter gleichzeitiger Lauf ist ein erfolgreicher No-op statt eines zweiten
+        // Workerpools (MP-005). Der Lock wird beim Prozessende freigegeben, auch nach Absturz.
+        using var runLock = options.LockPath is null ? null : RunLock.TryAcquire(options.LockPath);
+        if (options.LockPath is not null && runLock is null)
+        {
+            await standardOutput.WriteLineAsync(
+                options.Json
+                    ? JsonSerializer.Serialize(
+                        new { schemaVersion = 1, skippedBecauseLocked = true },
+                        JsonOptions)
+                    : "Another run holds the lock; nothing to do.").ConfigureAwait(false);
+            return 0;
+        }
+
+        var comparer = PathComparer;
+        var fileSystem = new PhysicalFileSystem(comparer);
+        var inspector = new PhysicalInputImageInspector();
+        var settings = new CompressionBatchSettings(
+            BuildEngineSettings(options),
+            options.ExifPolicy,
+            options.ColorProfilePolicy,
+            RgbColor.White,
+            options.CollisionPolicy,
+            options.LargerOutputPolicy,
+            options.OutputDirectory,
+            options.Suffix,
+            options.MinimumSavingsPercent);
+        var cycle = new ScanCycle(
+            fileSystem,
+            inspector,
+            new PhysicalInputDiscovery(comparer),
+            CreateExecutor(fileSystem, inspector, options.EngineId, options.TimeoutSeconds),
+            comparer,
+            historyStore,
+            !options.NoHistory);
+
+        var cycleResult = await cycle.RunAsync(
+            new(
+                options.InputPaths,
+                options.Recursive,
+                settings,
+                options.StatePath,
+                options.StableForSeconds,
+                options.Parallelism,
+                options.DryRun),
+            cancellationToken).ConfigureAwait(false);
+        if (cycleResult.NoInputFound)
+        {
+            await WriteErrorAsync(
+                standardError,
+                options.Json,
+                3,
+                CompressionErrorCategory.InputNotFound.ToString(),
+                "No supported JPEG or PNG input was found.").ConfigureAwait(false);
+            return 3;
+        }
+
+        var plans = cycleResult.Plans;
+        var results = cycleResult.Results;
+        if (options.DryRun)
+        {
+            await WriteDryRunAsync(standardOutput, standardError, options.Json, plans)
+                .ConfigureAwait(false);
+            return MapBatchExitCode(plans, []);
+        }
+
+        var exitCode = MapBatchExitCode(plans, results);
+        var warnings = cycleResult.Warnings.ToArray();
+        LogOutcome(log, plans, results, warnings);
+
+        if (options.Json)
+        {
+            await standardOutput.WriteLineAsync(
+                JsonSerializer.Serialize(
+                    new
+                    {
+                        schemaVersion = 1,
+                        result = results.Count == 1 && plans.All(plan => plan.Job is not null)
+                            ? results[0]
+                            : null,
+                        results,
+                        planningErrors = plans
+                            .Where(plan => plan.ErrorCategory is not null)
+                            .Select(ToPlanOutput),
+                        unchangedCount = cycleResult.Selection.Unchanged.Count,
+                        unstableCount = cycleResult.Selection.UnstableCount,
+                        historyWarning = cycleResult.HistoryWarning,
+                        stateWarning = cycleResult.StateWarning
+                    },
+                    JsonOptions))
+                .ConfigureAwait(false);
+        }
+        else
+        {
+            foreach (var warning in warnings)
+            {
+                await standardError.WriteLineAsync(warning).ConfigureAwait(false);
+            }
+
+            if (cycleResult.Selection.Unchanged.Count > 0)
+            {
+                await standardOutput.WriteLineAsync(
+                    $"Unchanged: {cycleResult.Selection.Unchanged.Count}").ConfigureAwait(false);
+            }
+
+            if (cycleResult.Selection.UnstableCount > 0)
+            {
+                await standardOutput.WriteLineAsync(
+                    $"Still changing, retried later: {cycleResult.Selection.UnstableCount}")
+                    .ConfigureAwait(false);
+            }
+
+            foreach (var plan in plans.Where(plan => plan.ErrorCategory is not null))
+            {
+                await standardError.WriteLineAsync(
+                    $"{plan.Input.Path}: {plan.ErrorCategory}: {plan.ErrorText}")
+                    .ConfigureAwait(false);
+            }
+
+            foreach (var result in results)
+            {
+                if (result.Status is JobStatus.Succeeded)
+                {
+                    var message = result.OutputPublished
+                        ? $"Compressed: {result.OutputPath}"
+                        : result.Warning!;
+                    await standardOutput.WriteLineAsync(message).ConfigureAwait(false);
+                }
+                else
+                {
+                    await standardError.WriteLineAsync(
+                        $"{result.InputPath}: {result.ErrorCategory}: {result.ErrorText}")
+                        .ConfigureAwait(false);
+                }
+            }
+        }
+
+        return exitCode;
+    }
+
+    /// <summary>
+    /// Der konfigurationsgesteuerte Dauerbetrieb über mehrere überwachte Ordner (D-055, D-056).
+    /// </summary>
+    internal static async Task<int> RunConfiguredAsync(
+        CliOptions options,
+        TextWriter standardOutput,
+        TextWriter standardError,
+        ICompressionHistoryStore? historyStore,
+        IDiagnosticLog? diagnosticLog,
+        CancellationToken cancellationToken)
+    {
+        var comparer = PathComparer;
+        ScanConfigurationResolution resolution;
+        try
+        {
+            resolution = ScanConfigurationResolver.Resolve(
+                new JsonScanConfigurationStore(options.ConfigPath!).Load(),
+                ApplicationDataPaths.ApplicationDataDirectory,
+                comparer);
+        }
+        catch (Exception exception) when (
+            exception is FileNotFoundException or InvalidDataException)
+        {
+            // Eine fehlende oder fehlerhafte Konfiguration ist ein Nutzungsfehler, kein
+            // Eingabe- oder Dateisystemfehler.
+            await WriteErrorAsync(
+                standardError,
+                options.Json,
+                2,
+                CompressionErrorCategory.InvalidArguments.ToString(),
+                exception.Message).ConfigureAwait(false);
+            return 2;
+        }
+
+        if (resolution.Configuration is null)
+        {
+            await WriteErrorAsync(
+                standardError,
+                options.Json,
+                2,
+                CompressionErrorCategory.InvalidArguments.ToString(),
+                string.Join(" ", resolution.Errors)).ConfigureAwait(false);
+            return 2;
+        }
+
+        var configuration = resolution.Configuration;
+        var log = diagnosticLog
+            ?? new JsonLinesDiagnosticLog(
+                configuration.LogPath ?? ApplicationDataPaths.DiagnosticLogPath);
+
+        // Ein Lock für die gesamte Laufzeit: ein zweiter Container oder ein manueller Scan auf
+        // denselben Ordnern läuft nicht parallel (D-057).
+        using var runLock = configuration.LockPath is null
+            ? null
+            : RunLock.TryAcquire(configuration.LockPath);
+        if (configuration.LockPath is not null && runLock is null)
+        {
+            await standardOutput.WriteLineAsync(
+                options.Json
+                    ? JsonSerializer.Serialize(
+                        new { schemaVersion = 1, skippedBecauseLocked = true },
+                        JsonOptions)
+                    : "Another run holds the lock; nothing to do.").ConfigureAwait(false);
+            return 0;
+        }
+
+        var fileSystem = new PhysicalFileSystem(comparer);
+        var inspector = new PhysicalInputImageInspector();
+        var cycle = new ScanCycle(
+            fileSystem,
+            inspector,
+            new PhysicalInputDiscovery(comparer),
+            CreateExecutor(
+                fileSystem,
+                inspector,
+                JpegliSettings.JpegliEngineId,
+                configuration.TimeoutSeconds),
+            comparer,
+            historyStore,
+            configuration.History);
+
+        return await new ScanService(
+                configuration,
+                cycle,
+                log,
+                standardOutput,
+                standardError,
+                options.Json,
+                comparer)
+            .RunAsync(options.Once, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    private static StringComparer PathComparer =>
+        OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
+
+    /// <summary>
+    /// Der Executor wird erst beim ersten wirklichen Encoding gebaut, damit ein <c>--dry-run</c>
+    /// die native Bibliothek nicht lädt. Enginespezifisches Zeitlimit (MP-004): 0 = kein Limit.
+    /// </summary>
+    private static Lazy<CompressionExecutor> CreateExecutor(
+        PhysicalFileSystem fileSystem,
+        PhysicalInputImageInspector inspector,
+        string engineId,
+        int timeoutSeconds) =>
+        new(() => new CompressionExecutor(
+            [new JpegliEngineAdapter(new NativeCodecBridge(TimeProvider.System))],
+            new SafeOutputPublisher(fileSystem, inspector),
+            TimeProvider.System,
+            EngineRuntimeLimits.FromSeconds((engineId, timeoutSeconds))));
+
+    /// <summary>
+    /// Meldet <c>SIGTERM</c> an denselben geordneten Abbruch wie <c>Ctrl+C</c>; ein zweites Signal
+    /// überlässt das Beenden dem Betriebssystem (D-057). Plattformen ohne diese Signale laufen
+    /// unverändert weiter.
+    /// </summary>
+    private static IDisposable? CreateTerminationSignal(CancellationTokenSource cancellationSource)
+    {
+        try
+        {
+            return PosixSignalRegistration.Create(
+                PosixSignal.SIGTERM,
+                context =>
+                {
+                    context.Cancel = !cancellationSource.IsCancellationRequested;
+                    cancellationSource.Cancel();
+                });
+        }
+        catch (PlatformNotSupportedException)
+        {
+            return null;
+        }
+    }
 
     private static int MapExitCode(CompressionErrorCategory category) =>
         category switch
@@ -509,7 +524,7 @@ internal static class CliApplication
             JpegliChromaSubsampling.Subsampling420,
             2);
 
-    private static int MapBatchExitCode(
+    internal static int MapBatchExitCode(
         IReadOnlyList<CompressionJobPlan> plans,
         IReadOnlyList<CompressionExecutionResult> results)
     {

@@ -85,3 +85,41 @@ piccompressor /volume1/photo --recursive --output-dir /volume1/photo-compressed 
   --state /var/piccompressor/scan-state.json --lock /var/piccompressor/scan.lock \
   --stable-for 120 --parallelism 2 --timeout 300 --no-history
 ```
+
+## Docker
+
+`--config <Pfad>` lässt die CLI dauerhaft über beliebig viele überwachte Ordner laufen, jeder mit
+eigenem Ausgabeordner, eigener Zustandsdatei und wahlweise eigenen Kompressionseinstellungen.
+`mode` bestimmt den Taktgeber: `Interval` scannt alle `intervalSeconds` erneut, `Watch` reagiert
+zusätzlich auf entprellte Dateisystemereignisse und scannt trotzdem periodisch, weil `inotify` auf
+eingehängten SMB-/NFS-Freigaben keine Ereignisse liefert. `docker stop` beendet den Container
+geordnet: der laufende Job wird fertig, und es bleibt keine ungeprüfte Ausgabe zurück.
+
+Das fertige Image liegt in der GitHub Container Registry und wird bei jedem Push auf `main` und
+bei jedem Versions-Tag neu gebaut (`.github/workflows/container.yml`):
+
+```bash
+docker pull ghcr.io/diddlik/piccompressor:latest
+docker compose -f docker/docker-compose.yml up -d
+```
+
+Verfügbare Tags: `latest` (letzte endgültige Version), `X.Y.Z` und `X.Y` je Versions-Tag sowie
+`main` als jeweils aktueller Entwicklungsstand. Docker aktualisiert von sich aus nichts; ein neues
+Image holt `docker compose pull && docker compose up -d` — per Zeitplan oder über den in
+[docker/docker-compose.yml](docker/docker-compose.yml) vorbereiteten Watchtower-Dienst.
+
+Lokal bauen statt ziehen:
+
+```bash
+docker build -f docker/Dockerfile -t piccompressor .
+```
+
+Das Image erwartet die Konfiguration unter `/config/piccompressor.json`, die überwachten Ordner
+unterhalb von `/data` und ein beschreibbares `/state` für Zustand, Lock und Log. Eine vollständige
+Datei steht in [docker/piccompressor.example.json](docker/piccompressor.example.json). Image und
+Container laufen mit der UID/GID, der die eingehängten Ordner gehören; im Container läuft nie
+`root`. `--once` führt genau einen Zyklus über alle Ordner aus und beendet sich — der Weg, dieselbe
+Konfiguration von einem externen Zeitplaner starten zu lassen.
+
+Gebaut und geprüft ist nur `linux/amd64`; `linux/arm64` ist über `TARGETARCH` vorbereitet, aber
+ungeprüft. Im Container läuft die CLI, nicht die grafische Oberfläche.

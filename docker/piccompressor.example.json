@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+
+  "mode": "Interval",
+  "intervalSeconds": 900,
+  "debounceSeconds": 10,
+  "stableForSeconds": 120,
+
+  "parallelism": 2,
+  "timeoutSeconds": 300,
+
+  "stateDirectory": "/state",
+  "lockPath": "/state/piccompressor.lock",
+  "logPath": "/state/piccompressor.jsonl",
+  "history": false,
+
+  "defaults": {
+    "quality": 80,
+    "chromaSubsampling": "420",
+    "progressiveLevel": 2,
+    "exif": "Remove",
+    "colorProfile": "Preserve",
+    "alphaBackground": "#FFFFFF",
+    "collision": "Skip",
+    "largerOutput": "Discard",
+    "minSavingsPercent": 5,
+    "suffix": "_compressed"
+  },
+
+  "folders": [
+    {
+      "name": "fotos",
+      "input": "/data/fotos",
+      "output": "/data/fotos-komprimiert",
+      "recursive": true
+    },
+    {
+      "name": "scans",
+      "input": "/data/scans",
+      "output": "/data/scans-komprimiert",
+      "recursive": true,
+      "settings": {
+        "quality": 92,
+        "chromaSubsampling": "444",
+        "exif": "Private"
+      }
+    }
+  ]
+}

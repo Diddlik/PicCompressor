@@ -1,0 +1,43 @@
+# Beispiel für den Dauerbetrieb mit mehreren überwachten Ordnern.
+#
+#   docker compose -f docker/docker-compose.yml pull   # fertiges Image von ghcr.io holen
+#   docker compose -f docker/docker-compose.yml up -d
+#
+# `build` steht nur für einen lokalen Build aus dem Quellbaum daneben; wer `pull` verwendet,
+# braucht das Repository nicht. Jeder überwachte Ordner ist ein Bind-Mount unter /data und ein
+# Eintrag in docker/piccompressor.example.json (als /config/piccompressor.json eingehängt).
+services:
+  piccompressor:
+    image: ghcr.io/diddlik/piccompressor:latest
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      args:
+        # Muss dem Besitzer der eingehängten Ordner entsprechen, sonst darf der Lauf nicht schreiben.
+        UID: "1000"
+        GID: "1000"
+    container_name: piccompressor
+    restart: unless-stopped
+    user: "1000:1000"
+    volumes:
+      - ./piccompressor.example.json:/config/piccompressor.json:ro
+      - /srv/fotos:/data/fotos
+      - /srv/fotos-komprimiert:/data/fotos-komprimiert
+      - /srv/scans:/data/scans
+      - /srv/scans-komprimiert:/data/scans-komprimiert
+      # Zustand, Lock und Log müssen einen Neustart überleben.
+      - piccompressor-state:/state
+    # Ein geordneter Abbruch darf einen laufenden Job zu Ende bringen.
+    stop_grace_period: 5m
+
+  # Optional: holt neue Images selbstständig und startet den Container neu. Ohne diesen Dienst
+  # aktualisiert `docker compose pull && docker compose up -d` von Hand oder per Zeitplan.
+  # watchtower:
+  #   image: containrrr/watchtower
+  #   restart: unless-stopped
+  #   command: --cleanup --include-stopped --interval 86400 piccompressor
+  #   volumes:
+  #     - /var/run/docker.sock:/var/run/docker.sock
+
+volumes:
+  piccompressor-state:

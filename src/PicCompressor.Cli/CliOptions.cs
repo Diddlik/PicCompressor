@@ -22,12 +22,21 @@ internal sealed record CliOptions(
     int MinimumSavingsPercent,
     string? StatePath,
     string? LockPath,
-    int StableForSeconds)
+    int StableForSeconds,
+    string? ConfigPath = null,
+    bool Once = false)
 {
+    /// <summary>
+    /// Optionen, die neben <c>--config</c> zulässig sind. Alle übrigen Einstellungen stehen in der
+    /// Konfigurationsdatei; eine Mischung wäre eine stillschweigende Vorrangregel (D-055).
+    /// </summary>
+    private static readonly string[] AllowedWithConfig = ["--config", "--once", "--json"];
+
     internal static CliOptions Parse(string[] args)
     {
         ArgumentNullException.ThrowIfNull(args);
         var inputPaths = new List<string>();
+        var specified = new HashSet<string>(StringComparer.Ordinal);
         var engineId = JpegliSettings.JpegliEngineId;
         string? outputDirectory = null;
         var quality = 80;
@@ -47,11 +56,20 @@ internal sealed record CliOptions(
         string? statePath = null;
         string? lockPath = null;
         var stableForSeconds = 0;
+        string? configPath = null;
+        var once = false;
 
         for (var index = 0; index < args.Length; index++)
         {
+            specified.Add(args[index]);
             switch (args[index])
             {
+                case "--config":
+                    configPath = NextValue(args, ref index, "--config");
+                    break;
+                case "--once":
+                    once = true;
+                    break;
                 case "--json":
                     json = true;
                     break;
@@ -129,8 +147,35 @@ internal sealed record CliOptions(
             }
         }
 
+        if (configPath is null && once)
+        {
+            throw new CliUsageException("--once requires --config.");
+        }
+
+        if (configPath is not null)
+        {
+            if (inputPaths.Count > 0)
+            {
+                throw new CliUsageException(
+                    "--config takes its input paths from the configuration file; "
+                    + $"remove the path argument: {inputPaths[0]}");
+            }
+
+            var conflicting = specified
+                .Where(option => option.StartsWith('-')
+                    && !AllowedWithConfig.Contains(option, StringComparer.Ordinal))
+                .Order(StringComparer.Ordinal)
+                .ToArray();
+            if (conflicting.Length > 0)
+            {
+                throw new CliUsageException(
+                    $"These options are configured in the file, not on the command line: "
+                    + string.Join(", ", conflicting));
+            }
+        }
+
         return new(
-            inputPaths.Count > 0
+            inputPaths.Count > 0 || configPath is not null
                 ? inputPaths
                 : throw new CliUsageException("At least one input path is required."),
             engineId,
@@ -151,7 +196,9 @@ internal sealed record CliOptions(
             minimumSavingsPercent,
             statePath,
             lockPath,
-            stableForSeconds);
+            stableForSeconds,
+            configPath,
+            once);
     }
 
     private static string ParseEngine(string value)

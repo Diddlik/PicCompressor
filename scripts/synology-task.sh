@@ -7,6 +7,10 @@
 # Exit-Codes: 0 = Erfolg oder nichts zu tun, 4 = einzelne Dateien fehlgeschlagen,
 # 8 = Datei-/Ausgabefehler. Ein bereits laufender Scan endet mit 0, ohne erneut zu kodieren.
 #
+# Für mehrere überwachte Ordner mit je eigenen Einstellungen tritt eine Konfigurationsdatei an die
+# Stelle dieser Optionen: `PicCompressor.Cli --config /pfad/piccompressor.json --once` führt
+# genau einen Zyklus über alle Ordner aus (Abschnitt 12.3, Beispiel in docker/).
+#
 # Diese Vorlage ist auf realer Synology-Hardware noch nicht verifiziert.
 set -eu
 

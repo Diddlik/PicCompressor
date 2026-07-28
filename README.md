@@ -98,6 +98,44 @@ piccompressor /volume1/photo --recursive --output-dir /volume1/photo-compressed 
   --stable-for 120 --parallelism 2 --timeout 300 --no-history
 ```
 
+## Docker
+
+`--config <path>` runs the CLI continuously over any number of watched folders, each with its own
+output directory, state file and — optionally — its own compression settings. `mode` selects the
+trigger: `Interval` rescans every `intervalSeconds`, `Watch` additionally reacts to debounced file
+system events and still rescans periodically (`inotify` delivers nothing on mounted SMB/NFS
+shares). `docker stop` ends the container in an orderly way; the current job finishes and no
+unvalidated output is left behind.
+
+The image is published to the GitHub Container Registry and rebuilt on every push to `main` and
+on every version tag (`.github/workflows/container.yml`):
+
+```bash
+docker pull ghcr.io/diddlik/piccompressor:latest
+docker compose -f docker/docker-compose.yml up -d
+```
+
+Available tags: `latest` (most recent final release), `X.Y.Z` and `X.Y` per version tag, and
+`main` for the current development state. Docker never updates on its own; pick up a new image
+with `docker compose pull && docker compose up -d` — on a schedule, or through the Watchtower
+service prepared in [docker/docker-compose.yml](docker/docker-compose.yml).
+
+Build locally instead of pulling:
+
+```bash
+docker build -f docker/Dockerfile -t piccompressor .
+```
+
+The image expects the configuration at `/config/piccompressor.json`, the watched folders below
+`/data` and a writable `/state` for state, lock and log. See
+[docker/piccompressor.example.json](docker/piccompressor.example.json) for a complete file. Build
+and run the image with the UID/GID that owns the mounted folders; the container never runs as
+root. `--once` runs a single cycle over every folder and exits, which is the way to drive the same
+configuration from an external scheduler.
+
+Only `linux/amd64` is built and verified; `linux/arm64` is prepared through `TARGETARCH` but
+untested. The container runs the CLI, not the GUI.
+
 ## License
 
 PicCompressor is licensed under the [Apache License 2.0](LICENSE).
