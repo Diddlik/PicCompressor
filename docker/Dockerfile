@@ -28,6 +28,9 @@ RUN set -eu; \
     echo "$architecture" > /tmp/architecture; \
     bash scripts/build-native-linux.sh Release --arch "$architecture"
 
+# PicCompressorTargetRid wird als globale Eigenschaft gesetzt, nicht nur über die
+# AdditionalProperties der Projektreferenz: sonst baut MSBuild Domain und Application unter zwei
+# Sätzen globaler Eigenschaften und beide Instanzen schreiben gleichzeitig dieselbe deps.json.
 RUN set -eu; \
     architecture="$(cat /tmp/architecture)"; \
     runtime="linux-$architecture"; \
@@ -36,6 +39,7 @@ RUN set -eu; \
         --runtime "$runtime" \
         --self-contained true \
         --output /app \
+        "-p:PicCompressorTargetRid=$runtime" \
         "-p:PicCompressorNativeLibrary=/src/artifacts/native/$runtime/piccompressor_native.so"; \
     test -x /app/PicCompressor.Cli; \
     test -f /app/piccompressor_native.so; \

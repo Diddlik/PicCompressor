@@ -69,6 +69,9 @@ OUTPUT_DIRECTORY="$NATIVE_OUTPUT" BUILD_DIRECTORY="$BUILD_DIRECTORY" \
 
 # --artifacts-path keeps the RID-specific intermediates out of the source tree, so a
 # publish for another RID does not overwrite an existing bin/obj state.
+# PicCompressorTargetRid must be a global property rather than only the ProjectReference's
+# AdditionalProperties: otherwise MSBuild builds Domain and Application under two sets of global
+# properties and both instances write the same deps.json at the same time.
 dotnet publish "$ROOT/src/PicCompressor.Cli/PicCompressor.Cli.csproj" \
     --configuration "$CONFIGURATION" \
     --runtime "$RUNTIME_IDENTIFIER" \
@@ -76,6 +79,7 @@ dotnet publish "$ROOT/src/PicCompressor.Cli/PicCompressor.Cli.csproj" \
     --self-contained true \
     --output "$PUBLISH_OUTPUT" \
     "-p:Version=$VERSION" \
+    "-p:PicCompressorTargetRid=$RUNTIME_IDENTIFIER" \
     "-p:PicCompressorNativeLibrary=$NATIVE_LIBRARY"
 
 [ -x "$PUBLISH_OUTPUT/PicCompressor.Cli" ] || {
