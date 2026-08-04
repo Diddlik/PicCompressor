@@ -17,7 +17,7 @@ public sealed class SafeOutputPublisherIntegrationTests : IDisposable
         var job = CreateJob(CollisionPolicy.Skip);
         var publisher = CreatePublisher();
         var temporaryOutput = publisher.CreateTemporaryFile(job);
-        File.WriteAllBytes(temporaryOutput.Path, CreateJpeg(10, 10));
+        File.WriteAllBytes(temporaryOutput.Path, TestJpeg.Create(10, 10));
 
         var result = publisher.Publish(job, temporaryOutput);
 
@@ -44,6 +44,25 @@ public sealed class SafeOutputPublisherIntegrationTests : IDisposable
         Assert.False(File.Exists(temporaryOutput.Path));
     }
 
+    [Fact]
+    public void Publish_accepts_the_upright_output_of_a_rotated_jpeg_input()
+    {
+        // 8.2: der Encoder dreht die Pixel aufrecht, die Ausgabe hat also getauschte Achsen.
+        // Vor dem Fix verwarf die Dimensionsprüfung jedes gedrehte Foto.
+        var inputPath = Path.Combine(directory, "rotated.jpg");
+        File.WriteAllBytes(inputPath, TestJpeg.Create(17, 9, orientation: 6));
+        var inputInfo = new PhysicalInputImageInspector().Inspect(inputPath);
+        var job = CreateJob(CollisionPolicy.Skip, inputPath, inputInfo);
+        var publisher = CreatePublisher();
+        var temporaryOutput = publisher.CreateTemporaryFile(job);
+        File.WriteAllBytes(temporaryOutput.Path, TestJpeg.Create(9, 17));
+
+        var result = publisher.Publish(job, temporaryOutput);
+
+        Assert.Equal(OutputPublicationDisposition.Published, result.Disposition);
+        Assert.True(File.Exists(job.OutputPath));
+    }
+
     public void Dispose()
     {
         Directory.Delete(directory, true);
@@ -55,10 +74,13 @@ public sealed class SafeOutputPublisherIntegrationTests : IDisposable
             new PhysicalFileSystem(StringComparer.OrdinalIgnoreCase),
             new PhysicalInputImageInspector());
 
-    private CompressionJob CreateJob(CollisionPolicy collisionPolicy) =>
+    private CompressionJob CreateJob(
+        CollisionPolicy collisionPolicy,
+        string? inputPath = null,
+        InputImageInfo? inputImageInfo = null) =>
         new(
             Guid.NewGuid(),
-            Path.Combine(directory, "input.png"),
+            inputPath ?? Path.Combine(directory, "input.png"),
             Path.Combine(directory, "output.jpg"),
             new JpegliSettings(80, JpegliChromaSubsampling.Subsampling420, 2),
             ExifPolicy.Private,
@@ -67,18 +89,5 @@ public sealed class SafeOutputPublisherIntegrationTests : IDisposable
             collisionPolicy,
             LargerOutputPolicy.Keep,
             DateTimeOffset.UtcNow,
-            new InputImageInfo(InputImageFormat.Png, 10, 10, 1_000));
-
-    private static byte[] CreateJpeg(int width, int height) =>
-    [
-        0xff, 0xd8,
-        0xff, 0xc0, 0x00, 0x0b, 0x08,
-        (byte)(height >> 8), (byte)height,
-        (byte)(width >> 8), (byte)width,
-        0x01, 0x01, 0x11, 0x00,
-        0xff, 0xda, 0x00, 0x08,
-        0x01, 0x01, 0x00, 0x00, 0x3f, 0x00,
-        0x11, 0x22,
-        0xff, 0xd9
-    ];
+            inputImageInfo ?? new InputImageInfo(InputImageFormat.Png, 10, 10, 1_000));
 }

@@ -1,3 +1,4 @@
+using System.Buffers.Binary;
 using PicCompressor.Application;
 using PicCompressor.Domain;
 
@@ -5,8 +6,13 @@ namespace PicCompressor.Infrastructure;
 
 public sealed class PhysicalInputImageInspector : IInputImageInspector
 {
+    private const int OrientationIdentity = 1;
+
     private static ReadOnlySpan<byte> PngSignature =>
         [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+
+    private static ReadOnlySpan<byte> ExifSignature =>
+        [(byte)'E', (byte)'x', (byte)'i', (byte)'f', 0x00, 0x00];
 
     public InputImageInfo Inspect(string path)
     {
@@ -113,6 +119,7 @@ public sealed class PhysicalInputImageInspector : IInputImageInspector
         var inScan = false;
         var sawScan = false;
         var alreadyOptimized = false;
+        var orientation = OrientationIdentity;
 
         while (stream.Position < stream.Length)
         {
@@ -129,8 +136,16 @@ public sealed class PhysicalInputImageInspector : IInputImageInspector
                     throw InvalidImage();
                 }
 
+                // Der Encoder dreht die Pixel gemäss EXIF-Orientierung aufrecht (8.2), also
+                // meldet der Inspector die aufrechten Maße. Sonst verwirft die
+                // Ausgabeprüfung jedes gedrehte Bild als Dimensionsabweichung.
+                var swapAxes = orientation >= 5;
                 return new InputImageInfo(
-                    InputImageFormat.Jpeg, width, height, stream.Length, alreadyOptimized);
+                    InputImageFormat.Jpeg,
+                    swapAxes ? height : width,
+                    swapAxes ? width : height,
+                    stream.Length,
+                    alreadyOptimized);
             }
 
             if (marker is >= 0xd0 and <= 0xd7)
@@ -173,6 +188,12 @@ public sealed class PhysicalInputImageInspector : IInputImageInspector
                 {
                     alreadyOptimized = true;
                 }
+            }
+            else if (marker == 0xe1 && orientation == OrientationIdentity)
+            {
+                var payload = new byte[payloadLength];
+                stream.ReadExactly(payload);
+                orientation = ReadExifOrientation(payload);
             }
             else
             {
@@ -232,6 +253,88 @@ public sealed class PhysicalInputImageInspector : IInputImageInspector
     private static bool IsStartOfFrame(int marker) =>
         marker is >= 0xc0 and <= 0xcf
         && marker is not 0xc4 and not 0xc8 and not 0xcc;
+
+    /// <summary>
+    /// Liest EXIF-Tag 0x0112 aus IFD0 der APP1-Nutzlast. Fehlende, fremde oder unbrauchbare
+    /// Daten ergeben die Normalstellung; die Nutzlast gilt durchgehend als nicht vertrauenswürdig.
+    /// </summary>
+    private static int ReadExifOrientation(ReadOnlySpan<byte> payload)
+    {
+        if (!payload.StartsWith(ExifSignature))
+        {
+            return OrientationIdentity;
+        }
+
+        var tiff = payload[ExifSignature.Length..];
+        if (tiff.Length < 8)
+        {
+            return OrientationIdentity;
+        }
+
+        bool bigEndian;
+        if (tiff[0] == 0x49 && tiff[1] == 0x49)
+        {
+            bigEndian = false;
+        }
+        else if (tiff[0] == 0x4d && tiff[1] == 0x4d)
+        {
+            bigEndian = true;
+        }
+        else
+        {
+            return OrientationIdentity;
+        }
+
+        if (ReadUInt16(tiff[2..], bigEndian) != 0x2a)
+        {
+            return OrientationIdentity;
+        }
+
+        // Offsets in 64 Bit rechnen: eine gefälschte 32-Bit-Angabe darf beim Grenzvergleich
+        // nicht überlaufen und so einen negativen Index erzeugen.
+        long ifd0 = ReadUInt32(tiff[4..], bigEndian);
+        if (ifd0 < 8 || ifd0 + 2 > tiff.Length)
+        {
+            return OrientationIdentity;
+        }
+
+        var entryCount = ReadUInt16(tiff[(int)ifd0..], bigEndian);
+        for (var index = 0; index < entryCount; ++index)
+        {
+            var entry = ifd0 + 2 + ((long)index * 12);
+            if (entry + 12 > tiff.Length)
+            {
+                return OrientationIdentity;
+            }
+
+            var field = tiff[(int)entry..];
+            if (ReadUInt16(field, bigEndian) != 0x0112)
+            {
+                continue;
+            }
+
+            if (ReadUInt16(field[2..], bigEndian) != 3
+                || ReadUInt32(field[4..], bigEndian) != 1)
+            {
+                return OrientationIdentity;
+            }
+
+            var value = ReadUInt16(field[8..], bigEndian);
+            return value is >= 1 and <= 8 ? value : OrientationIdentity;
+        }
+
+        return OrientationIdentity;
+    }
+
+    private static ushort ReadUInt16(ReadOnlySpan<byte> source, bool bigEndian) =>
+        bigEndian
+            ? BinaryPrimitives.ReadUInt16BigEndian(source)
+            : BinaryPrimitives.ReadUInt16LittleEndian(source);
+
+    private static uint ReadUInt32(ReadOnlySpan<byte> source, bool bigEndian) =>
+        bigEndian
+            ? BinaryPrimitives.ReadUInt32BigEndian(source)
+            : BinaryPrimitives.ReadUInt32LittleEndian(source);
 
     private static int ReadDimension(Stream stream)
     {
