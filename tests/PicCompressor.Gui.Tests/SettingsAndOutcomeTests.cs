@@ -170,6 +170,29 @@ public sealed class SettingsViewModelTests
     }
 
     [Fact]
+    public void Chroma_description_follows_the_selection_and_stays_localized()
+    {
+        var settings = new SettingsViewModel();
+        var changed = new List<string?>();
+        settings.PropertyChanged += (_, args) => changed.Add(args.PropertyName);
+
+        var forDefault = settings.ChromaDescription;
+        settings.Is444 = true;
+
+        Assert.Contains(nameof(SettingsViewModel.ChromaDescription), changed);
+        Assert.NotEqual(forDefault, settings.ChromaDescription);
+        // Jede Stufe erklärt sich selbst; kein Text bleibt ein Ressourcenschlüssel.
+        foreach (var select in new Action[]
+            { () => settings.Is444 = true, () => settings.Is440 = true,
+              () => settings.Is422 = true, () => settings.Is420 = true })
+        {
+            select();
+            Assert.NotEmpty(settings.ChromaDescription);
+            Assert.DoesNotContain("Set_Chroma", settings.ChromaDescription);
+        }
+    }
+
+    [Fact]
     public void Exif_and_colour_profile_are_independent()
     {
         var settings = new SettingsViewModel { ExifPrivate = true, ProfileSrgb = true };

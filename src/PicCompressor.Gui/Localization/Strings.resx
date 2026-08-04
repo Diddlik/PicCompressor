@@ -286,6 +286,33 @@
   <data name="Set_Chroma" xml:space="preserve">
     <value>Chroma subsampling</value>
   </data>
+  <data name="Set_ChromaHint" xml:space="preserve">
+    <value>How much colour detail is kept. Sharpness stays untouched — only colour is stored more coarsely, and that is where most of the saving comes from.</value>
+  </data>
+  <data name="Set_Chroma444Name" xml:space="preserve">
+    <value>4:4:4, full colour detail</value>
+  </data>
+  <data name="Set_Chroma440Name" xml:space="preserve">
+    <value>4:4:0, half colour detail top to bottom</value>
+  </data>
+  <data name="Set_Chroma422Name" xml:space="preserve">
+    <value>4:2:2, half colour detail left to right</value>
+  </data>
+  <data name="Set_Chroma420Name" xml:space="preserve">
+    <value>4:2:0, quarter colour detail</value>
+  </data>
+  <data name="Set_Chroma444Hint" xml:space="preserve">
+    <value>Keeps every colour value. Largest files. Best for screenshots, text, drawings, logos and images you still want to edit.</value>
+  </data>
+  <data name="Set_Chroma440Hint" xml:space="preserve">
+    <value>Keeps colour side by side, halves it top to bottom. Rarely the best choice; helps with wide horizontal stripes and patterns.</value>
+  </data>
+  <data name="Set_Chroma422Hint" xml:space="preserve">
+    <value>Halves colour left to right. Middle ground: noticeably smaller than 4:4:4 and still gentle on hard, saturated edges.</value>
+  </data>
+  <data name="Set_Chroma420Hint" xml:space="preserve">
+    <value>Keeps a quarter of the colour values. Smallest files and invisible in normal photos, but it can smear text, logos and hard colour edges — the recommended default for photos.</value>
+  </data>
   <data name="Set_Progressive" xml:space="preserve">
     <value>Progressive level</value>
   </data>

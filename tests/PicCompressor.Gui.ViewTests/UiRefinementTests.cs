@@ -1,4 +1,5 @@
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Headless;
@@ -146,6 +147,43 @@ public sealed class UiRefinementTests(AvaloniaSession session)
 
             Assert.True(scroll.Offset.Y > 0);
             Assert.Equal(headerBefore, header.TranslatePoint(default, view)!.Value);
+        });
+
+    [Fact]
+    public Task Chroma_options_explain_themselves_in_the_rendered_settings() =>
+        session.RunAsync(() =>
+        {
+            var model = new SettingsViewModel();
+            var view = new SettingsView { DataContext = model };
+            Show(view);
+
+            var options = view.GetVisualDescendants()
+                .OfType<RadioButton>()
+                .Where(button => button.GroupName == "Chroma")
+                .ToList();
+            Assert.Equal(4, options.Count);
+            foreach (var option in options)
+            {
+                // Ohne Erklärung sind "4:2:0" und "4:4:4" für nicht technische Benutzer bedeutungslos.
+                Assert.False(string.IsNullOrWhiteSpace(ToolTip.GetTip(option) as string));
+                Assert.False(string.IsNullOrWhiteSpace(
+                    AutomationProperties.GetName(option)));
+            }
+
+            var texts = () => view.GetVisualDescendants()
+                .OfType<TextBlock>()
+                .Select(block => block.Text)
+                .ToList();
+            Assert.Contains(model.ChromaDescription, texts());
+
+            var before = model.ChromaDescription;
+            options.Single(button => (string?)button.Content == "4:4:4").IsChecked = true;
+            Dispatcher.UIThread.RunJobs(DispatcherPriority.Loaded);
+            view.UpdateLayout();
+
+            Assert.NotEqual(before, model.ChromaDescription);
+            Assert.Contains(model.ChromaDescription, texts());
+            Assert.DoesNotContain(before, texts());
         });
 
     private static Window Show(Control content, double width = 900, double height = 700)

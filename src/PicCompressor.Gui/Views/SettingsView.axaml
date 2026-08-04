@@ -178,14 +178,30 @@
 
           <StackPanel Spacing="9">
             <TextBlock Classes="capsLabel" Text="{l:Localize Set_Chroma}" />
+            <TextBlock Classes="captionText" TextWrapping="Wrap"
+                       Text="{l:Localize Set_ChromaHint}" />
             <Border Classes="segmentHost">
               <UniformGrid Columns="4">
-                <RadioButton Classes="segment" GroupName="Chroma" Content="4:4:4" IsChecked="{Binding Is444}" />
-                <RadioButton Classes="segment" GroupName="Chroma" Content="4:4:0" IsChecked="{Binding Is440}" />
-                <RadioButton Classes="segment" GroupName="Chroma" Content="4:2:2" IsChecked="{Binding Is422}" />
-                <RadioButton Classes="segment" GroupName="Chroma" Content="4:2:0" IsChecked="{Binding Is420}" />
+                <RadioButton Classes="segment" GroupName="Chroma" Content="4:4:4"
+                             IsChecked="{Binding Is444}"
+                             AutomationProperties.Name="{l:Localize Set_Chroma444Name}"
+                             ToolTip.Tip="{l:Localize Set_Chroma444Hint}" />
+                <RadioButton Classes="segment" GroupName="Chroma" Content="4:4:0"
+                             IsChecked="{Binding Is440}"
+                             AutomationProperties.Name="{l:Localize Set_Chroma440Name}"
+                             ToolTip.Tip="{l:Localize Set_Chroma440Hint}" />
+                <RadioButton Classes="segment" GroupName="Chroma" Content="4:2:2"
+                             IsChecked="{Binding Is422}"
+                             AutomationProperties.Name="{l:Localize Set_Chroma422Name}"
+                             ToolTip.Tip="{l:Localize Set_Chroma422Hint}" />
+                <RadioButton Classes="segment" GroupName="Chroma" Content="4:2:0"
+                             IsChecked="{Binding Is420}"
+                             AutomationProperties.Name="{l:Localize Set_Chroma420Name}"
+                             ToolTip.Tip="{l:Localize Set_Chroma420Hint}" />
               </UniformGrid>
             </Border>
+            <TextBlock Classes="captionText" TextWrapping="Wrap"
+                       Text="{Binding ChromaDescription}" />
 
             <Grid ColumnDefinitions="*,Auto" Margin="0,8,0,0" VerticalAlignment="Center">
               <StackPanel Spacing="2">

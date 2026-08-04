@@ -286,6 +286,33 @@
   <data name="Set_Chroma" xml:space="preserve">
     <value>Chroma-Subsampling</value>
   </data>
+  <data name="Set_ChromaHint" xml:space="preserve">
+    <value>Wie viele Farbdetails erhalten bleiben. Die Schärfe bleibt unberührt — nur die Farbe wird gröber gespeichert, und daher kommt der größte Teil der Einsparung.</value>
+  </data>
+  <data name="Set_Chroma444Name" xml:space="preserve">
+    <value>4:4:4, volle Farbdetails</value>
+  </data>
+  <data name="Set_Chroma440Name" xml:space="preserve">
+    <value>4:4:0, halbe Farbdetails von oben nach unten</value>
+  </data>
+  <data name="Set_Chroma422Name" xml:space="preserve">
+    <value>4:2:2, halbe Farbdetails von links nach rechts</value>
+  </data>
+  <data name="Set_Chroma420Name" xml:space="preserve">
+    <value>4:2:0, ein Viertel der Farbdetails</value>
+  </data>
+  <data name="Set_Chroma444Hint" xml:space="preserve">
+    <value>Behält jeden Farbwert. Größte Dateien. Am besten für Screenshots, Text, Zeichnungen, Logos und Bilder, die noch bearbeitet werden.</value>
+  </data>
+  <data name="Set_Chroma440Hint" xml:space="preserve">
+    <value>Behält die Farbe nebeneinander, halbiert sie von oben nach unten. Selten die beste Wahl; hilft bei breiten waagerechten Streifen und Mustern.</value>
+  </data>
+  <data name="Set_Chroma422Hint" xml:space="preserve">
+    <value>Halbiert die Farbe von links nach rechts. Mittelweg: deutlich kleiner als 4:4:4 und trotzdem schonend zu harten, satten Farbkanten.</value>
+  </data>
+  <data name="Set_Chroma420Hint" xml:space="preserve">
+    <value>Behält ein Viertel der Farbwerte. Kleinste Dateien und bei normalen Fotos nicht zu sehen, kann aber Text, Logos und harte Farbkanten verwischen — die empfohlene Voreinstellung für Fotos.</value>
+  </data>
   <data name="Set_Progressive" xml:space="preserve">
     <value>Progressive-Level</value>
   </data>

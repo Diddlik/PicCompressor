@@ -103,9 +103,22 @@ public sealed class SettingsViewModel : ObservableObject
                 Raise(nameof(Is440));
                 Raise(nameof(Is422));
                 Raise(nameof(Is420));
+                Raise(nameof(ChromaDescription));
             }
         }
     }
+
+    /// <summary>
+    /// Erklärt die gewählte Stufe in Alltagssprache, damit die Entscheidung ohne Vorwissen über
+    /// Chroma-Subsampling möglich ist.
+    /// </summary>
+    public string ChromaDescription => Localizer.Instance[ChromaSubsampling switch
+    {
+        JpegliChromaSubsampling.Subsampling444 => "Set_Chroma444Hint",
+        JpegliChromaSubsampling.Subsampling440 => "Set_Chroma440Hint",
+        JpegliChromaSubsampling.Subsampling422 => "Set_Chroma422Hint",
+        _ => "Set_Chroma420Hint"
+    }];
 
     public bool Is444
     {
