@@ -10,6 +10,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot
+$runtimeIdentifier = "win-x64"
 $artifactsRoot = Join-Path $root "artifacts"
 $nativeOutput = Join-Path $artifactsRoot "native\win-x64\Release-Mingw"
 $publishOutput = Join-Path $artifactsRoot "publish\win-x64"
@@ -52,22 +53,27 @@ Reset-ArtifactDirectory $releasesOutput
     -OutputDirectory $nativeOutput `
     -BuildDirectory $buildDirectory
 
+# PicCompressorTargetRid muss eine globale Eigenschaft sein, nicht nur die
+# AdditionalProperties der Projektreferenz: sonst baut MSBuild Domain und Application unter zwei
+# Sätzen globaler Eigenschaften und beide Instanzen schreiben gleichzeitig in dasselbe obj-Verzeichnis.
 Invoke-Checked {
     & dotnet publish (Join-Path $root "src\PicCompressor.Cli\PicCompressor.Cli.csproj") `
         --configuration $Configuration `
-        --runtime win-x64 `
+        --runtime $runtimeIdentifier `
         --self-contained true `
         --output $publishOutput `
         "-p:Version=$Version" `
+        "-p:PicCompressorTargetRid=$runtimeIdentifier" `
         "-p:PicCompressorNativeLibrary=$nativeLibrary"
 }
 Invoke-Checked {
     & dotnet publish (Join-Path $root "src\PicCompressor.Desktop\PicCompressor.Desktop.csproj") `
         --configuration $Configuration `
-        --runtime win-x64 `
+        --runtime $runtimeIdentifier `
         --self-contained true `
         --output $publishOutput `
         "-p:Version=$Version" `
+        "-p:PicCompressorTargetRid=$runtimeIdentifier" `
         "-p:PicCompressorNativeLibrary=$nativeLibrary"
 }
 
