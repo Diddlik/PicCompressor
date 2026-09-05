@@ -3,7 +3,8 @@
 # Dauerbetrieb-Container aus (D-055, D-056). Der Kontext ist das Repository-Wurzelverzeichnis:
 #   docker build -f docker/Dockerfile -t piccompressor .
 # Die GUI ist nicht Teil des Images; im Container läuft die CLI.
-ARG DOTNET_VERSION=10.0
+# Match global.json: the floating 10.0 image can move to an incompatible SDK feature band.
+ARG DOTNET_VERSION=10.0.302
 
 FROM mcr.microsoft.com/dotnet/sdk:${DOTNET_VERSION} AS build
 # TARGETARCH füllt buildx; ohne buildx ist es die Architektur des Build-Rechners.
