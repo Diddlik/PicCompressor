@@ -45,12 +45,14 @@ public sealed class SettingsViewModel : ObservableObject
     /// </summary>
     public SettingsViewModel(
         IApplicationSettingsStore? settingsStore = null,
-        IUpdateService? updateService = null)
+        IUpdateService? updateService = null,
+        ICompressionProfileStore? profileStore = null)
     {
         this.settingsStore = settingsStore ?? new InMemoryApplicationSettingsStore();
         Update = new UpdateViewModel(updateService);
         stored = this.settingsStore.Load();
         ApplyStoredSettings(stored);
+        Profiles = new ProfilesViewModel(this, profileStore ?? new InMemoryCompressionProfileStore());
 
         PropertyChanged += (_, _) => PersistSettings();
         Appearance.PropertyChanged += (_, _) => PersistSettings();
@@ -58,6 +60,37 @@ public sealed class SettingsViewModel : ObservableObject
 
     /// <summary>Desktop-Updateoberfläche (MP-006); die Einstellungen sind ihr Einstiegspunkt.</summary>
     public UpdateViewModel Update { get; }
+
+    public ProfilesViewModel Profiles { get; }
+
+    public void ApplyProfile(CompressionProfile profile)
+    {
+        profile.Validate();
+        applyingStoredSettings = true;
+        try
+        {
+            UsesSuffix = true;
+            Quality = profile.Quality;
+            ChromaSubsampling = profile.ChromaSubsampling;
+            ProgressiveLevel = profile.ProgressiveLevel;
+            ExifPolicy = profile.ExifPolicy;
+            ColorProfilePolicy = profile.ColorProfilePolicy;
+            AlphaBackground = profile.AlphaBackground;
+            Suffix = profile.Suffix;
+            OutputDirectory = profile.OutputDirectory;
+            CollisionPolicy = profile.CollisionPolicy;
+            LargerOutputPolicy = profile.LargerOutputPolicy;
+            ParallelJobs = profile.ParallelJobs;
+            JpegliTimeoutSeconds = profile.JpegliTimeoutSeconds;
+            MinimumSavingsPercent = profile.MinimumSavingsPercent;
+            UsesCustomDirectory = profile.OutputDirectory is not null;
+        }
+        finally
+        {
+            applyingStoredSettings = false;
+        }
+        PersistSettings();
+    }
 
     /// <summary>„Über PicCompressor“ mit Version und Bibliotheks-Credits (Issue #2).</summary>
     public AboutViewModel About { get; } = new();
@@ -420,6 +453,7 @@ public sealed class SettingsViewModel : ObservableObject
             ProgressiveLevel = settings.ProgressiveLevel;
             ExifPolicy = settings.ExifPolicy;
             ColorProfilePolicy = settings.ColorProfilePolicy;
+            AlphaBackground = settings.AlphaBackground;
             CollisionPolicy = settings.CollisionPolicy;
             LargerOutputPolicy = settings.LargerOutputPolicy;
             Suffix = settings.Suffix;
@@ -463,6 +497,7 @@ public sealed class SettingsViewModel : ObservableObject
             ProgressiveLevel = ProgressiveLevel,
             ExifPolicy = ExifPolicy,
             ColorProfilePolicy = ColorProfilePolicy,
+            AlphaBackground = AlphaBackground,
             CollisionPolicy = CollisionPolicy,
             LargerOutputPolicy = LargerOutputPolicy,
             Suffix = Suffix,

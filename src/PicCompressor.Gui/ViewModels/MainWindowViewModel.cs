@@ -40,7 +40,8 @@ public sealed class MainWindowViewModel : ObservableObject
         IFileActionService? fileActions = null,
         IClipboardImportService? clipboardImport = null,
         IReadOnlyList<string>? initialInputs = null,
-        INotificationService? notifications = null)
+        INotificationService? notifications = null,
+        ICompressionProfileStore? profileStore = null)
     {
         ArgumentNullException.ThrowIfNull(compressionService);
         ArgumentNullException.ThrowIfNull(engineCatalogService);
@@ -49,7 +50,7 @@ public sealed class MainWindowViewModel : ObservableObject
         this.engineCatalogService = engineCatalogService;
         this.initialInputs = initialInputs ?? [];
 
-        Settings = new SettingsViewModel(settingsStore, updateService);
+        Settings = new SettingsViewModel(settingsStore, updateService, profileStore);
         Dashboard = new DashboardViewModel(
             Settings,
             compressionService,

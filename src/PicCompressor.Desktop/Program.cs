@@ -99,7 +99,8 @@ internal static class Program
             // "Öffnen mit" übergibt Dateipfade als Argumente; die eigentliche Prüfung nach
             // Abschnitt 7.1 folgt beim Einreihen. Nur vorhandene Pfade weiterreichen (MP-003).
             InitialInputsFrom(args),
-            new DesktopNotificationService());
+            new DesktopNotificationService(),
+            new JsonCompressionProfileStore(ApplicationDataPaths.ProfilesFilePath));
 
         return AppBuilder.Configure<App>()
             .UsePlatformDetect()

@@ -37,7 +37,8 @@ public sealed class App : Avalonia.Application
         IUpdateService? updateService = null,
         IClipboardImportService? clipboardImport = null,
         IReadOnlyList<string>? initialInputs = null,
-        INotificationService? notifications = null)
+        INotificationService? notifications = null,
+        ICompressionProfileStore? profileStore = null)
     {
         ArgumentNullException.ThrowIfNull(compressionService);
         ArgumentNullException.ThrowIfNull(engineCatalogService);
@@ -57,7 +58,7 @@ public sealed class App : Avalonia.Application
                 updateService ?? new UnconfiguredUpdateService(),
                 clipboardImport ?? new UnconfiguredClipboardImportService(),
                 initialInputs ?? [],
-                notifications ?? new UnconfiguredNotificationService());
+                notifications ?? new UnconfiguredNotificationService(), profileStore);
     }
 
     public override void Initialize() => AvaloniaXamlLoader.Load(this);
@@ -77,7 +78,7 @@ public sealed class App : Avalonia.Application
                 services.FileActionService,
                 services.ClipboardImport,
                 services.InitialInputs,
-                services.Notifications);
+                services.Notifications, services.ProfileStore);
 
             var window = new MainWindow { DataContext = viewModel };
             window.Opened += async (_, _) =>
@@ -100,5 +101,6 @@ public sealed class App : Avalonia.Application
         IUpdateService UpdateService,
         IClipboardImportService ClipboardImport,
         IReadOnlyList<string> InitialInputs,
-        INotificationService Notifications);
+        INotificationService Notifications,
+        ICompressionProfileStore? ProfileStore = null);
 }

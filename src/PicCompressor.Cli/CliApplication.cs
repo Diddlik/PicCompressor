@@ -11,6 +11,9 @@ namespace PicCompressor.Cli;
 
 internal static class CliApplication
 {
+    private static string Text(string key) => new System.Resources.ResourceManager(
+        "PicCompressor.Cli.Localization.Strings", typeof(CliApplication).Assembly).GetString(key)!;
+
     private const string Usage =
         """
         Usage: piccompressor <input> [<input> ...] [options]
@@ -103,11 +106,12 @@ internal static class CliApplication
         TextWriter standardOutput,
         TextWriter standardError,
         ICompressionHistoryStore? historyStore = null,
-        IDiagnosticLog? diagnosticLog = null)
+        IDiagnosticLog? diagnosticLog = null,
+        ICompressionProfileStore? profileStore = null)
     {
         if (args.Contains("--help", StringComparer.Ordinal) || args.Contains("-h", StringComparer.Ordinal))
         {
-            await standardOutput.WriteLineAsync(Usage).ConfigureAwait(false);
+            await standardOutput.WriteLineAsync(Usage + Environment.NewLine + Text("Profile_CliHelp")).ConfigureAwait(false);
             return 0;
         }
 
@@ -116,6 +120,20 @@ internal static class CliApplication
         try
         {
             options = CliOptions.Parse(args);
+            if (options.ProfileName is { } profileName)
+            {
+                try
+                {
+                    var profiles = (profileStore ?? new JsonCompressionProfileStore(ApplicationDataPaths.ProfilesFilePath)).Load();
+                    var profile = profiles.FirstOrDefault(item => string.Equals(item.Name, profileName, StringComparison.OrdinalIgnoreCase));
+                    if (profile is null) { throw new CliUsageException(Text("Profile_NotFound")); }
+                    options = CliOptions.Parse(args, profile);
+                }
+                catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException or JsonException or ArgumentException)
+                {
+                    throw new CliUsageException(Text("Profile_LoadFailed"));
+                }
+            }
         }
         catch (CliUsageException exception)
         {
@@ -251,7 +269,7 @@ internal static class CliApplication
             BuildEngineSettings(options),
             options.ExifPolicy,
             options.ColorProfilePolicy,
-            RgbColor.White,
+            options.AlphaBackground ?? RgbColor.White,
             options.CollisionPolicy,
             options.LargerOutputPolicy,
             options.OutputDirectory,
@@ -521,8 +539,8 @@ internal static class CliApplication
     private static CompressionEngineSettings BuildEngineSettings(CliOptions options) =>
         new JpegliSettings(
             options.Quality,
-            JpegliChromaSubsampling.Subsampling420,
-            2);
+            options.ChromaSubsampling,
+            options.ProgressiveLevel);
 
     internal static int MapBatchExitCode(
         IReadOnlyList<CompressionJobPlan> plans,

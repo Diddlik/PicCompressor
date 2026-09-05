@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:app="using:PicCompressor.Application"
              xmlns:vm="using:PicCompressor.Gui.ViewModels"
              xmlns:l="using:PicCompressor.Gui.Localization"
              x:Class="PicCompressor.Gui.Views.SettingsView"
@@ -14,6 +15,29 @@
         <TextBlock Classes="pageTitle" Text="{l:Localize Set_Title}" />
         <TextBlock Classes="muted" FontSize="13.5" Text="{l:Localize Set_Subtitle}" />
       </StackPanel>
+
+      <Border Classes="card" DataContext="{Binding Profiles}" x:DataType="vm:ProfilesViewModel">
+        <StackPanel Spacing="12">
+          <TextBlock Classes="cardTitle" Text="{l:Localize Profile_Title}" />
+          <TextBlock Classes="captionText" Text="{l:Localize Profile_Hint}" TextWrapping="Wrap" />
+          <ComboBox x:Name="ProfileSelector" ItemsSource="{Binding Items}" SelectedItem="{Binding Selected}"
+                    HorizontalAlignment="Stretch" AutomationProperties.Name="{l:Localize Profile_Select}">
+            <ComboBox.ItemTemplate>
+              <DataTemplate x:DataType="app:CompressionProfile">
+                <TextBlock Text="{Binding Name}" />
+              </DataTemplate>
+            </ComboBox.ItemTemplate>
+          </ComboBox>
+          <TextBox x:Name="ProfileName" Classes="field" Text="{Binding Name}" MaxLength="80"
+                   PlaceholderText="{l:Localize Profile_Name}" AutomationProperties.Name="{l:Localize Profile_Name}" />
+          <WrapPanel Orientation="Horizontal">
+            <Button x:Name="ApplyProfileButton" Classes="ghost" Margin="0,0,8,8" Content="{l:Localize Profile_Apply}" Command="{Binding ApplyCommand}" />
+            <Button x:Name="SaveProfileButton" Classes="ghost" Margin="0,0,8,8" Content="{l:Localize Profile_Save}" Command="{Binding SaveCommand}" />
+            <Button x:Name="DeleteProfileButton" Classes="ghost" Margin="0,0,0,8" Content="{l:Localize Profile_Delete}" Command="{Binding DeleteCommand}" />
+          </WrapPanel>
+          <TextBlock Classes="captionText" Text="{Binding Status}" TextWrapping="Wrap" />
+        </StackPanel>
+      </Border>
 
       <!-- Ausgabeziel -->
       <Border Classes="card">

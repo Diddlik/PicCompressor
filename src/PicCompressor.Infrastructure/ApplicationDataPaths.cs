@@ -7,6 +7,8 @@ namespace PicCompressor.Infrastructure;
 /// </summary>
 public static class ApplicationDataPaths
 {
+    public static string ProfilesFilePath => Path.Combine(Path.GetDirectoryName(SettingsFilePath)!, "profiles.json");
+
     public static string ApplicationDataDirectory { get; } = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "PicCompressor");

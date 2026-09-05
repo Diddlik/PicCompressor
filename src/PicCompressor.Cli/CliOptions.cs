@@ -1,3 +1,4 @@
+using PicCompressor.Application;
 using PicCompressor.Domain;
 
 namespace PicCompressor.Cli;
@@ -24,7 +25,11 @@ internal sealed record CliOptions(
     string? LockPath,
     int StableForSeconds,
     string? ConfigPath = null,
-    bool Once = false)
+    bool Once = false,
+    string? ProfileName = null,
+    JpegliChromaSubsampling ChromaSubsampling = JpegliChromaSubsampling.Subsampling420,
+    int ProgressiveLevel = 2,
+    RgbColor? AlphaBackground = null)
 {
     /// <summary>
     /// Optionen, die neben <c>--config</c> zulässig sind. Alle übrigen Einstellungen stehen in der
@@ -32,38 +37,43 @@ internal sealed record CliOptions(
     /// </summary>
     private static readonly string[] AllowedWithConfig = ["--config", "--once", "--json"];
 
-    internal static CliOptions Parse(string[] args)
+    internal static CliOptions Parse(string[] args, CompressionProfile? profile = null)
     {
         ArgumentNullException.ThrowIfNull(args);
         var inputPaths = new List<string>();
         var specified = new HashSet<string>(StringComparer.Ordinal);
         var engineId = JpegliSettings.JpegliEngineId;
-        string? outputDirectory = null;
-        var quality = 80;
-        var suffix = "_compressed";
-        var collisionPolicy = CollisionPolicy.Skip;
-        var largerOutputPolicy = LargerOutputPolicy.Discard;
-        var exifPolicy = ExifPolicy.Remove;
-        var colorProfilePolicy = ColorProfilePolicy.Preserve;
+        string? outputDirectory = profile?.OutputDirectory;
+        var quality = profile?.Quality ?? 80;
+        var suffix = profile?.Suffix ?? "_compressed";
+        var collisionPolicy = profile?.CollisionPolicy ?? CollisionPolicy.Skip;
+        var largerOutputPolicy = profile?.LargerOutputPolicy ?? LargerOutputPolicy.Discard;
+        var exifPolicy = profile?.ExifPolicy ?? ExifPolicy.Remove;
+        var colorProfilePolicy = profile?.ColorProfilePolicy ?? ColorProfilePolicy.Preserve;
         var recursive = false;
         var dryRun = false;
-        var parallelism = Math.Max(1, Environment.ProcessorCount / 2);
+        var parallelism = profile?.ParallelJobs ?? Math.Max(1, Environment.ProcessorCount / 2);
         var json = false;
         var noHistory = false;
         string? logPath = null;
-        var timeoutSeconds = 0;
-        var minimumSavingsPercent = 0;
+        var timeoutSeconds = profile?.JpegliTimeoutSeconds ?? 0;
+        var minimumSavingsPercent = profile?.MinimumSavingsPercent ?? 0;
         string? statePath = null;
         string? lockPath = null;
         var stableForSeconds = 0;
         string? configPath = null;
         var once = false;
+        string? profileName = null;
+        profile?.Validate();
 
         for (var index = 0; index < args.Length; index++)
         {
             specified.Add(args[index]);
             switch (args[index])
             {
+                case "--profile":
+                    profileName = NextValue(args, ref index, "--profile");
+                    break;
                 case "--config":
                     configPath = NextValue(args, ref index, "--config");
                     break;
@@ -198,7 +208,11 @@ internal sealed record CliOptions(
             lockPath,
             stableForSeconds,
             configPath,
-            once);
+            once,
+            profileName,
+            profile?.ChromaSubsampling ?? JpegliChromaSubsampling.Subsampling420,
+            profile?.ProgressiveLevel ?? 2,
+            profile?.AlphaBackground);
     }
 
     private static string ParseEngine(string value)

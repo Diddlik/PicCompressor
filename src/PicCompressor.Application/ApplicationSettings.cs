@@ -43,6 +43,8 @@ public sealed record ApplicationSettings
     public ColorProfilePolicy ColorProfilePolicy { get; init; } =
         ColorProfilePolicy.Preserve;
 
+    public RgbColor AlphaBackground { get; init; } = RgbColor.White;
+
     public CollisionPolicy CollisionPolicy { get; init; } = CollisionPolicy.Skip;
 
     public LargerOutputPolicy LargerOutputPolicy { get; init; } =

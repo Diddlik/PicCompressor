@@ -685,4 +685,55 @@
   <data name="Win_Maximize" xml:space="preserve">
     <value>Maximieren</value>
   </data>
+  <data name="Profile_Title" xml:space="preserve">
+    <value>Arbeitsprofile</value>
+  </data>
+  <data name="Profile_Hint" xml:space="preserve">
+    <value>Kompression und Ausgabeziel gemeinsam speichern. Profil auswählen und anwenden. Speichern unter dem ausgewählten Namen aktualisiert es.</value>
+  </data>
+  <data name="Profile_Name" xml:space="preserve">
+    <value>Profilname</value>
+  </data>
+  <data name="Profile_Select" xml:space="preserve">
+    <value>Gespeicherte Profile</value>
+  </data>
+  <data name="Profile_Save" xml:space="preserve">
+    <value>Profil speichern</value>
+  </data>
+  <data name="Profile_Apply" xml:space="preserve">
+    <value>Anwenden</value>
+  </data>
+  <data name="Profile_Delete" xml:space="preserve">
+    <value>Profil löschen</value>
+  </data>
+  <data name="Profile_Saved" xml:space="preserve">
+    <value>Profil gespeichert.</value>
+  </data>
+  <data name="Profile_Applied" xml:space="preserve">
+    <value>Profil auf die aktuellen Einstellungen angewendet.</value>
+  </data>
+  <data name="Profile_Deleted" xml:space="preserve">
+    <value>Profil gelöscht. Die aktuellen Einstellungen bleiben erhalten.</value>
+  </data>
+  <data name="Profile_Duplicate" xml:space="preserve">
+    <value>Dieser Name existiert bereits. Zum Aktualisieren das Profil auswählen oder einen anderen Namen verwenden.</value>
+  </data>
+  <data name="Profile_OverwriteExcluded" xml:space="preserve">
+    <value>Profile dürfen das Ersetzen von Originalen nicht aktivieren. Vor dem Speichern ein Suffix oder einen separaten Zielordner wählen.</value>
+  </data>
+  <data name="Profile_SaveFailed" xml:space="preserve">
+    <value>Profil konnte nicht gespeichert werden. Namen (1–80 Zeichen), Suffix, absoluten Zielpfad und Schreibrechte prüfen.</value>
+  </data>
+  <data name="Profile_LoadFailed" xml:space="preserve">
+    <value>Profile konnten nicht geladen werden. profiles.json, Schemaversion und Zugriffsrechte prüfen. Die Datei wurde nicht verändert.</value>
+  </data>
+  <data name="Profile_NotFound" xml:space="preserve">
+    <value>Das angeforderte Profil existiert nicht.</value>
+  </data>
+  <data name="Profile_CliHelp" xml:space="preserve">
+    <value>  --profile &lt;Name&gt;              Gespeichertes Profil nutzen; explizite Optionen haben Vorrang</value>
+  </data>
+  <data name="Profile_AppliedRestart" xml:space="preserve">
+    <value>Profil angewendet. PicCompressor neu starten, um das geänderte Encoder-Zeitlimit zu aktivieren.</value>
+  </data>
 </root>
