@@ -274,7 +274,8 @@ internal static class CliApplication
             options.LargerOutputPolicy,
             options.OutputDirectory,
             options.Suffix,
-            options.MinimumSavingsPercent);
+            options.MinimumSavingsPercent,
+            options.OverwriteOriginal);
         var cycle = new ScanCycle(
             fileSystem,
             inspector,

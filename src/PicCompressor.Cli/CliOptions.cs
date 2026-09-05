@@ -29,7 +29,8 @@ internal sealed record CliOptions(
     string? ProfileName = null,
     JpegliChromaSubsampling ChromaSubsampling = JpegliChromaSubsampling.Subsampling420,
     int ProgressiveLevel = 2,
-    RgbColor? AlphaBackground = null)
+    RgbColor? AlphaBackground = null,
+    bool OverwriteOriginal = false)
 {
     /// <summary>
     /// Optionen, die neben <c>--config</c> zulässig sind. Alle übrigen Einstellungen stehen in der
@@ -212,7 +213,11 @@ internal sealed record CliOptions(
             profileName,
             profile?.ChromaSubsampling ?? JpegliChromaSubsampling.Subsampling420,
             profile?.ProgressiveLevel ?? 2,
-            profile?.AlphaBackground);
+            profile?.AlphaBackground,
+            profile?.OverwriteOriginal == true
+                && !specified.Contains("--output-dir")
+                && !specified.Contains("--suffix")
+                && collisionPolicy == CollisionPolicy.Overwrite);
     }
 
     private static string ParseEngine(string value)

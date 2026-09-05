@@ -31,6 +31,7 @@ public sealed class IncrementalScanTests
         Assert.Equal(baseline, IncrementalScan.Fingerprint(Settings()));
         Assert.NotEqual(baseline, IncrementalScan.Fingerprint(Settings(quality: 70)));
         Assert.NotEqual(baseline, IncrementalScan.Fingerprint(Settings(suffix: "_small")));
+        Assert.NotEqual(baseline, IncrementalScan.Fingerprint(Settings() with { OverwriteOriginal = true }));
     }
 
     [Fact]

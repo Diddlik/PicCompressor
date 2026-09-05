@@ -718,9 +718,6 @@
   <data name="Profile_Duplicate" xml:space="preserve">
     <value>This name already exists. Select that profile to update it, or choose another name.</value>
   </data>
-  <data name="Profile_OverwriteExcluded" xml:space="preserve">
-    <value>Profiles cannot enable replacing originals. Choose a suffix or a separate output folder before saving.</value>
-  </data>
   <data name="Profile_SaveFailed" xml:space="preserve">
     <value>Profile could not be saved. Check the name (1–80 characters), suffix, absolute destination path and write access.</value>
   </data>
@@ -735,5 +732,8 @@
   </data>
   <data name="Profile_AppliedRestart" xml:space="preserve">
     <value>Profile applied. Restart PicCompressor to activate the changed encoder time limit.</value>
+  </data>
+  <data name="Profile_ReplacesOriginals" xml:space="preserve">
+    <value>This profile replaces original JPEG files after successful compression. PNG inputs are rejected.</value>
   </data>
 </root>

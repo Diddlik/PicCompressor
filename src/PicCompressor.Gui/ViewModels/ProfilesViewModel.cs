@@ -50,20 +50,17 @@ public sealed class ProfilesViewModel : ObservableObject
             if (SetProperty(ref selected, value))
             {
                 Name = value?.Name ?? "";
+                Raise(nameof(SelectedReplacesOriginals));
                 ApplyCommand.RaiseCanExecuteChanged();
                 DeleteCommand.RaiseCanExecuteChanged();
             }
         }
     }
 
+    public bool SelectedReplacesOriginals => Selected?.OverwriteOriginal == true;
+
     private void Save()
     {
-        if (settings.UsesOverwriteOriginal)
-        {
-            SetStatus("Profile_OverwriteExcluded");
-            return;
-        }
-
         var profile = new CompressionProfile
         {
             Name = Name.Trim(),
@@ -75,6 +72,7 @@ public sealed class ProfilesViewModel : ObservableObject
             AlphaBackground = settings.AlphaBackground,
             Suffix = settings.Suffix,
             OutputDirectory = settings.UsesCustomDirectory ? settings.OutputDirectory : null,
+            OverwriteOriginal = settings.UsesOverwriteOriginal,
             CollisionPolicy = settings.CollisionPolicy,
             LargerOutputPolicy = settings.LargerOutputPolicy,
             ParallelJobs = settings.ParallelJobs,

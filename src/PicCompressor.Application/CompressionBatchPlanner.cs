@@ -11,7 +11,8 @@ public sealed record CompressionBatchSettings(
     LargerOutputPolicy LargerOutputPolicy,
     string? OutputDirectory,
     string Suffix,
-    int MinimumSavingsPercent = 0);
+    int MinimumSavingsPercent = 0,
+    bool OverwriteOriginal = false);
 
 public sealed record CompressionJobPlan(
     DiscoveredInput Input,
@@ -52,6 +53,7 @@ public sealed class CompressionBatchPlanner(CompressionJobFactory jobFactory)
                         outputDirectory,
                         settings.Suffix,
                         MinimumSavingsPercent: settings.MinimumSavingsPercent,
+                        OverwriteOriginal: settings.OverwriteOriginal,
                         ReplaceableOutputPath: replaceableOutputs is not null
                             && replaceableOutputs.TryGetValue(input.Path, out var replaceable)
                                 ? replaceable

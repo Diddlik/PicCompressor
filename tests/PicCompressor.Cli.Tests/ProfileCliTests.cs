@@ -7,18 +7,28 @@ namespace PicCompressor.Cli.Tests;
 
 public sealed class ProfileCliTests
 {
-    [Fact]
-    public async Task Saved_profile_reaches_the_real_dry_run_output_plan()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Saved_profile_reaches_the_real_dry_run_output_plan(bool overwriteOriginal)
     {
         var directory = Path.Combine(Path.GetTempPath(), $"piccompressor-profile-cli-{Guid.NewGuid():N}");
         Directory.CreateDirectory(directory);
         try
         {
-            var input = Path.Combine(directory, "input.png");
-            File.WriteAllBytes(input, Convert.FromBase64String(
-                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="));
+            var input = Path.Combine(directory, overwriteOriginal ? "input.jpg" : "input.png");
+            // A structural JPEG fixture is sufficient for dry-run inspection; no decoding occurs.
+            byte[] original = overwriteOriginal
+                ? [0xff, 0xd8, 0xff, 0xc0, 0, 11, 8, 0, 1, 0, 1, 1, 1, 0x11, 0,
+                   0xff, 0xda, 0, 8, 1, 1, 0, 0, 0x3f, 0, 0x11, 0x22, 0xff, 0xd9]
+                : Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=");
+            File.WriteAllBytes(input, original);
             var store = new JsonCompressionProfileStore(Path.Combine(directory, "profiles.json"));
-            store.Save([new CompressionProfile { Name = "Blog", Suffix = "_blog" }]);
+            store.Save([new CompressionProfile
+            {
+                Name = "Blog", Suffix = "_blog", OverwriteOriginal = overwriteOriginal,
+                CollisionPolicy = overwriteOriginal ? CollisionPolicy.Overwrite : CollisionPolicy.Skip
+            }]);
             using var output = new StringWriter();
             using var error = new StringWriter();
             var exit = await CliApplication.RunAsync([input, "--profile", "blog", "--dry-run", "--json", "--no-history"],
@@ -27,10 +37,26 @@ public sealed class ProfileCliTests
             Assert.Equal("", error.ToString());
             using var document = JsonDocument.Parse(output.ToString());
             var plan = Assert.Single(document.RootElement.GetProperty("plans").EnumerateArray());
-            Assert.EndsWith("input_blog.jpg", plan.GetProperty("outputPath").GetString());
-            Assert.Empty(Directory.GetFiles(directory, "*.jpg"));
+            Assert.Equal(overwriteOriginal ? input : Path.Combine(directory, "input_blog.jpg"),
+                plan.GetProperty("outputPath").GetString());
+            Assert.Equal(original, File.ReadAllBytes(input));
+            Assert.False(File.Exists(Path.Combine(directory, "input_blog.jpg")));
         }
         finally { Directory.Delete(directory, recursive: true); }
+    }
+
+    [Theory]
+    [InlineData("--suffix", "_copy")]
+    [InlineData("--output-dir", "output")]
+    [InlineData("--collision", "skip")]
+    public void Explicit_output_options_disable_profile_original_replacement(string option, string value)
+    {
+        var profile = new CompressionProfile
+        {
+            Name = "Replace", OverwriteOriginal = true, CollisionPolicy = CollisionPolicy.Overwrite
+        };
+        Assert.True(CliOptions.Parse(["input.jpg", "--profile", "Replace"], profile).OverwriteOriginal);
+        Assert.False(CliOptions.Parse(["input.jpg", "--profile", "Replace", option, value], profile).OverwriteOriginal);
     }
 
     [Theory]

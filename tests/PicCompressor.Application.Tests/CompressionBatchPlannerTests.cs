@@ -4,6 +4,30 @@ namespace PicCompressor.Application.Tests;
 
 public sealed class CompressionBatchPlannerTests
 {
+    [Theory]
+    [InlineData(InputImageFormat.Jpeg, true)]
+    [InlineData(InputImageFormat.Png, false)]
+    public void Original_replacement_reaches_the_shared_job_validation(InputImageFormat format, bool accepted)
+    {
+        var input = Path.GetFullPath("original.jpg");
+        var factory = new CompressionJobFactory(new StubFileSystem(input), new StubInspector("", format),
+            new InputValidationLimits(1000, 1000), TimeProvider.System);
+        var settings = new CompressionBatchSettings(
+            new JpegliSettings(80, JpegliChromaSubsampling.Subsampling420, 2),
+            ExifPolicy.Remove, ColorProfilePolicy.Preserve, RgbColor.White,
+            CollisionPolicy.Overwrite, LargerOutputPolicy.Discard, null, "_compressed", OverwriteOriginal: true);
+        var plan = Assert.Single(new CompressionBatchPlanner(factory).Plan([new(input, "")], settings));
+        if (accepted)
+        {
+            Assert.Equal(input, plan.Job!.OutputPath);
+        }
+        else
+        {
+            Assert.Null(plan.Job);
+            Assert.Equal(CompressionErrorCategory.InvalidArguments, plan.ErrorCategory);
+        }
+    }
+
     [Fact]
     public void Plan_keeps_valid_jobs_when_another_input_is_invalid()
     {
@@ -42,11 +66,11 @@ public sealed class CompressionBatchPlannerTests
             StringComparer.OrdinalIgnoreCase.Equals(left, right);
     }
 
-    private sealed class StubInspector(string invalidPath) : IInputImageInspector
+    private sealed class StubInspector(string invalidPath, InputImageFormat format = InputImageFormat.Png) : IInputImageInspector
     {
         public InputImageInfo Inspect(string path) =>
             path == invalidPath
                 ? throw new InvalidDataException()
-                : new(InputImageFormat.Png, 10, 10, 100);
+                : new(format, 10, 10, 100);
     }
 }

@@ -3,22 +3,27 @@ using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Input;
+using Avalonia.Input.Raw;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using PicCompressor.Application;
 using PicCompressor.Gui.ViewModels;
 using PicCompressor.Gui.Views;
+using PicCompressor.Infrastructure;
 
 namespace PicCompressor.Gui.ViewTests;
 
 [Collection(AvaloniaCollection.Name)]
 public sealed class ProfileViewTests(AvaloniaSession session)
 {
-    [Fact]
-    public Task Profile_controls_save_apply_and_delete_at_minimum_window_size() => session.RunAsync(() =>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public Task Profile_controls_save_apply_and_delete_at_minimum_window_size(bool overwriteOriginal) => session.RunAsync(() =>
     {
-        var store = new InMemoryCompressionProfileStore();
-        var settings = new SettingsViewModel(profileStore: store) { Quality = 73 };
+        var directory = Path.Combine(Path.GetTempPath(), $"piccompressor-profile-view-{Guid.NewGuid():N}");
+        var store = new JsonCompressionProfileStore(Path.Combine(directory, "profiles.json"));
+        var settings = new SettingsViewModel(profileStore: store) { Quality = 73, UsesOverwriteOriginal = overwriteOriginal };
         var view = new SettingsView { DataContext = settings };
         var window = new Window { Content = view, Width = 960, Height = 620 };
         window.Show();
@@ -39,10 +44,19 @@ public sealed class ProfileViewTests(AvaloniaSession session)
             Click(save);
             Dispatcher.UIThread.RunJobs();
             Assert.Equal("Blog", Assert.Single(store.Load()).Name);
+            settings = new SettingsViewModel(profileStore: store) { Quality = 40 };
+            view.DataContext = settings;
+            Dispatcher.UIThread.RunJobs();
+            var selector = view.FindControl<ComboBox>("ProfileSelector")!;
+            selector.Focus();
+            window.KeyPress(Key.Down, RawInputModifiers.None, PhysicalKey.ArrowDown, null);
+            window.KeyRelease(Key.Down, RawInputModifiers.None, PhysicalKey.ArrowDown, null);
+            Dispatcher.UIThread.RunJobs();
+            Assert.Equal("Blog", settings.Profiles.Selected?.Name);
             Assert.True(apply.IsEffectivelyEnabled);
-            settings.Quality = 40;
             Click(apply);
             Assert.Equal(73, settings.Quality);
+            Assert.Equal(overwriteOriginal, settings.UsesOverwriteOriginal);
 
             foreach (var button in new[] { save, apply, delete })
             {
@@ -69,6 +83,10 @@ public sealed class ProfileViewTests(AvaloniaSession session)
                 Dispatcher.UIThread.RunJobs();
             }
         }
-        finally { window.Close(); }
+        finally
+        {
+            window.Close();
+            if (Directory.Exists(directory)) { Directory.Delete(directory, recursive: true); }
+        }
     });
 }

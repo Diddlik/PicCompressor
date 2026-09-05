@@ -21,6 +21,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\PicCompressor.Gui\PicCompressor.Gui.csproj" />
+    <ProjectReference Include="..\..\src\PicCompressor.Infrastructure\PicCompressor.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

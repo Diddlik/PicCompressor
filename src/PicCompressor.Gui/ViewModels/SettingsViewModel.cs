@@ -84,6 +84,7 @@ public sealed class SettingsViewModel : ObservableObject
             JpegliTimeoutSeconds = profile.JpegliTimeoutSeconds;
             MinimumSavingsPercent = profile.MinimumSavingsPercent;
             UsesCustomDirectory = profile.OutputDirectory is not null;
+            UsesOverwriteOriginal = profile.OverwriteOriginal;
         }
         finally
         {

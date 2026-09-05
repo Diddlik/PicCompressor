@@ -41,6 +41,10 @@ public static class IncrementalScan
         var text = string.Create(
             CultureInfo.InvariantCulture,
             $"{settings.EngineSettings.Fingerprint};exif={settings.ExifPolicy};color={settings.ColorProfilePolicy};alpha={settings.AlphaBackground};collision={settings.CollisionPolicy};larger={settings.LargerOutputPolicy};outputDirectory={settings.OutputDirectory};suffix={settings.Suffix};minSavings={settings.MinimumSavingsPercent}");
+        if (settings.OverwriteOriginal)
+        {
+            text += ";overwriteOriginal=true";
+        }
         return Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(text)));
     }
 

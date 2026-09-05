@@ -13,6 +13,7 @@ public sealed record CompressionProfile
     public RgbColor AlphaBackground { get; init; } = RgbColor.White;
     public string Suffix { get; init; } = "_compressed";
     public string? OutputDirectory { get; init; }
+    public bool OverwriteOriginal { get; init; }
     public CollisionPolicy CollisionPolicy { get; init; } = CollisionPolicy.Skip;
     public LargerOutputPolicy LargerOutputPolicy { get; init; } = LargerOutputPolicy.Discard;
     public int ParallelJobs { get; init; } = 1;
@@ -46,6 +47,11 @@ public sealed record CompressionProfile
             && (string.IsNullOrWhiteSpace(OutputDirectory) || !Path.IsPathFullyQualified(OutputDirectory)))
         {
             throw new ArgumentException("Profile output directories must be absolute paths.");
+        }
+
+        if (OverwriteOriginal && (OutputDirectory is not null || CollisionPolicy != CollisionPolicy.Overwrite))
+        {
+            throw new ArgumentException("Replacing originals requires overwrite permission and no output directory.");
         }
     }
 }

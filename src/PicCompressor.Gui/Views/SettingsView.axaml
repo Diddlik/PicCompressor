@@ -21,6 +21,7 @@
           <TextBlock Classes="cardTitle" Text="{l:Localize Profile_Title}" />
           <TextBlock Classes="captionText" Text="{l:Localize Profile_Hint}" TextWrapping="Wrap" />
           <ComboBox x:Name="ProfileSelector" ItemsSource="{Binding Items}" SelectedItem="{Binding Selected}"
+                    PlaceholderText="{l:Localize Profile_Select}"
                     HorizontalAlignment="Stretch" AutomationProperties.Name="{l:Localize Profile_Select}">
             <ComboBox.ItemTemplate>
               <DataTemplate x:DataType="app:CompressionProfile">
@@ -28,6 +29,8 @@
               </DataTemplate>
             </ComboBox.ItemTemplate>
           </ComboBox>
+          <TextBlock Classes="captionText" Foreground="{DynamicResource CoralTextBrush}" TextWrapping="Wrap"
+                     IsVisible="{Binding SelectedReplacesOriginals}" Text="{l:Localize Profile_ReplacesOriginals}" />
           <TextBox x:Name="ProfileName" Classes="field" Text="{Binding Name}" MaxLength="80"
                    PlaceholderText="{l:Localize Profile_Name}" AutomationProperties.Name="{l:Localize Profile_Name}" />
           <WrapPanel Orientation="Horizontal">

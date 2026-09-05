@@ -36,15 +36,20 @@ public sealed class ProfilesViewModelTests
     }
 
     [Fact]
-    public void Overwrite_original_is_not_saved_and_duplicate_requires_selection()
+    public void Overwrite_original_round_trips_and_duplicate_requires_selection()
     {
         var store = new InMemoryCompressionProfileStore();
         var settings = new SettingsViewModel(profileStore: store) { UsesOverwriteOriginal = true };
         settings.Profiles.Name = "Blog";
         settings.Profiles.SaveCommand.Execute(null);
-        Assert.Empty(store.Load());
-        settings.UsesSuffix = true;
-        settings.Profiles.SaveCommand.Execute(null);
+        Assert.True(Assert.Single(store.Load()).OverwriteOriginal);
+        var reloaded = new SettingsViewModel(profileStore: store);
+        reloaded.Profiles.Selected = Assert.Single(reloaded.Profiles.Items);
+        Assert.True(reloaded.Profiles.SelectedReplacesOriginals);
+        Assert.False(reloaded.UsesOverwriteOriginal);
+        reloaded.Profiles.ApplyCommand.Execute(null);
+        Assert.True(reloaded.UsesOverwriteOriginal);
+        Assert.Equal(CollisionPolicy.Overwrite, reloaded.CollisionPolicy);
         settings.Profiles.Selected = null;
         settings.Profiles.Name = "blog";
         settings.Quality = 50;
