@@ -46,6 +46,26 @@ public sealed class PhysicalInputDiscoveryTests : IDisposable
     }
 
     [Fact]
+    public void Discover_ignores_symbolic_linked_image_files()
+    {
+        var outside = Path.Combine(Path.GetTempPath(), $"piccompressor-outside-{Guid.NewGuid():N}.jpg");
+        File.WriteAllText(outside, "outside");
+        try
+        {
+            var link = Path.Combine(directory, "escape.jpg");
+            File.CreateSymbolicLink(link, outside);
+
+            var inputs = Comparer().Discover([directory], recursive: false, excludedDirectory: null);
+
+            Assert.DoesNotContain(inputs, input => input.Path == link);
+        }
+        finally
+        {
+            File.Delete(outside);
+        }
+    }
+
+    [Fact]
     public async Task DiscoverAsync_matches_the_synchronous_result_and_reports_size_and_progress()
     {
         File.WriteAllText(Path.Combine(directory, "sized.jpg"), "0123456789");

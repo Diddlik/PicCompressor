@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>PicCompressor</title>
+  <link rel="stylesheet" href="/app.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="PicCompressor Startseite">
+      <span class="brand-mark">&lt;&gt;</span>
+      <span>PicCompressor</span>
+    </a>
+    <div class="top-actions">
+      <span id="connection" class="pill">Verbinde …</span>
+      <button id="scan-button" class="button primary" type="button">Jetzt scannen</button>
+    </div>
+  </header>
+
+  <main class="shell">
+    <section class="hero">
+      <div>
+        <p class="eyebrow">SYNOLOGY · DOCKER · LOKAL</p>
+        <h1>Bilder automatisch komprimieren.</h1>
+        <p class="lede">Ordner überwachen, Qualität festlegen und den nächsten Lauf direkt auslösen — ohne Cloud-Upload.</p>
+      </div>
+      <div id="status-card" class="status-card" aria-live="polite">
+        <div class="status-row">
+          <span id="status-dot" class="status-dot"></span>
+          <div>
+            <strong id="status-title">Status wird geladen</strong>
+            <p id="status-detail">Bitte warten …</p>
+          </div>
+        </div>
+        <div class="metrics">
+          <div><span id="metric-success">0</span><small>Erfolgreich</small></div>
+          <div><span id="metric-unchanged">0</span><small>Unverändert</small></div>
+          <div><span id="metric-failed">0</span><small>Fehler</small></div>
+        </div>
+      </div>
+    </section>
+
+    <form id="config-form">
+      <section class="panel">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">AUTOMATIK</p>
+            <h2>Scan-Zeitplan</h2>
+          </div>
+          <span class="hint">Änderungen starten einen neuen Scan</span>
+        </div>
+        <div class="form-grid four">
+          <label>Modus
+            <select id="mode">
+              <option value="Interval">Intervall</option>
+              <option value="Watch">Sofort + Intervall</option>
+            </select>
+          </label>
+          <label>Intervall (Sekunden)
+            <input id="interval" type="number" min="1" max="86400" required>
+          </label>
+          <label>Datei stabil seit (Sek.)
+            <input id="stable" type="number" min="0" max="86400" required>
+          </label>
+          <label>Parallele Jobs
+            <input id="parallelism" type="number" min="1" max="4" required>
+          </label>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">KOMPRESSION</p>
+            <h2>Standardwerte</h2>
+          </div>
+          <span id="quality-value" class="quality-badge">80</span>
+        </div>
+        <div class="form-grid three">
+          <label class="wide">JPEG-Qualität
+            <input id="quality" type="range" min="1" max="100" value="80">
+          </label>
+          <label>Chroma
+            <select id="chroma">
+              <option value="420">4:2:0 · klein</option>
+              <option value="422">4:2:2</option>
+              <option value="440">4:4:0</option>
+              <option value="444">4:4:4 · höchste Farbe</option>
+            </select>
+          </label>
+          <label>EXIF
+            <select id="exif">
+              <option value="Remove">Entfernen</option>
+              <option value="Private">Private Daten entfernen</option>
+              <option value="Keep">Behalten</option>
+            </select>
+          </label>
+          <label>Mindest-Ersparnis (%)
+            <input id="savings" type="number" min="0" max="99">
+          </label>
+          <label>Größere Ausgabe
+            <select id="larger-output">
+              <option value="Discard">Verwerfen</option>
+              <option value="Keep">Behalten</option>
+            </select>
+          </label>
+          <label>Timeout (Sekunden)
+            <input id="timeout" type="number" min="0" max="86400">
+          </label>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">ORDNER</p>
+            <h2>Überwachte Verzeichnisse</h2>
+          </div>
+          <button id="add-folder" class="button ghost" type="button">+ Ordner</button>
+        </div>
+        <div id="folders" class="folder-list"></div>
+      </section>
+
+      <div id="message" class="message" hidden></div>
+      <div class="savebar">
+        <p>Alle Pfade beziehen sich auf die Docker-Mounts unter <code>/data</code>.</p>
+        <button id="save-button" class="button primary" type="submit">Konfiguration speichern</button>
+      </div>
+    </form>
+  </main>
+
+  <template id="folder-template">
+    <article class="folder-card">
+      <div class="folder-card-head">
+        <span class="folder-number">01</span>
+        <button class="remove-folder" type="button" aria-label="Ordner entfernen">Entfernen</button>
+      </div>
+      <div class="form-grid three">
+        <label>Name<input data-field="name" required pattern="[A-Za-z0-9._-]+"></label>
+        <label class="wide">Eingabe<input data-field="input" required placeholder="/data/photos"></label>
+        <label class="wide">Ausgabe<input data-field="output" required placeholder="/data/compressed"></label>
+        <label class="checkbox"><input data-field="recursive" type="checkbox"> Unterordner rekursiv</label>
+      </div>
+    </article>
+  </template>
+
+  <script src="/app.js" defer></script>
+</body>
+</html>

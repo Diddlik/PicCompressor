@@ -126,15 +126,26 @@ Build locally instead of pulling:
 docker build -f docker/Dockerfile -t piccompressor .
 ```
 
-The image expects the configuration at `/config/piccompressor.json`, the watched folders below
-`/data` and a writable `/state` for state, lock and log. See
-[docker/piccompressor.example.json](docker/piccompressor.example.json) for a complete file. Build
-and run the image with the UID/GID that owns the mounted folders; the container never runs as
-root. `--once` runs a single cycle over every folder and exits, which is the way to drive the same
-configuration from an external scheduler.
+The image starts the integrated web service and scan worker. Before starting it, set
+`PICCOMPRESSOR_WEB_PASSWORD` to a random password of at least 16 characters. The Compose default
+binds port 8080 only to `127.0.0.1`; configure a Synology reverse-proxy HTTPS address targeting
+`http://127.0.0.1:8080`, then sign in as `admin`. The web UI displays status and results, validates
+and atomically saves `/config/piccompressor.json`, and can request an immediate scan. If the file
+is missing, it starts with a safe example configuration.
+
+The image expects writable `/config`, watched folders below `/data`, and writable `/state` for scan
+state, locks, and history. See [docker/piccompressor.example.json](docker/piccompressor.example.json)
+for a complete file. Build and run the image with the UID/GID that owns the mounted folders; the
+container never runs as root.
+
+The web login uses HTTP Basic Authentication. Expose port 8080 only on a trusted LAN, or put it
+behind the Synology reverse proxy with HTTPS and additional authentication; never publish it
+unprotected to the internet. The container scans immediately at startup and then autonomously in
+`Interval` or `Watch` mode, so a DSM task scheduler is not required.
 
 Only `linux/amd64` is built and verified; `linux/arm64` is prepared through `TARGETARCH` but
-untested. The container runs the CLI, not the GUI.
+untested. The desktop GUI and web UI are separate applications; the container runs the web UI and
+scan worker together as one process.
 
 ## License
 

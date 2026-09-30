@@ -114,12 +114,25 @@ Lokal bauen statt ziehen:
 docker build -f docker/Dockerfile -t piccompressor .
 ```
 
-Das Image erwartet die Konfiguration unter `/config/piccompressor.json`, die überwachten Ordner
-unterhalb von `/data` und ein beschreibbares `/state` für Zustand, Lock und Log. Eine vollständige
-Datei steht in [docker/piccompressor.example.json](docker/piccompressor.example.json). Image und
-Container laufen mit der UID/GID, der die eingehängten Ordner gehören; im Container läuft nie
-`root`. `--once` führt genau einen Zyklus über alle Ordner aus und beendet sich — der Weg, dieselbe
-Konfiguration von einem externen Zeitplaner starten zu lassen.
+Das Image startet den integrierten Webdienst mit Scan-Worker. Setze vor dem Start
+`PICCOMPRESSOR_WEB_PASSWORD` (mindestens 16 Zeichen, besser ein langes zufälliges Passwort).
+Der Compose-Default bindet Port 8080 nur an `127.0.0.1`; richte im Synology Reverse Proxy eine
+HTTPS-Adresse auf `http://127.0.0.1:8080` ein und melde dich dort als `admin` an. Die
+Weboberfläche zeigt Status und Ergebnisse, validiert und speichert
+`/config/piccompressor.json` atomar und kann einen sofortigen Scan anfordern. Ohne vorhandene
+Datei startet sie mit einer sicheren Beispielkonfiguration.
+
+Das Image erwartet ein beschreibbares `/config`, die überwachten Ordner unterhalb von `/data` und
+ein beschreibbares `/state` für Zustand, Lock und Verlauf. Eine vollständige Datei steht in
+[docker/piccompressor.example.json](docker/piccompressor.example.json). Image und Container laufen
+mit der UID/GID, der die eingehängten Ordner gehören; im Container läuft nie `root`.
+
+Die Webanmeldung verwendet HTTP Basic Authentication. Port 8080 daher nur im vertrauenswürdigen
+LAN veröffentlichen oder über den Synology Reverse Proxy mit HTTPS und zusätzlicher Anmeldung
+bereitstellen; niemals ungeschützt aus dem Internet erreichbar machen. Der Container scannt beim
+Start sofort und danach selbstständig gemäß `Interval` oder `Watch`; ein DSM-Aufgabenplaner ist
+nicht erforderlich.
 
 Gebaut und geprüft ist nur `linux/amd64`; `linux/arm64` ist über `TARGETARCH` vorbereitet, aber
-ungeprüft. Im Container läuft die CLI, nicht die grafische Oberfläche.
+ungeprüft. Desktop-GUI und Weboberfläche sind getrennte Anwendungen; im Container laufen
+Weboberfläche und Scan-Worker gemeinsam als ein Prozess.

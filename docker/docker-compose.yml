@@ -19,8 +19,17 @@ services:
     container_name: piccompressor
     restart: unless-stopped
     user: "1000:1000"
+    environment:
+      # In einer .env-Datei neben dieser Compose-Datei setzen.
+      PICCOMPRESSOR__WEBPASSWORD: "${PICCOMPRESSOR_WEB_PASSWORD:?set PICCOMPRESSOR_WEB_PASSWORD}"
+    ports:
+      # Sicherer Default für Synology Reverse Proxy (HTTPS). Für direkten LAN-Zugriff bewusst
+      # auf <NAS-IP>:8080:8080 ändern; HTTP Basic ohne TLS schützt nicht vor Mitschneiden.
+      - "127.0.0.1:8080:8080"
     volumes:
-      - ./piccompressor.example.json:/config/piccompressor.json:ro
+      # Benanntes Volume: Docker übernimmt beim ersten Start die UID/GID des im Image
+      # vorbereiteten /config-Verzeichnisses, sodass die Weboberfläche sicher schreiben kann.
+      - piccompressor-config:/config
       - /srv/fotos:/data/fotos
       - /srv/fotos-komprimiert:/data/fotos-komprimiert
       - /srv/scans:/data/scans
@@ -40,4 +49,5 @@ services:
   #     - /var/run/docker.sock:/var/run/docker.sock
 
 volumes:
+  piccompressor-config:
   piccompressor-state:

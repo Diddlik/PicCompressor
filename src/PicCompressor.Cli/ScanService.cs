@@ -2,6 +2,7 @@ using System.Text.Json;
 using PicCompressor.Application;
 using PicCompressor.Domain;
 using PicCompressor.Infrastructure;
+using PicCompressor.Runtime;
 
 namespace PicCompressor.Cli;
 

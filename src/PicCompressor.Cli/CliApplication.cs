@@ -6,6 +6,7 @@ using PicCompressor.Domain;
 using PicCompressor.Engine.Jpegli;
 using PicCompressor.Infrastructure;
 using PicCompressor.NativeInterop;
+using PicCompressor.Runtime;
 
 namespace PicCompressor.Cli;
 

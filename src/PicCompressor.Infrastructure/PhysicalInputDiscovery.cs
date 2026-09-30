@@ -127,6 +127,18 @@ public sealed class PhysicalInputDiscovery(StringComparer pathComparer) : IInput
             return;
         }
 
+        try
+        {
+            if ((File.GetAttributes(canonicalPath) & FileAttributes.ReparsePoint) != 0)
+            {
+                return;
+            }
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            return;
+        }
+
         long size;
         DateTimeOffset lastWriteTimeUtc;
         try
