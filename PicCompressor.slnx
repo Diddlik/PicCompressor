@@ -8,6 +8,8 @@
     <Project Path="src/PicCompressor.Gui/PicCompressor.Gui.csproj" />
     <Project Path="src/PicCompressor.Infrastructure/PicCompressor.Infrastructure.csproj" />
     <Project Path="src/PicCompressor.NativeInterop/PicCompressor.NativeInterop.csproj" />
+    <Project Path="src/PicCompressor.Runtime/PicCompressor.Runtime.csproj" />
+    <Project Path="src/PicCompressor.Web/PicCompressor.Web.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/PicCompressor.Application.Tests/PicCompressor.Application.Tests.csproj" />
@@ -19,5 +21,6 @@
     <Project Path="tests/PicCompressor.Gui.ViewTests/PicCompressor.Gui.ViewTests.csproj" />
     <Project Path="tests/PicCompressor.Infrastructure.Tests/PicCompressor.Infrastructure.Tests.csproj" />
     <Project Path="tests/PicCompressor.NativeInterop.Tests/PicCompressor.NativeInterop.Tests.csproj" />
+    <Project Path="tests/PicCompressor.Web.Tests/PicCompressor.Web.Tests.csproj" />
   </Folder>
 </Solution>

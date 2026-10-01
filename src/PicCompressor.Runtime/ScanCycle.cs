@@ -3,9 +3,9 @@ using PicCompressor.Application;
 using PicCompressor.Domain;
 using PicCompressor.Infrastructure;
 
-namespace PicCompressor.Cli;
+namespace PicCompressor.Runtime;
 
-internal sealed record ScanCycleRequest(
+public sealed record ScanCycleRequest(
     IReadOnlyList<string> InputPaths,
     bool Recursive,
     CompressionBatchSettings Settings,
@@ -14,7 +14,7 @@ internal sealed record ScanCycleRequest(
     int Parallelism,
     bool DryRun = false);
 
-internal sealed record ScanCycleResult(
+public sealed record ScanCycleResult(
     IReadOnlyList<CompressionJobPlan> Plans,
     IReadOnlyList<CompressionExecutionResult> Results,
     ScanSelection Selection,
@@ -22,33 +22,32 @@ internal sealed record ScanCycleResult(
     string? HistoryWarning = null,
     string? StateWarning = null)
 {
-    internal IEnumerable<string> Warnings =>
+    public IEnumerable<string> Warnings =>
         new[] { HistoryWarning, StateWarning }.OfType<string>();
 }
 
 /// <summary>
-/// Ein Durchlauf des wiederkehrenden Scans über eine Eingabe (MP-005): Discovery, Zustandsabgleich,
-/// Planung, Ausführung, Verlauf und Zustand. Ein einzelner CLI-Lauf und jeder Zyklus des
-/// Dauerbetriebs (D-056) verwenden dieselbe Methode; es gibt keinen zweiten Verarbeitungspfad.
-/// Die teuren Bestandteile — Dateisystem, Inspector, Executor und damit die native Bibliothek —
-/// werden einmal aufgebaut und über die Lebensdauer des Prozesses wiederverwendet.
+/// Gemeinsamer Durchlauf für CLI und Web-Dienst: Discovery, Zustandsabgleich, Planung,
+/// Kompression sowie persistenter Verlauf und Scan-Zustand.
 /// </summary>
-internal sealed class ScanCycle(
+public sealed class ScanCycle(
     IFileSystem fileSystem,
-    PhysicalInputImageInspector inspector,
+    IInputImageInspector inspector,
     IInputDiscovery discovery,
     Lazy<CompressionExecutor> executor,
     StringComparer pathComparer,
     ICompressionHistoryStore? historyStore,
-    bool recordHistory)
+    bool recordHistory,
+    TimeProvider? timeProvider = null)
 {
+    private readonly TimeProvider clock = timeProvider ?? TimeProvider.System;
     private readonly CompressionJobFactory jobFactory = new(
         fileSystem,
         inspector,
         new InputValidationLimits(500 * 1024 * 1024, 250_000_000),
-        TimeProvider.System);
+        timeProvider ?? TimeProvider.System);
 
-    internal async Task<ScanCycleResult> RunAsync(
+    public async Task<ScanCycleResult> RunAsync(
         ScanCycleRequest request,
         CancellationToken cancellationToken)
     {
@@ -62,8 +61,6 @@ internal sealed class ScanCycle(
             return new([], [], empty, NoInputFound: true);
         }
 
-        // Wiederkehrender Scan (MP-005): unveränderte Eingaben mit gültiger Ausgabe werden
-        // übersprungen, noch wachsende Dateien bleiben für einen späteren Lauf liegen.
         var stateStore = request.StatePath is null ? null : new JsonScanStateStore(request.StatePath);
         var previousState = stateStore?.Load() ?? [];
         var fingerprint = IncrementalScan.Fingerprint(request.Settings);
@@ -72,7 +69,7 @@ internal sealed class ScanCycle(
             previousState,
             fingerprint,
             TimeSpan.FromSeconds(request.StableForSeconds),
-            DateTimeOffset.UtcNow,
+            clock.GetUtcNow(),
             fileSystem,
             pathComparer);
         var replaceableOutputs = new Dictionary<string, string>(pathComparer);
@@ -111,11 +108,6 @@ internal sealed class ScanCycle(
         return new(plans, results, selection, NoInputFound: false, historyWarning, stateWarning);
     }
 
-    /// <summary>
-    /// Records finished jobs in the shared local history. A persistence failure
-    /// must not turn a correctly encoded image into a compression error, so it
-    /// is reported as a separate warning instead (requirement 14.4).
-    /// </summary>
     private async Task<string?> RecordHistoryAsync(IReadOnlyList<CompressionExecutionResult> results)
     {
         if (results.Count == 0)
@@ -129,8 +121,6 @@ internal sealed class ScanCycle(
                 ?? new SqliteCompressionHistoryStore(ApplicationDataPaths.HistoryDatabasePath);
             foreach (var result in results)
             {
-                // The history stores the file name only; absolute paths count as
-                // potentially sensitive data (requirement 13.1).
                 await store.AppendAsync(
                     new CompressionHistoryEntry(
                         result.EndedAt,
@@ -155,13 +145,6 @@ internal sealed class ScanCycle(
         }
     }
 
-    /// <summary>
-    /// Schreibt den Zustand des wiederkehrenden Scans (MP-005). Aufgezeichnet werden die
-    /// unveränderten Eingaben dieses Laufs und jeder erfolgreiche Job; ein Erfolg ohne Ausgabe
-    /// wird mit leerem Ausgabepfad vermerkt, damit er nicht in jedem Lauf erneut kodiert wird.
-    /// Ein Schreibfehler ist wie beim Verlauf eine eigene Warnung und kein Kompressionsfehler
-    /// (Abschnitt 14.4).
-    /// </summary>
     private string? SaveScanState(
         JsonScanStateStore? stateStore,
         IReadOnlyList<ScanStateEntry> previousState,

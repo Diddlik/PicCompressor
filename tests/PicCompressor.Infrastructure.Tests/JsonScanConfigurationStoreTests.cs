@@ -143,5 +143,41 @@ public sealed class JsonScanConfigurationStoreTests : IDisposable
         Assert.Throws<InvalidDataException>(() => store.Load());
     }
 
+    [Fact]
+    public void Save_atomically_round_trips_the_configuration()
+    {
+        var path = Path.Combine(directory, "saved.json");
+        var store = new JsonScanConfigurationStore(path);
+        var configuration = new ScanConfiguration(
+            SchemaVersion: 1,
+            Mode: ScanMode.Interval,
+            IntervalSeconds: 300,
+            Defaults: new(Quality: 82, ChromaSubsampling: JpegliChromaSubsampling.Subsampling420),
+            Folders: [new(Name: "photos", Input: "/data/photos", Output: "/data/output")]);
+
+        store.Save(configuration);
+
+        var loaded = store.Load();
+        Assert.Equal(300, loaded.IntervalSeconds);
+        Assert.Equal(82, loaded.Defaults!.Quality);
+        Assert.Equal(JpegliChromaSubsampling.Subsampling420, loaded.Defaults.ChromaSubsampling);
+        Assert.Equal("photos", Assert.Single(loaded.Folders!).Name);
+        Assert.Empty(Directory.GetFiles(directory, "*.tmp"));
+    }
+
+    [Fact]
+    public void Serialize_uses_the_human_friendly_chroma_value()
+    {
+        var store = new JsonScanConfigurationStore(Path.Combine(directory, "saved.json"));
+        var configuration = new ScanConfiguration(
+            SchemaVersion: 1,
+            Defaults: new(ChromaSubsampling: JpegliChromaSubsampling.Subsampling444),
+            Folders: [new(Name: "photos", Input: "/data/photos", Output: "/data/output")]);
+
+        var json = store.Serialize(configuration);
+
+        Assert.Contains("\"chromaSubsampling\": \"444\"", json, StringComparison.Ordinal);
+    }
+
     public void Dispose() => Directory.Delete(directory, recursive: true);
 }

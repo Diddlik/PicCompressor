@@ -1,8 +1,8 @@
 # syntax=docker/dockerfile:1
-# Baut die selbstenthaltende PicCompressor-CLI samt nativem Jpegli-Wrapper und liefert sie als
-# Dauerbetrieb-Container aus (D-055, D-056). Der Kontext ist das Repository-Wurzelverzeichnis:
+# Baut den selbstenthaltenden PicCompressor-Webdienst samt nativem Jpegli-Wrapper und liefert ihn
+# als Synology-tauglichen Dauerbetrieb-Container aus. Der Kontext ist das Repository-Wurzelverzeichnis:
 #   docker build -f docker/Dockerfile -t piccompressor .
-# Die GUI ist nicht Teil des Images; im Container läuft die CLI.
+# Die Desktop-GUI ist nicht Teil des Images; Browseroberfläche und Scan-Worker laufen gemeinsam.
 # Match global.json: the floating 10.0 image can move to an incompatible SDK feature band.
 ARG DOTNET_VERSION=10.0.302
 
@@ -35,14 +35,14 @@ RUN set -eu; \
 RUN set -eu; \
     architecture="$(cat /tmp/architecture)"; \
     runtime="linux-$architecture"; \
-    dotnet publish src/PicCompressor.Cli/PicCompressor.Cli.csproj \
+    dotnet publish src/PicCompressor.Web/PicCompressor.Web.csproj \
         --configuration Release \
         --runtime "$runtime" \
         --self-contained true \
         --output /app \
         "-p:PicCompressorTargetRid=$runtime" \
         "-p:PicCompressorNativeLibrary=/src/artifacts/native/$runtime/piccompressor_native.so"; \
-    test -x /app/PicCompressor.Cli; \
+    test -x /app/PicCompressor.Web; \
     test -f /app/piccompressor_native.so; \
     jpegli="/src/native/build-$runtime/_deps/jpegli-src"; \
     mkdir -p /app/licenses; \
@@ -67,12 +67,16 @@ ARG GID=1000
 RUN groupadd --gid "$GID" piccompressor \
     && useradd --uid "$UID" --gid "$GID" --create-home --shell /usr/sbin/nologin piccompressor \
     && mkdir -p /config /data /state \
-    && chown piccompressor:piccompressor /state
+    && chown piccompressor:piccompressor /config /state
 
 COPY --from=build /app /app
 USER piccompressor
 VOLUME ["/config", "/data", "/state"]
+EXPOSE 8080
+ENV ASPNETCORE_URLS=http://0.0.0.0:8080 \
+    PicCompressor__ConfigurationPath=/config/piccompressor.json \
+    PicCompressor__DataRoot=/data \
+    PicCompressor__StateRoot=/state
 
-# Exec-Form: die CLI ist PID 1 und empfängt SIGTERM von `docker stop` direkt (D-057).
-ENTRYPOINT ["/app/PicCompressor.Cli"]
-CMD ["--config", "/config/piccompressor.json"]
+# Exec-Form: Kestrel und der Scan-Worker sind gemeinsam PID 1 und empfangen SIGTERM direkt.
+ENTRYPOINT ["/app/PicCompressor.Web"]

@@ -16,6 +16,7 @@ public sealed class JsonScanConfigurationStore(string path)
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         PropertyNameCaseInsensitive = true,
+        WriteIndented = true,
         ReadCommentHandling = JsonCommentHandling.Skip,
         AllowTrailingCommas = true,
         UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow,
@@ -70,15 +71,54 @@ public sealed class JsonScanConfigurationStore(string path)
     }
 
     /// <summary>
+    /// Serialisiert dieselbe strikt gelesene Struktur in die menschenlesbare Konfigurationsform.
+    /// </summary>
+    public string Serialize(ScanConfiguration configuration)
+    {
+        ArgumentNullException.ThrowIfNull(configuration);
+        return JsonSerializer.Serialize(configuration, SerializerOptions) + Environment.NewLine;
+    }
+
+    /// <summary>
+    /// Veröffentlicht die Konfiguration atomar: erst eine vollständige temporäre Datei im selben
+    /// Verzeichnis, dann ein einzelnes Ersetzen. Ein abgebrochener Schreibvorgang lässt die letzte
+    /// gültige Konfiguration unberührt.
+    /// </summary>
+    public void Save(ScanConfiguration configuration)
+    {
+        var directory = Path.GetDirectoryName(path)
+            ?? throw new InvalidOperationException("Configuration path has no directory.");
+        Directory.CreateDirectory(directory);
+        var temporaryPath = Path.Combine(directory, $".{Path.GetFileName(path)}.{Guid.NewGuid():N}.tmp");
+        try
+        {
+            File.WriteAllText(temporaryPath, Serialize(configuration));
+            File.Move(temporaryPath, path, overwrite: true);
+        }
+        finally
+        {
+            if (File.Exists(temporaryPath))
+            {
+                File.Delete(temporaryPath);
+            }
+        }
+    }
+
+    /// <summary>
     /// Nimmt neben den Enum-Namen auch die in der Bildbearbeitung üblichen Schreibweisen
     /// <c>444</c>, <c>440</c>, <c>422</c> und <c>420</c> an; eine von Hand gepflegte
     /// Konfigurationsdatei soll nicht <c>Subsampling420</c> verlangen.
     /// </summary>
-    private sealed class ChromaSubsamplingConverter : JsonConverter<JpegliChromaSubsampling>
+    public sealed class ChromaSubsamplingConverter : JsonConverter<JpegliChromaSubsampling>
     {
         public override JpegliChromaSubsampling Read(
             ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
+            if (reader.TokenType is not JsonTokenType.String)
+            {
+                throw new JsonException("chromaSubsampling must be a string.");
+            }
+
             var text = reader.GetString() ?? string.Empty;
             return text switch
             {
@@ -96,6 +136,14 @@ public sealed class JsonScanConfigurationStore(string path)
 
         public override void Write(
             Utf8JsonWriter writer, JpegliChromaSubsampling value, JsonSerializerOptions options) =>
-            writer.WriteStringValue(value.ToString());
+            writer.WriteStringValue(
+                value switch
+                {
+                    JpegliChromaSubsampling.Subsampling444 => "444",
+                    JpegliChromaSubsampling.Subsampling440 => "440",
+                    JpegliChromaSubsampling.Subsampling422 => "422",
+                    JpegliChromaSubsampling.Subsampling420 => "420",
+                    _ => throw new JsonException($"Unsupported chroma subsampling value: {value}")
+                });
     }
 }

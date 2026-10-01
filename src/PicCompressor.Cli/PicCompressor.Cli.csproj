@@ -9,6 +9,7 @@
       <AdditionalProperties
           Condition="'$(RuntimeIdentifier)' != ''">PicCompressorTargetRid=$(RuntimeIdentifier)</AdditionalProperties>
     </ProjectReference>
+    <ProjectReference Include="..\PicCompressor.Runtime\PicCompressor.Runtime.csproj" />
   </ItemGroup>
 
   <ItemGroup>

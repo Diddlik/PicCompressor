@@ -68,4 +68,28 @@ jobs:
         run: |
           set -eu
           image="$(printf '%s' '${{ steps.metadata.outputs.tags }}' | head -n 1)"
-          docker run --rm "$image" --help
+          mkdir -p "${RUNNER_TEMP}/piccompressor-config" "${RUNNER_TEMP}/piccompressor-state"
+          chmod 0777 "${RUNNER_TEMP}/piccompressor-config" "${RUNNER_TEMP}/piccompressor-state"
+          container="$(docker run --detach --rm \
+            -e PICCOMPRESSOR__WEBPASSWORD=ci-smoke-test-password \
+            -p 127.0.0.1:18080:8080 \
+            -v "${RUNNER_TEMP}/piccompressor-config:/config" \
+            -v "${RUNNER_TEMP}/piccompressor-state:/state" \
+            "$image")"
+          trap 'docker stop "$container"' EXIT
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:18080/health/live >/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+          curl --fail --silent http://127.0.0.1:18080/health/live >/dev/null || {
+            docker logs "$container"
+            exit 1
+          }
+          test "$(curl --silent --output /dev/null --write-out '%{http_code}' \
+            http://127.0.0.1:18080/api/config)" = "401"
+          curl --fail --silent --user admin:ci-smoke-test-password \
+            http://127.0.0.1:18080/health/ready >/dev/null
+          curl --fail --silent --user admin:ci-smoke-test-password \
+            http://127.0.0.1:18080/api/config >/dev/null
