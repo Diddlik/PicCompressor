@@ -93,3 +93,6 @@ jobs:
             http://127.0.0.1:18080/health/ready >/dev/null
           curl --fail --silent --user admin:ci-smoke-test-password \
             http://127.0.0.1:18080/api/config >/dev/null
+          # Die Oberfläche muss ausgeliefert werden, nicht nur die API.
+          curl --fail --silent --user admin:ci-smoke-test-password \
+            http://127.0.0.1:18080/ | grep --quiet '<title>PicCompressor</title>'
