@@ -82,7 +82,7 @@ function fill(document) {
   // Ein leerer Zusatz übernimmt den Originalnamen in den Zielordner, wie in der Desktop-GUI.
   const suffix = defaults.suffix ?? "_compressed";
   $("#keep-names").checked = suffix === "";
-  $("#suffix").value = suffix || "_compressed";
+  $("#suffix").value = suffix;
   applyKeepNames();
   folders.replaceChildren();
   (configuration.folders || []).forEach(addFolder);
@@ -122,7 +122,8 @@ function collect() {
       collision: defaults.collision || "Skip",
       largerOutput: $("#larger-output").value,
       minSavingsPercent: Number($("#savings").value),
-      suffix: $("#keep-names").checked ? "" : $("#suffix").value.trim() || "_compressed"
+      // Ein geleertes Feld bedeutet ebenfalls „Originalnamen behalten“.
+      suffix: $("#keep-names").checked ? "" : $("#suffix").value.trim()
     },
     folders: folderValues
   };
