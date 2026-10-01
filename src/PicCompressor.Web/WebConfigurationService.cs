@@ -136,7 +136,10 @@ public sealed class WebConfigurationService
             foreach (var folder in resolved.Folders)
             {
                 RequireBelow(folder.InputPath, dataRoot, $"Folder '{folder.Name}' input", errors);
-                RequireBelow(folder.OutputDirectory, dataRoot, $"Folder '{folder.Name}' output", errors);
+                if (folder.OutputDirectory is not null)
+                {
+                    RequireBelow(folder.OutputDirectory, dataRoot, $"Folder '{folder.Name}' output", errors);
+                }
                 RequireBelow(folder.StatePath, stateRoot, $"Folder '{folder.Name}' state", errors);
             }
 

@@ -248,7 +248,7 @@ internal sealed class ScanService(
     private void OnChanged(ResolvedScanFolder folder, string path)
     {
         // Die eigene Ausgabe darf keinen weiteren Zyklus auslösen (MP-005).
-        if (IsUnder(path, folder.OutputDirectory))
+        if (folder.OutputDirectory is not null && IsUnder(path, folder.OutputDirectory))
         {
             return;
         }

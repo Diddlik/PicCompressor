@@ -235,5 +235,60 @@ public sealed class ScanServiceCliTests : IDisposable
         Assert.Equal(2, run.ExitCode);
     }
 
+    [Fact]
+    public async Task A_folder_that_replaces_its_originals_compresses_each_jpeg_once_in_place()
+    {
+        var photo = Path_("in-a", "photo.jpg");
+        await WriteUnmarkedJpegAsync(photo);
+        var png = File.ReadAllBytes(Path_("in-a", "a.png"));
+        var configuration = WriteConfiguration(
+            $$"""
+            {
+              "schemaVersion": 1,
+              "parallelism": 1,
+              "stateDirectory": {{Quote(Path_("state"))}},
+              "defaults": { "quality": 80, "largerOutput": "Keep", "collision": "Skip" },
+              "folders": [
+                { "name": "a", "input": {{Quote(Path_("in-a"))}}, "overwriteOriginal": true }
+              ]
+            }
+            """);
+
+        var first = await RunAsync(["--config", configuration, "--once"]);
+
+        Assert.Equal(0, first.ExitCode);
+        // Das Original trägt jetzt den Provenienz-Marker; PNG und Ordnerstruktur bleiben unberührt.
+        Assert.True(new PhysicalInputImageInspector().Inspect(photo).AlreadyOptimized, first.Error);
+        Assert.Equal(png, File.ReadAllBytes(Path_("in-a", "a.png")));
+        Assert.Equal(["a.png", "photo.jpg"], Directory.GetFiles(Path_("in-a")).Select(Path.GetFileName).Order());
+        var replaced = File.ReadAllBytes(photo);
+        // Der Zustand hält die ersetzte Datei fest, sonst gälte sie im nächsten Lauf als geändert.
+        var entry = Assert.Single(new JsonScanStateStore(Path_("state", "a.json")).Load());
+        Assert.Equal(replaced.LongLength, entry.InputSizeBytes);
+        Assert.Equal(File.GetLastWriteTimeUtc(photo).Ticks, entry.InputModifiedUtcTicks);
+
+        var second = await RunAsync(["--config", configuration, "--once"]);
+
+        Assert.Equal(0, second.ExitCode);
+        Assert.Equal(replaced, File.ReadAllBytes(photo));
+    }
+
+    /// <summary>Erzeugt ein JPEG ohne Provenienz-Marker, wie es eine Kamera liefern würde.</summary>
+    private async Task WriteUnmarkedJpegAsync(string path)
+    {
+        var source = Path_("source", "photo.png");
+        Directory.CreateDirectory(Path_("source"));
+        File.WriteAllBytes(source, Convert.FromBase64String(OnePixelPng));
+        var run = await RunAsync(
+            [source, "--output-dir", Path_("source"), "--larger-output", "keep", "--no-history"]);
+        Assert.Equal(0, run.ExitCode);
+        var jpeg = File.ReadAllBytes(Path_("source", "photo_compressed.jpg"));
+        // Der Marker liegt als COM-Segment direkt hinter dem SOI.
+        Assert.Equal([0xFF, 0xFE], jpeg[2..4]);
+        var segmentEnd = 4 + ((jpeg[4] << 8) | jpeg[5]);
+        File.WriteAllBytes(path, [.. jpeg[..2], .. jpeg[segmentEnd..]]);
+        Assert.False(new PhysicalInputImageInspector().Inspect(path).AlreadyOptimized);
+    }
+
     public void Dispose() => Directory.Delete(directory, recursive: true);
 }

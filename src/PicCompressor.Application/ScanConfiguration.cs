@@ -33,6 +33,8 @@ public sealed record ScanCompressionSettings(
 /// <summary>
 /// Ein überwachter Ordner. <see cref="Name"/> benennt ihn in Meldungen und bildet den Vorgabenamen
 /// seiner Zustandsdatei, weshalb er auf dateinamenstaugliche Zeichen begrenzt ist.
+/// <see cref="OverwriteOriginal"/> ersetzt die JPEG-Originale (7.2, D-060); dann entfällt
+/// <see cref="Output"/>.
 /// </summary>
 public sealed record ScanFolderConfiguration(
     string? Name = null,
@@ -40,7 +42,8 @@ public sealed record ScanFolderConfiguration(
     string? Output = null,
     bool? Recursive = null,
     string? StatePath = null,
-    ScanCompressionSettings? Settings = null);
+    ScanCompressionSettings? Settings = null,
+    bool? OverwriteOriginal = null);
 
 /// <summary>
 /// Die gelesene Konfigurationsdatei des Dauerbetriebs (D-055). Sie wird strikt geprüft: ein
@@ -65,11 +68,14 @@ public sealed record ScanConfiguration(
     public const int CurrentSchemaVersion = 1;
 }
 
-/// <summary>Ein geprüfter Ordner mit seinen wirksamen Einstellungen.</summary>
+/// <summary>
+/// Ein geprüfter Ordner mit seinen wirksamen Einstellungen. <see cref="OutputDirectory"/> ist
+/// genau dann <c>null</c>, wenn der Ordner seine Originale ersetzt.
+/// </summary>
 public sealed record ResolvedScanFolder(
     string Name,
     string InputPath,
-    string OutputDirectory,
+    string? OutputDirectory,
     bool Recursive,
     string StatePath,
     CompressionBatchSettings Settings);
@@ -206,12 +212,21 @@ public static class ScanConfigurationResolver
 
         var input = Trimmed(folder.Input);
         var output = Trimmed(folder.Output);
+        var overwriteOriginal = folder.OverwriteOriginal ?? false;
         if (input is null)
         {
             errors.Add($"{label}: \"input\" is required.");
         }
 
-        if (output is null)
+        if (overwriteOriginal)
+        {
+            // Ein zusätzlicher Ausgabeordner wäre widersprüchlich: das Ziel ist die Eingabe selbst.
+            if (output is not null)
+            {
+                errors.Add($"{label}: \"output\" must be omitted when \"overwriteOriginal\" is true.");
+            }
+        }
+        else if (output is null)
         {
             errors.Add($"{label}: \"output\" is required.");
         }
@@ -228,8 +243,8 @@ public static class ScanConfigurationResolver
             }
         }
 
-        var settings = ResolveSettings(defaults, folder.Settings, output, label, errors);
-        if (name is null || input is null || output is null || settings is null)
+        var settings = ResolveSettings(defaults, folder.Settings, output, overwriteOriginal, label, errors);
+        if (name is null || input is null || settings is null)
         {
             return null;
         }
@@ -248,6 +263,7 @@ public static class ScanConfigurationResolver
         ScanCompressionSettings? defaults,
         ScanCompressionSettings? overrides,
         string? outputDirectory,
+        bool overwriteOriginal,
         string label,
         List<string> errors)
     {
@@ -261,7 +277,7 @@ public static class ScanConfigurationResolver
             $"{label} minSavingsPercent", errors);
         var alphaBackground = ResolveColor(
             overrides?.AlphaBackground ?? defaults?.AlphaBackground, label, errors);
-        if (alphaBackground is null || outputDirectory is null)
+        if (alphaBackground is null || (outputDirectory is null && !overwriteOriginal))
         {
             return null;
         }
@@ -276,11 +292,15 @@ public static class ScanConfigurationResolver
             overrides?.Exif ?? defaults?.Exif ?? ExifPolicy.Remove,
             overrides?.ColorProfile ?? defaults?.ColorProfile ?? ColorProfilePolicy.Preserve,
             alphaBackground.Value,
-            overrides?.Collision ?? defaults?.Collision ?? CollisionPolicy.Skip,
+            // Die Originalersetzung ist die ausdrückliche Freigabe für `overwrite` (D-050).
+            overwriteOriginal
+                ? CollisionPolicy.Overwrite
+                : overrides?.Collision ?? defaults?.Collision ?? CollisionPolicy.Skip,
             overrides?.LargerOutput ?? defaults?.LargerOutput ?? LargerOutputPolicy.Discard,
             outputDirectory,
             overrides?.Suffix ?? defaults?.Suffix ?? "_compressed",
-            minimumSavings);
+            minimumSavings,
+            overwriteOriginal);
     }
 
     private static RgbColor? ResolveColor(string? value, string label, List<string> errors)

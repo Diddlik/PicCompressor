@@ -33,12 +33,25 @@ function addFolder(value = {}) {
   node.querySelector('[data-field="input"]').value = value.input || "";
   node.querySelector('[data-field="output"]').value = value.output || "";
   node.querySelector('[data-field="recursive"]').checked = value.recursive !== false;
+  const overwrite = node.querySelector('[data-field="overwriteOriginal"]');
+  overwrite.checked = value.overwriteOriginal === true;
+  overwrite.addEventListener("change", () => applyOverwrite(node));
+  applyOverwrite(node);
   node.querySelector(".remove-folder").addEventListener("click", () => {
     node.remove();
     numberFolders();
   });
   folders.append(node);
   numberFolders();
+}
+
+// Beim Ersetzen der Originale ist die Eingabe zugleich das Ziel; ein Ausgabeordner entfällt.
+function applyOverwrite(node) {
+  const overwrite = node.querySelector('[data-field="overwriteOriginal"]').checked;
+  const output = node.querySelector('[data-field="output"]');
+  output.disabled = overwrite;
+  output.required = !overwrite;
+  node.querySelector(".overwrite-warning").hidden = !overwrite;
 }
 
 function numberFolders() {
@@ -68,13 +81,17 @@ function fill(document) {
 }
 
 function collect() {
-  const folderValues = [...folders.children].map((card) => ({
-    ...card._configuration,
-    name: card.querySelector('[data-field="name"]').value.trim(),
-    input: card.querySelector('[data-field="input"]').value.trim(),
-    output: card.querySelector('[data-field="output"]').value.trim(),
-    recursive: card.querySelector('[data-field="recursive"]').checked
-  }));
+  const folderValues = [...folders.children].map((card) => {
+    const overwrite = card.querySelector('[data-field="overwriteOriginal"]').checked;
+    return {
+      ...card._configuration,
+      name: card.querySelector('[data-field="name"]').value.trim(),
+      input: card.querySelector('[data-field="input"]').value.trim(),
+      output: overwrite ? undefined : card.querySelector('[data-field="output"]').value.trim(),
+      recursive: card.querySelector('[data-field="recursive"]').checked,
+      overwriteOriginal: overwrite || undefined
+    };
+  });
   const defaults = configuration?.defaults || {};
   return {
     ...configuration,

@@ -122,6 +122,12 @@ Weboberfläche zeigt Status und Ergebnisse, validiert und speichert
 `/config/piccompressor.json` atomar und kann einen sofortigen Scan anfordern. Ohne vorhandene
 Datei startet sie mit einer sicheren Beispielkonfiguration.
 
+Ein Ordner kann statt eines Ausgabeordners seine JPEG-Originale ersetzen: in der Weboberfläche
+über „Originale ersetzen“, in der Datei mit `"overwriteOriginal": true` und ohne `output`. Das
+Original wird erst nach erfolgreicher Validierung ersetzt; ein Rückgängig gibt es nicht. PNG-Dateien
+bleiben dabei unberührt, und bereits optimierte Dateien werden am Provenienz-Marker erkannt und
+nicht erneut komprimiert.
+
 Das Image erwartet ein beschreibbares `/config`, die überwachten Ordner unterhalb von `/data` und
 ein beschreibbares `/state` für Zustand, Lock und Verlauf. Eine vollständige Datei steht in
 [docker/piccompressor.example.json](docker/piccompressor.example.json). Image und Container laufen

@@ -133,6 +133,11 @@ binds port 8080 only to `127.0.0.1`; configure a Synology reverse-proxy HTTPS ad
 and atomically saves `/config/piccompressor.json`, and can request an immediate scan. If the file
 is missing, it starts with a safe example configuration.
 
+Instead of an output folder, a folder can replace its JPEG originals: tick "Originale ersetzen" in
+the web UI, or set `"overwriteOriginal": true` and omit `output` in the file. The original is only
+replaced after successful validation, and there is no undo. PNG files are left untouched, and files
+already optimized are recognized by their provenance marker and not compressed again.
+
 The image expects writable `/config`, watched folders below `/data`, and writable `/state` for scan
 state, locks, and history. See [docker/piccompressor.example.json](docker/piccompressor.example.json)
 for a complete file. Build and run the image with the UID/GID that owns the mounted folders; the
