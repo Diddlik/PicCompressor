@@ -117,6 +117,33 @@ public sealed class ScanConfigurationTests
         Assert.Contains(resolution.Errors, error => error.Contains("differ", StringComparison.Ordinal));
     }
 
+    [Fact]
+    public void A_folder_that_replaces_its_originals_needs_no_output_and_forces_overwrite()
+    {
+        var resolution = Resolve(
+            new ScanConfiguration(
+                ScanConfiguration.CurrentSchemaVersion,
+                Defaults: new(Collision: CollisionPolicy.Skip),
+                Folders: [new("fotos", "/data/in", OverwriteOriginal: true)]));
+
+        var folder = Assert.Single(resolution.Configuration!.Folders);
+        Assert.Null(folder.OutputDirectory);
+        Assert.True(folder.Settings.OverwriteOriginal);
+        Assert.Null(folder.Settings.OutputDirectory);
+        // Die Originalersetzung ist die ausdrückliche Freigabe; ein globales `skip` gilt hier nicht.
+        Assert.Equal(CollisionPolicy.Overwrite, folder.Settings.CollisionPolicy);
+    }
+
+    [Fact]
+    public void A_folder_that_replaces_its_originals_rejects_an_output()
+    {
+        var resolution = Resolve(
+            WithFolders(new ScanFolderConfiguration("fotos", "/data/in", "/data/out", OverwriteOriginal: true)));
+
+        Assert.Null(resolution.Configuration);
+        Assert.Contains(resolution.Errors, error => error.Contains("omitted", StringComparison.Ordinal));
+    }
+
     [Theory]
     [InlineData("../escape")]
     [InlineData("sub/folder")]

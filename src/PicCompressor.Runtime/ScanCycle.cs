@@ -56,6 +56,17 @@ public sealed class ScanCycle(
             request.InputPaths,
             request.Recursive,
             request.Settings.OutputDirectory);
+        if (request.Settings.OverwriteOriginal)
+        {
+            // Nur JPEG-Originale sind ersetzbar (D-050). PNG-Dateien bleiben unberührt, statt bei
+            // jedem Lauf erneut als Fehler zu erscheinen.
+            discoveredInputs = discoveredInputs
+                .Where(input => Path.GetExtension(input.Path) is var extension
+                    && (extension.Equals(".jpg", StringComparison.OrdinalIgnoreCase)
+                        || extension.Equals(".jpeg", StringComparison.OrdinalIgnoreCase)))
+                .ToArray();
+        }
+
         if (discoveredInputs.Count == 0)
         {
             return new([], [], empty, NoInputFound: true);
@@ -169,13 +180,25 @@ public sealed class ScanCycle(
         {
             if (inputsByPath.TryGetValue(result.InputPath, out var input))
             {
-                current.Add(
-                    new(
-                        input.Path,
-                        input.FileSizeBytes,
-                        input.LastWriteTimeUtc.UtcTicks,
-                        fingerprint,
-                        result.OutputPublished ? result.OutputPath : ""));
+                var size = input.FileSizeBytes;
+                var modifiedTicks = input.LastWriteTimeUtc.UtcTicks;
+                var output = result.OutputPublished ? result.OutputPath : "";
+                if (output.Length > 0 && fileSystem.PathsEqual(output, input.Path))
+                {
+                    // Das Original wurde ersetzt: der Zustand hält die neue Datei fest, sonst gälte
+                    // sie im nächsten Lauf als geändert. Ziel ist dann die Eingabe selbst.
+                    // Verschwindet sie zwischenzeitlich, prüft der nächste Lauf sie erneut.
+                    var replaced = new FileInfo(input.Path);
+                    if (replaced.Exists)
+                    {
+                        size = replaced.Length;
+                        modifiedTicks = replaced.LastWriteTimeUtc.Ticks;
+                    }
+
+                    output = "";
+                }
+
+                current.Add(new(input.Path, size, modifiedTicks, fingerprint, output));
             }
         }
 

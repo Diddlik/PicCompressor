@@ -142,7 +142,9 @@
         <label class="wide">Eingabe<input data-field="input" required placeholder="/data/photos"></label>
         <label class="wide">Ausgabe<input data-field="output" required placeholder="/data/compressed"></label>
         <label class="checkbox"><input data-field="recursive" type="checkbox"> Unterordner rekursiv</label>
+        <label class="checkbox"><input data-field="overwriteOriginal" type="checkbox"> Originale ersetzen</label>
       </div>
+      <p class="overwrite-warning" role="alert" hidden>Achtung: Die JPEG-Originale werden durch die komprimierte Fassung ersetzt. Es gibt kein Rückgängig. PNG-Dateien bleiben unberührt.</p>
     </article>
   </template>
 
