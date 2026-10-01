@@ -135,6 +135,27 @@ public sealed class ScanConfigurationTests
     }
 
     [Fact]
+    public void An_empty_suffix_keeps_the_original_name()
+    {
+        var resolution = Resolve(
+            new ScanConfiguration(
+                ScanConfiguration.CurrentSchemaVersion,
+                Defaults: new(Suffix: ""),
+                Folders: [Folder()]));
+
+        Assert.Equal("", Assert.Single(resolution.Configuration!.Folders).Settings.Suffix);
+    }
+
+    [Fact]
+    public void A_suffix_with_a_path_separator_is_rejected()
+    {
+        var resolution = Resolve(WithFolders(Folder(settings: new(Suffix: "/x"))));
+
+        Assert.Null(resolution.Configuration);
+        Assert.Contains(resolution.Errors, error => error.Contains("suffix", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void A_folder_that_replaces_its_originals_rejects_an_output()
     {
         var resolution = Resolve(

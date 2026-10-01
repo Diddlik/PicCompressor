@@ -5,9 +5,7 @@ using PicCompressor.Application;
 using PicCompressor.Infrastructure;
 using PicCompressor.Web;
 
-// Die Oberfläche liegt neben der Programmdatei; das Arbeitsverzeichnis des Containers ist `/`.
-var builder = WebApplication.CreateBuilder(
-    new WebApplicationOptions { Args = args, ContentRootPath = AppContext.BaseDirectory });
+var builder = WebApplication.CreateBuilder(args);
 builder.Services.ConfigureHttpJsonOptions(
     options =>
     {

@@ -277,6 +277,13 @@ public static class ScanConfigurationResolver
             $"{label} minSavingsPercent", errors);
         var alphaBackground = ResolveColor(
             overrides?.AlphaBackground ?? defaults?.AlphaBackground, label, errors);
+        // Ein leerer Zusatz übernimmt den Originalnamen in den Zielordner.
+        var suffix = overrides?.Suffix ?? defaults?.Suffix ?? "_compressed";
+        if (suffix.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0 || suffix.Contains('/'))
+        {
+            errors.Add($"{label} suffix contains characters that are not allowed in file names: {suffix}");
+            return null;
+        }
         if (alphaBackground is null || (outputDirectory is null && !overwriteOriginal))
         {
             return null;
@@ -298,7 +305,7 @@ public static class ScanConfigurationResolver
                 : overrides?.Collision ?? defaults?.Collision ?? CollisionPolicy.Skip,
             overrides?.LargerOutput ?? defaults?.LargerOutput ?? LargerOutputPolicy.Discard,
             outputDirectory,
-            overrides?.Suffix ?? defaults?.Suffix ?? "_compressed",
+            suffix,
             minimumSavings,
             overwriteOriginal);
     }

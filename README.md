@@ -138,6 +138,10 @@ the web UI, or set `"overwriteOriginal": true` and omit `output` in the file. Th
 replaced after successful validation, and there is no undo. PNG files are left untouched, and files
 already optimized are recognized by their provenance marker and not compressed again.
 
+"Originalnamen behalten" in the web UI (`"suffix": ""` in the file) stores the compressed file under
+its original name in the output folder, like the custom target folder of the desktop GUI. The status
+counts refer to the last run; a later run without new files counts everything as already done.
+
 The image expects writable `/config`, watched folders below `/data`, and writable `/state` for scan
 state, locks, and history. See [docker/piccompressor.example.json](docker/piccompressor.example.json)
 for a complete file. Build and run the image with the UID/GID that owns the mounted folders; the

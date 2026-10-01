@@ -70,6 +70,8 @@ RUN groupadd --gid "$GID" piccompressor \
     && chown piccompressor:piccompressor /config /state
 
 COPY --from=build /app /app
+# ASP.NET sucht `wwwroot` im Arbeitsverzeichnis; ohne WORKDIR wäre das `/` und jede Seite ein 404.
+WORKDIR /app
 USER piccompressor
 VOLUME ["/config", "/data", "/state"]
 EXPOSE 8080
