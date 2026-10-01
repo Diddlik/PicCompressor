@@ -54,6 +54,10 @@ function applyOverwrite(node) {
   node.querySelector(".overwrite-warning").hidden = !overwrite;
 }
 
+function applyKeepNames() {
+  $("#suffix").disabled = $("#keep-names").checked;
+}
+
 function numberFolders() {
   [...folders.children].forEach((card, index) => {
     card.querySelector(".folder-number").textContent = String(index + 1).padStart(2, "0");
@@ -75,6 +79,11 @@ function fill(document) {
   $("#exif").value = defaults.exif || "Remove";
   $("#savings").value = defaults.minSavingsPercent ?? 5;
   $("#larger-output").value = defaults.largerOutput || "Discard";
+  // Ein leerer Zusatz übernimmt den Originalnamen in den Zielordner, wie in der Desktop-GUI.
+  const suffix = defaults.suffix ?? "_compressed";
+  $("#keep-names").checked = suffix === "";
+  $("#suffix").value = suffix || "_compressed";
+  applyKeepNames();
   folders.replaceChildren();
   (configuration.folders || []).forEach(addFolder);
   if (!folders.children.length) addFolder();
@@ -113,7 +122,7 @@ function collect() {
       collision: defaults.collision || "Skip",
       largerOutput: $("#larger-output").value,
       minSavingsPercent: Number($("#savings").value),
-      suffix: defaults.suffix || "_compressed"
+      suffix: $("#keep-names").checked ? "" : $("#suffix").value.trim() || "_compressed"
     },
     folders: folderValues
   };
@@ -141,6 +150,10 @@ async function loadStatus() {
       : error ? "Aufmerksamkeit erforderlich" : "Automatik aktiv";
     $("#status-detail").textContent = status.lastError
       || (running ? `Gestartet ${formatTime(status.startedAt)}` : `Nächster Lauf ${formatTime(status.nextRunAt)}`);
+    // Die Zahlen gelten für einen Lauf; ein Folgelauf ohne neue Dateien zählt alles als erledigt.
+    $("#metrics-caption").textContent = running
+      ? "Aktueller Lauf"
+      : `Letzter Lauf · ${formatTime(status.finishedAt)}`;
     $("#metric-success").textContent = status.succeeded ?? 0;
     $("#metric-unchanged").textContent = status.unchanged ?? 0;
     $("#metric-failed").textContent = status.failed ?? 0;
@@ -157,6 +170,7 @@ $("#quality").addEventListener("input", (event) => {
   $("#quality-value").textContent = event.target.value;
 });
 $("#add-folder").addEventListener("click", () => addFolder());
+$("#keep-names").addEventListener("change", applyKeepNames);
 $("#scan-button").addEventListener("click", async () => {
   const button = $("#scan-button");
   button.disabled = true;

@@ -73,6 +73,7 @@ input:focus, select:focus { border-color: rgba(113,112,255,.75); background: var
 input[type="range"] { padding: 0; accent-color: var(--accent); border: 0; background: transparent; }
 .checkbox { flex-direction: row; align-items: center; align-self: end; min-height: 42px; }
 .checkbox input { width: 17px; height: 17px; accent-color: var(--accent); }
+.metrics-caption { margin: 12px 0 0; color: var(--quiet); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
 .overwrite-warning { margin: 14px 0 0; padding: 10px 12px; color: var(--danger); font-size: 13px; line-height: 1.45; border: 1px solid rgba(229,72,77,.4); border-radius: 7px; background: rgba(229,72,77,.08); }
 input:disabled { opacity: .45; }
 

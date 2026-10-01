@@ -128,6 +128,11 @@ Original wird erst nach erfolgreicher Validierung ersetzt; ein Rückgängig gibt
 bleiben dabei unberührt, und bereits optimierte Dateien werden am Provenienz-Marker erkannt und
 nicht erneut komprimiert.
 
+„Originalnamen behalten“ in der Weboberfläche (in der Datei `"suffix": ""`) legt die komprimierte
+Datei unter ihrem Originalnamen im Ausgabeordner ab, wie der eigene Zielordner der Desktop-GUI.
+Die Statusanzahlen gelten jeweils für den letzten Lauf; ein Folgelauf ohne neue Dateien zählt alles
+als „Bereits erledigt“.
+
 Das Image erwartet ein beschreibbares `/config`, die überwachten Ordner unterhalb von `/data` und
 ein beschreibbares `/state` für Zustand, Lock und Verlauf. Eine vollständige Datei steht in
 [docker/piccompressor.example.json](docker/piccompressor.example.json). Image und Container laufen

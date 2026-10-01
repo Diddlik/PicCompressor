@@ -35,10 +35,11 @@
           </div>
         </div>
         <div class="metrics">
-          <div><span id="metric-success">0</span><small>Erfolgreich</small></div>
-          <div><span id="metric-unchanged">0</span><small>Unverändert</small></div>
+          <div><span id="metric-success">0</span><small>Verarbeitet</small></div>
+          <div><span id="metric-unchanged">0</span><small>Bereits erledigt</small></div>
           <div><span id="metric-failed">0</span><small>Fehler</small></div>
         </div>
+        <p id="metrics-caption" class="metrics-caption">Letzter Lauf</p>
       </div>
     </section>
 
@@ -109,6 +110,10 @@
           <label>Timeout (Sekunden)
             <input id="timeout" type="number" min="0" max="86400">
           </label>
+          <label>Namenszusatz
+            <input id="suffix" placeholder="_compressed">
+          </label>
+          <label class="checkbox"><input id="keep-names" type="checkbox"> Originalnamen behalten</label>
         </div>
       </section>
 
